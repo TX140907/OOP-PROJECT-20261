@@ -28,7 +28,7 @@ Các kích thước dưới đây là kích thước hiển thị đang cần **
 | Thành phần | Kích thước | Ghi chú cho người vẽ |
 | --- | --- | --- |
 | Nền toàn màn hình | 1000 × 700 | File `background.png` của từng ngày. |
-| Đường/bản đồ giữa màn hình | 480 × 700 | File `road.png`; gồm 3 làn, mỗi làn rộng 160 px. |
+| Đường/bản đồ giữa màn hình | 720 × 700 | File `road.png`; gồm 3 làn, mỗi làn rộng 240 px. |
 | Nhân vật | 60 × 90 | Ảnh dùng chung trong `common/player/`. |
 | Xe | 100 × 150 | Hình xe nhìn từ trên xuống. |
 | Cá mập trồi lên | 140 × 140 | Vùng hiển thị và va chạm khi đớp. |
