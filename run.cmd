@@ -1,0 +1,21 @@
+@echo off
+setlocal EnableDelayedExpansion
+pushd "%~dp0"
+if errorlevel 1 exit /b 1
+if not exist "build\classes" mkdir "build\classes"
+if errorlevel 1 goto failed
+(for /r "src\main\java" %%f in (*.java) do (
+    set "source=%%f"
+    @echo "!source:\=/!"
+)) > "build\sources.txt"
+javac -encoding UTF-8 -d "build/classes" @"build/sources.txt"
+if errorlevel 1 goto failed
+if /i "%~1"=="--build-only" goto success
+java -cp "build/classes;src/main/java;src/main/resources" main
+if errorlevel 1 goto failed
+:success
+popd
+exit /b 0
+:failed
+popd
+exit /b 1
