@@ -1,16 +1,7 @@
 package game.level.day2;
-
-import game.level.DayConfig;
-import game.level.DayConfigLoader;
-import game.level.Level;
-
-/** Level ngày 2: cá mập cảnh báo rồi trồi lên đớp. */
-public final class Day2Level implements Level {
-    private static final int DAY = 2; // Số ngày.
-    private final DayConfig config = DayConfigLoader.load(DAY);
-
-    @Override
-    public DayConfig config() {
-        return config;
-    }
+import game.config.DayConfigLoader;
+import game.level.BaseLevel;
+/** Independent level session; shared engine and systems are inherited through BaseLevel. */
+public final class Day2Level extends BaseLevel {
+    public Day2Level() { super(DayConfigLoader.load(Day2Level.class,"day2.properties")); }
 }
