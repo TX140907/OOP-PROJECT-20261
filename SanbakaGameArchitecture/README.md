@@ -78,8 +78,12 @@ Dữ liệu hiệu ứng và ảnh nền
 
 ## Hướng phát triển tiếp
 Đây vẫn là 1 game chưa hoàn thiện (vì vibe code), theo tôi thì cần thêm 1 số chức năng nữa:
-- Menu game: phần này chatgpt vẽ khá xấu, cần thiết kế lại 1 menu bắt đầu game, theo tôi thì vẫn lấy hình nền chat và cho thêm các chức năng (nút ấn): Vào chơi, menu. Khi vào chơi thì, nếu người chơi chưa thắng game thì sẽ cho bắt đầu từ ngày chưa mở khóa, còn đã thắng game thì cho chơi lại từ đầu; còn nút menu thì sẽ hiện ra list các cảnh mà người chơi đã mở khóa
+- Menu game: phần này chatgpt vẽ khá xấu, cần thiết kế lại 1 menu bắt đầu game, theo tôi thì vẫn lấy hình nền chat và cho thêm các chức năng (nút ấn):
+  +) Vào chơi: Khi vào chơi thì, nếu người chơi chưa thắng game thì sẽ cho bắt đầu từ ngày chưa mở khóa, còn đã thắng game thì cho chơi lại từ đầu
+  +) Menu: hiện ra list các cảnh mà người chơi đã mở khóa
+  +) Hướng dẫn chơi game: Các nút mũi tên; AWDS để di chuyển, Esc để pause game...
+- Màn hình pause: hiện các nút tương tự ở trên menu game
 - Nút pause khi đang chơi trên đường
 - Cá mập tele ở ngày số 2, chó chạy ra đường ở ngày thứ 4 hoặc 5 (hoặc cả 2)
-- (cái này là ý tưởng của bạn Thắng, tôi tháy khá hay) Ngày số 5 đoạn lái trực thăng sẽ cho đánh boss, có thể bắn đạn vào boss và né đạn từ boss
-- cuối cùng, theo tôi thì ở những đoạn hội thoại, thay vì chỉ dùng mỗi ảnh nền của tôi thì tôi nghĩ với mỗi câu thoại sẽ thêm art nhân vật cùng biểu cảm khi nói câu thoại (cái này có thể vibe ra art với các biểu cảm khác nhau, art gốc thì có thể tìm sau)
+- (Cái này là ý tưởng của bạn Thắng, tôi tháy khá hay) Ngày số 5 đoạn lái trực thăng sẽ cho đánh boss, có thể bắn đạn vào boss và né đạn từ boss
+- Cuối cùng, theo tôi thì ở những đoạn hội thoại, thay vì chỉ dùng mỗi ảnh nền của tôi thì tôi nghĩ với mỗi câu thoại sẽ thêm art nhân vật cùng biểu cảm khi nói câu thoại (cái này có thể vibe ra art với các biểu cảm khác nhau, art gốc thì có thể tìm sau)
