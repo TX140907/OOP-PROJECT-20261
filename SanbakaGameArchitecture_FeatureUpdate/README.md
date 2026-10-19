@@ -50,3 +50,8 @@ Script tự tìm toàn bộ file Java, biên dịch bằng JDK 27 vào thư mụ
 
     powershell -ExecutionPolicy Bypass -File .\run.ps1
 
+## Hướng phát triển tiếp
+Tôi đã xử lý xong menu game, màn hình bắt đầu cùng 1 số tính năng khác, cùng với tối ưu đồ họa hơn so với bản trước đó. Bây giờ game chỉ còn cần thêm những tính năng sau:
+- Cá mập tele ở ngày số 2, chó chạy ra đường ở ngày thứ 4 hoặc 5 (hoặc cả 2)
+- (Cái này là ý tưởng của bạn Thắng, tôi tháy khá hay) Ngày số 5 đoạn lái trực thăng sẽ cho đánh boss, có thể bắn đạn vào boss và né đạn từ boss
+- Cuối cùng, theo tôi thì ở những đoạn hội thoại, thay vì chỉ dùng mỗi ảnh nền của tôi thì tôi nghĩ với mỗi câu thoại sẽ thêm art nhân vật cùng biểu cảm khi nói câu thoại (cái này có thể vibe ra art với các biểu cảm khác nhau, art gốc thì có thể tìm sau)
