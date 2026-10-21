@@ -17,6 +17,10 @@ public final class LevelManager {
         this.factories=List.copyOf(factories); this.index=index;
     }
     public BaseLevel create() { return factories.get(index).get(); }
+    public BaseLevel select(int selectedIndex) {
+        if(selectedIndex<0 || selectedIndex>=factories.size())throw new IllegalArgumentException("Invalid level selection");
+        BaseLevel selected=factories.get(selectedIndex).get();index=selectedIndex;return selected;
+    }
     public boolean hasNext() { return index+1<factories.size(); }
     public BaseLevel next() { if (!hasNext()) throw new IllegalStateException("No next level"); index++; return create(); }
     public int index() { return index; }

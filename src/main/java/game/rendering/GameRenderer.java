@@ -17,6 +17,7 @@ public final class GameRenderer {
     private final ConfigValues settings=AppSettings.load();
     public void draw(Graphics2D g,Game game) {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+        if(game.state()==GameState.MAIN_MENU) {g.setColor(new Color(12,23,43));g.fillRect(0,0,1000,700);return;}
         BaseLevel level=game.level();var c=level.config().values();
         g.setColor(c.color("level.backgroundColor"));g.fillRect(0,0,1000,700);
         var background=assets.image(c.text("sprite.background",""));
@@ -43,14 +44,6 @@ public final class GameRenderer {
         entities.foregroundWarnings(g,level);hud.draw(g,level,settings,assets);bosses.hud(g,level);
         if (game.state()==GameState.TRANSITION) {
             g.setColor(new Color(0,0,0,(int)(255*game.fadeAlpha())));g.fillRect(0,0,1000,700);
-        } else if (game.state()!=GameState.PLAYING) {
-            g.setColor(new Color(0,0,0,185));g.fillRect(0,0,1000,700);
-            String title=switch(game.state()) {case PAUSED->"PAUSED";case GAME_OVER->"GAME OVER";case GAME_COMPLETE->"GAME COMPLETE";default->"LEVEL COMPLETE";};
-            g.setFont(new Font("SansSerif",Font.BOLD,44));g.setColor(Color.WHITE);
-            g.drawString(title,(1000-g.getFontMetrics().stringWidth(title))/2,320);
-            g.setFont(new Font("SansSerif",Font.PLAIN,22));
-            String hint=game.state()==GameState.PAUSED?"Esc: tiếp tục":"R: chơi lại màn này";
-            g.drawString(hint,(1000-g.getFontMetrics().stringWidth(hint))/2,370);
         }
     }
 }

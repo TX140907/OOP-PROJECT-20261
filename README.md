@@ -212,9 +212,45 @@ tương ứng; các kiểm tra đường né vẫn được giữ.
 
 - **A/←, D/→:** di chuyển ngang tự do, có tăng/giảm tốc; không snap giữa làn.
 - **E:** bắn tên lửa thẳng lên khi boss đã nạp máu xong; có thể giữ phím để bắn theo hồi chiêu.
-- **Esc:** pause/resume. Mất focus tự pause và xóa phím giữ.
+- **Esc:** mở menu tạm dừng/tiếp tục. Trong danh sách ô lưu, Esc quay về menu trước. Mất focus tự pause và xóa phím giữ.
 - **R:** chơi lại màn hiện tại sau Game Over/Level Complete/Game Complete.
 - Không điều khiển dọc ở các màn đường bộ. Freeze xóa vận tốc/input đang giữ.
+
+### Menu đầu game, tạm dừng và ba ô lưu
+
+Mở ứng dụng sẽ vào menu **Vào game / Chơi màn đã lưu / Thoát game**.
+Vào game bắt đầu lượt mới từ màn được chọn bởi Main hoặc CLI (`--all` / `--level`).
+Trong game, Esc mở menu **Tiếp tục chơi / Chơi lại màn / Lưu game / Ra menu / Thoát game**.
+Các nút có hiệu ứng khi trỏ chuột, khi nhấn và khi chọn bằng Tab; có thể bấm bằng chuột
+hoặc dùng Space cho nút đang focus. Ở màn kết thúc cũng có nút chơi lại, ra menu và thoát.
+
+Chọn **Lưu game** khi đang tạm dừng để chọn một trong đúng **3 ô**.
+Ô đã có dữ liệu yêu cầu xác nhận ghi đè; lưu xong vẫn ở menu pause.
+Chọn **Chơi màn đã lưu** ở menu đầu game rồi bấm một ô có dữ liệu để chơi lại màn đó.
+Tải sẽ tạo session mới **từ đầu màn**, khôi phục cách tự chuyển màn của lượt đã lưu;
+HP, năng lượng, vật cản, cooldown và tiến độ trong màn đều khởi tạo lại theo properties.
+Ví dụ lưu giữa boss màn 52 thì tải lại từ phần né chướng ngại vật đầu màn 52.
+Ra menu hoặc thoát không tự lưu; Vào game cũng không ghi đè các ô có sẵn.
+
+Bản lưu nằm ở `saves/slot-1.properties` tới `slot-3.properties`.
+Chỉnh `save.directory` trong `game/config/game.properties` để đổi thư mục.
+Đường dẫn tương đối tính từ thư mục chạy ứng dụng; `run.cmd` luôn chạy từ thư mục dự án,
+IDE cần đặt working directory về cùng thư mục nếu muốn dùng chung bản lưu.
+Thư mục mặc định `saves/` đã được bỏ qua bởi Git. Muốn mang bản lưu sang máy khác,
+sao chép các tệp này vào thư mục lưu tương ứng. Mỗi ô đọc/ghi lỗi được báo trong menu.
+
+`game.save.SaveData` chỉ lưu `levelId`, tên màn, `checkpoint`, `dialogueId`,
+`autoAdvance`, `savedAt`; `SaveRepository` thêm phiên bản định dạng `version=1`.
+Không lưu cả cây đối tượng Java hoặc ảnh chụp trạng thái giữa khung hình. Chỉ đọc ba ô
+khi mở danh sách hoặc bấm tải; không đọc ổ đĩa mỗi frame, không ghi liên tục.
+Ghi tệp tạm cùng thư mục rồi thay thế tệp đích để hạn chế bản lưu dở dang.
+Dữ liệu sai/phiên bản lạ không được tải, vẫn cho ghi đè từ menu lưu.
+
+Hiện chỉ tạo mốc `LEVEL_START`. Kiểu `DIALOGUE_START` và trường `dialogueId` đã được
+chừa trong định dạng để về sau lưu **đầu cuộc hội thoại**, không lưu chỉ số câu đang nói.
+Khi thêm hệ hội thoại/cutscene, nối bộ tạo mốc và nhánh khôi phục trong
+`Game.createSave()` / `Game.loadSave()` vào bộ điều khiển hội thoại. Bản hiện tại
+chưa phát hội thoại, nên không tạo hoặc tải giả các mốc này.
 
 ### Điểm nhấn riêng của màn 1–4
 
@@ -296,8 +332,9 @@ src/main/java/
     │   ├── progress/  ProgressManager
     │   └── spawn/     ObstacleFactory, ObstacleSpawner, HealthPickupSpawner, PlaneSpawnPlacement, LaneSpawnPolicy, SafeSpawnPolicy
     ├── input/         InputState, InputHandler
+    ├── save/          SaveData, SaveRepository
     ├── rendering/     AssetLoader, EntityRenderer, AirBossRenderer, GameRenderer, IceRoadRenderer, GlareEffect
-    └── ui/            GamePanel, GameHUD, ProgressBar
+    └── ui/            GamePanel, MenuOverlay, MenuButton, GameHUD, ProgressBar
 src/test/java/game/     JUnit 5: config, physics, collision, effects, spawn, FSM, engine, render
 ```
 

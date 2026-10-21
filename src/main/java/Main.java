@@ -21,7 +21,7 @@ import game.ui.GamePanel;
 /** Single application entry point. No-Story Mode only. */
 public final class Main {
     private static final boolean RUN_ALL_LEVELS =  true; // true: Day1 -> ... -> Day5Helicopter.
-    private static final int SELECTED_LEVEL = 3; // 1, 2, 3, 4, 51, 52 when RUN_ALL_LEVELS=false.
+    private static final int SELECTED_LEVEL = 1; // 1, 2, 3, 4, 51, 52 when RUN_ALL_LEVELS=false.
     private static final boolean AUTO_ADVANCE = true; // false: stop at Level Complete.
     public static void main(String[] args) {
         boolean all=RUN_ALL_LEVELS,advance=AUTO_ADVANCE,smoke=false;
@@ -36,10 +36,11 @@ public final class Main {
         if (smoke) { smoke();return; }
         if (GraphicsEnvironment.isHeadless()) throw new IllegalStateException("No display; use --smoke for headless verification");
         Game game=new Game(new LevelManager(all?1:selected),advance);
+        game.openMainMenu();
         SwingUtilities.invokeLater(()->{
             JFrame frame=new JFrame("HUST Exam Run - No-Story Mode");
-            GamePanel panel=new GamePanel(game);InputHandler handler=new InputHandler(panel,game);
-            GameLoop loop=new GameLoop(game,panel::repaint);
+            GamePanel panel=new GamePanel(game);InputHandler handler=new InputHandler(panel,game,panel::escape);
+            GameLoop loop=new GameLoop(game,panel::refresh);
             frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);frame.add(panel);frame.pack();
             frame.setResizable(false);frame.setLocationRelativeTo(null);
             frame.addWindowFocusListener(new WindowAdapter() {

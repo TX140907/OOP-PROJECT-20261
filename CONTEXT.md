@@ -1,5 +1,31 @@
 # Tiến độ triển khai theo prompt.md
 
+## Menu đầu game, menu pause và ba ô lưu mốc bắt đầu (17/10/2026)
+
+- Main gọi openMainMenu trước mở cửa sổ; GameState thêm MAIN_MENU. Vào game tạo lại
+  màn ban đầu theo Main/CLI, không đè dữ liệu lưu. Game engine constructor giữ chế độ
+  PLAYING cho các lối gọi trực tiếp hiện có; GUI thật luôn mở menu trước.
+- MenuOverlay/MenuButton trong ui: nền gradient, card, nút hover/pressed/focus,
+  menu chính ba nút, pause năm nút đúng yêu cầu, danh sách ba ô và xác nhận ghi đè.
+  Thêm nút chơi lại/menu/thoát ở màn kết thúc. Thoát dispose cửa sổ để GameLoop dừng.
+  GamePanel.refresh cập nhật overlay khi GameState đổi, không sửa component khi vẽ.
+  GameRenderer chỉ vẽ thế giới/fade, overlay xử lý menu; Main dùng panel::refresh.
+- Esc trên danh sách/ghi đè lùi một menu, pause Esc tiếp tục. InputHandler nhận callback
+  pauseAction, giữ constructor cũ; R không restart khi đang trong menu pause/ô lưu.
+  Gameplay và mọi timer dừng khi đang menu/pause; input xóa khi đổi trạng thái.
+- SaveData/SaveRepository: tối đa3 tệp slot-1..3.properties UTF-8, version1,
+  levelId/name, checkpoint LEVEL_START/DIALOGUE_START, dialogueId, autoAdvance, savedAt.
+  Ghi tệp tạm cùng thư mục rồi atomic move (fallback replace nếu không hỗ trợ).
+  Chỉ đọc khi mở menu/bấm tải, không IO mỗi frame; ô lỗi hiển thị và có thể ghi đè.
+- Game.createSave chỉ cho PAUSED, hiện luôn LEVEL_START; loadSave từ MAIN_MENU tạo
+  fresh BaseLevel, reset toàn bộ HP/energy/progress/effect/boss/obstacle/cooldown,
+  khôi phục autoAdvance. LevelManager.select tạo session trước khi đổi index.
+  DIALOGUE_START chừa cho tương lai nhưng hiện từ chối tải rõ ràng, không giả đã hỗ trợ.
+- save.directory=saves thêm trong game.properties kèm ghi chú VN; /saves/ trong gitignore.
+  run.cmd có pushd project nên thư mục lưu ổn định; IDE phải dùng cùng working directory.
+  README mô tả UI, save workflow, checkpoint semantics và điểm nối hội thoại tương lai.
+- Không chạy kiểm thử/build/game theo yêu cầu người dùng; chỉ rà mã trực tiếp.
+
 ## Đội hình đàn cá mập, tăng mạnh mật độ màn 2–4 và rải hồi máu (17/10/2026)
 
 - SharkRushEvent chọn một trong ba kiểu với singleWeight/pairWeight/sequenceWeight=1:
