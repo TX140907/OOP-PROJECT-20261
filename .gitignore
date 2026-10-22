@@ -1,2 +1,23 @@
-/build/
+# Build & compiler output
+build/
+out/
+target/
 *.class
+*.jar
+
+# Logs & temp files
+*.log
+*.tmp
+*OLD*
+.sanbaka_svbk_progress.properties
+
+# Tools
+.tools/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+.project
+.classpath
+.settings/

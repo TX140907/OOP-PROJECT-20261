@@ -1,222 +1,205 @@
-# OOP-PROJECT-20261
+# SANBAKA GAME — TUẦN THI CỦA SVBK
+> **Dự án Môn học Lập trình Hướng đối tượng (OOP)**  
+> Trò chơi 2D kết hợp cốt truyện (Story Runner) và mô phỏng giao thông trên nền tảng **Java Swing & Java 2D Graphics**.
 
-README gồm hai phần: hướng dẫn làm hình ảnh ở trước, hướng dẫn code và cấu hình game ở sau.
+---
 
-## Dành cho người làm hình ảnh
+## 1. Giới thiệu tổng quan
 
-### Nơi lưu ảnh
+**Tuần thi của SVBK** là tựa game 2D kể về hành trình đầy thử thách của một sinh viên Đại học Bách Khoa trong tuần thi học kỳ cam go. Người chơi phải điều khiển phương tiện vượt qua 5 ngày thi với các điều kiện thời tiết khắc nghiệt và chướng ngại vật bất ngờ để đến được giảng đường C1 đúng giờ:
+
+* **Ngày 1 (Trời đẹp):** Lái xe máy trên đường phố quen thuộc, làm quen với cách điều khiển và né tránh ô tô.
+* **Ngày 2 (Mưa lớn, đường ngập):** Nước ngập sâu, chuyển sang chèo xuồng máy vượt phố ngập nước.
+* **Ngày 3 (Trời rét, đường trơn):** Mặt đường mùa đông trơn trượt, ma sát giảm, đòi hỏi phản xạ khéo léo.
+* **Ngày 4 (Nắng nóng gay gắt):** Nhiệt độ cao làm cạn kiệt thanh năng lượng; cần nhặt tia năng lượng trên đường để duy trì thể lực.
+* **Ngày 5 (Ngày thi cuối cùng):**
+  * *Chặng 1:* Đi xe máy nhưng gặp cảnh tắc đường kẹt cứng.
+  * *Chặng 2:* Bạn cùng phòng đón bằng trực thăng khẩn cấp, né tránh đàn chim trên không để kịp giờ thi.
+  * *Kết thúc:* Kết thúc có hậu (Happy Ending - HE) với pháo hoa giấy hoặc kết thúc trễ thi (Bad Ending - BE).
+
+---
+
+## 2. Phân chia vai trò & Cơ chế phối hợp (Dev & Art Collaboration)
+
+Dự án được thiết kế theo mô hình **tách biệt hoàn toàn giữa Logic Game và Tài nguyên Đồ họa (Separation of Concerns)**. Điều này giúp **Người làm hình ảnh (Artist / Designer)** và **Người làm game (Game Developer)** có thể làm việc song song, độc lập mà không bao giờ gây xung đột mã nguồn (merge conflict) khi làm việc nhóm trên GitHub.
+
+```
+       ┌────────────────────────┐         ┌────────────────────────┐
+       │   ARTIST / DESIGNER    │         │     GAME DEVELOPER     │
+       │  (Người làm hình ảnh)  │         │    (Người làm game)    │
+       └───────────┬────────────┘         └───────────┬────────────┘
+                   │                                  │
+    Vẽ Sprite PNG, Avatar, Nền          Viết Logic, Physics, State, Render
+    Xuất file vào folder assets/        Gọi ArtAssets.load("Folder", "Name.png")
+                   │                                  │
+                   └─────────────────┬────────────────┘
+                                     ▼
+                   ┌──────────────────────────────────┐
+                   │    BỘ NẠP THÔNG MINH ARTASSETS   │
+                   │  - Có ảnh PNG -> Nạp Sprite đẹp  │
+                   │  - Thiếu ảnh  -> Tự vẽ vector    │
+                   │    (Không bao giờ crash game)    │
+                   └──────────────────────────────────┘
+```
+
+### 👥 Vai trò 1: Người làm game (Game Developers / Programmers)
+* **Trách nhiệm:**
+  * Xây dựng kiến trúc hướng đối tượng (OOP), quản lý vòng đời game, state machine, vật lý/hitbox, controller và kịch bản đối thoại.
+  * Tách biệt các tầng thành 5 package chức năng rõ ràng: `model`, `state`, `logic`, `render`, `assets`.
+  * **Cơ chế Fallback an toàn tuyệt đối:** Toàn bộ thực thể trong `sanbaka.render` đều có sẵn mã vẽ vector 2D (hình học, màu sắc, đổ bóng). Ngay cả khi Artist chưa vẽ xong hoặc file ảnh bị thiếu, game vẫn khởi chạy mượt mà 60 FPS mà không gặp lỗi `NullPointerException`.
+  * **Không hardcode đường dẫn:** Lập trình viên chỉ gọi ảnh thông qua lớp cầu nối [`ArtAssets.load("ObjectFolder", "FileName.png")`](src/main/java/sanbaka/assets/ArtAssets.java). Lớp này tự động tìm kiếm trên cả Classpath và thư mục tương đối `assets/`.
+
+### 🎨 Vai trò 2: Người làm hình ảnh (Artists / 2D Designers)
+* **Trách nhiệm:**
+  * Thiết kế đồ họa cho phương tiện di chuyển, chướng ngại vật giao thông, avatar biểu cảm của nhân vật, phông nền và hiệu ứng.
+  * **Không cần chạm vào mã Java:** Người làm hình ảnh chỉ làm việc trong thư mục `assets/` (hoặc `src/main/resources/assets/`), không cần biết code Java hay sửa bất kỳ file logic nào.
+  * **Cơ chế Hot-Plug tiện lợi:** Chỉ cần vẽ ảnh PNG nền trong suốt (transparent PNG), đặt đúng tên quy định vào đúng thư mục trong `assets/objects/`, sau đó khởi động lại game là sprite mới sẽ lập tức xuất hiện thay thế hình vẽ vector mẫu.
+  * **Đẩy Git an toàn:** Khi commit lên GitHub, Artist chỉ cần commit các file ảnh trong thư mục `assets/`, hoàn toàn không lo sợ đè code hay conflict với Developer.
+
+---
+
+## 3. Cẩm nang dành cho Người làm hình ảnh (Artist's Asset Guide)
+
+### 3.1. Cấu trúc thư mục tài nguyên
+Tất cả tài nguyên hình ảnh được phân loại theo thư mục chuẩn như sau:
 
 ```text
-src/main/resources/image/
-├── common/
-│   └── player/          Nhân vật dùng chung giữa các ngày
-├── day1/                Ảnh riêng ngày 1
-│   ├── background.png   Nền toàn màn hình (thêm sau)
-│   └── road.png         Đường ở giữa màn hình (thêm sau)
-├── day2/                Nền, đường và ảnh riêng ngày 2
-└── day3/                Nền, đường và ảnh riêng ngày 3
+OOP-PROJECT-20261/
+└── assets/
+    ├── avatars/               # Ảnh chân dung nhân vật cho khung thoại (Sanbaka.jpg / .png)
+    ├── background/            # Ảnh nền menu chính, phòng trọ, đường phố (sanbaka2.jpg)
+    ├── fonts/                 # Phông chữ nghệ thuật (1FTV-VIP-Starborn.ttf)
+    └── objects/               # Thư mục sprite các đối tượng trong game
+        ├── PlayerBike/        # Xe máy của người chơi
+        ├── PlayerBoat/        # Xuồng máy người chơi (vượt lũ)
+        ├── RoadCar/           # Các dòng xe ô tô NPC
+        ├── RoadMotorcycle/    # Xe máy NPC trên đường
+        ├── RoadBoat/          # Thuyền NPC trên phố ngập
+        ├── EnergyBolt/        # Tia năng lượng sạc pin (Ngày 4)
+        └── SchoolBuilding/    # Cổng trường C1 Bách Khoa (vạch đích hoàn thành)
 ```
 
-Ảnh dùng chung cho nhiều ngày đặt trong `common/`. Ảnh riêng của ngày nào đặt
-trong `dayN/` tương ứng. Có thể thêm thư mục con trong `common/` cho UI hoặc
-vật cản dùng chung khi có ảnh thực tế. `.gitkeep` chỉ dùng để giữ thư mục trống.
+### 3.2. Bảng quy chuẩn tên file & Thông số khuyến nghị
 
-### Kích thước và bố cục
+> [!TIP]
+> **Quy tắc xuất file cho Artist:**
+> 1. Định dạng chuẩn: **PNG nền trong suốt (32-bit ARGB)** đối với tất cả Sprite phương tiện và vật phẩm.
+> 2. Góc nhìn: **Top-down nghiêng nhẹ (2.5D perspective)**, đầu xe hướng lên trên, đuôi xe hướng xuống dưới theo chiều di chuyển.
+> 3. Tỉ lệ: Game tự động co giãn sprite vừa vặn theo khung va chạm (bounding box), nhưng nên vẽ theo kích thước khuyến nghị để hình ảnh sắc nét nhất.
 
-Các kích thước dưới đây là kích thước hiển thị đang cần **cho tới hiện tại**, tính bằng pixel:
+| Thư mục đối tượng | Tên file bắt buộc | Định dạng | Kích thước khuyến nghị | Hướng nhìn & Chi tiết |
+| :--- | :--- | :---: | :---: | :--- |
+| `assets/objects/PlayerBike/` | `PlayerBike.png` | PNG trong suốt | **60 × 120 px** | Xe máy người chơi nhìn từ phía sau |
+| `assets/objects/PlayerBoat/` | `PlayerBoat.png` | PNG trong suốt | **70 × 130 px** | Xuồng máy người chơi vượt dòng nước ngập |
+| `assets/objects/RoadCar/` | `Sedan.png`<br>`Hatchback.png`<br>`Taxi.png`<br>`Van.png`<br>`Truck.png`<br>`Bus.png` | PNG trong suốt | Sedan: **70 × 130 px**<br>Van/Truck: **80 × 160 px**<br>Bus: **90 × 200 px** | Xe ô tô cản đường (đuôi xe hướng về người chơi) |
+| `assets/objects/RoadMotorcycle/` | `RoadMotorcycle.png` | PNG trong suốt | **50 × 100 px** | Xe máy người đi đường (NPC) |
+| `assets/objects/RoadBoat/` | `RoadBoat.png` | PNG trong suốt | **70 × 130 px** | Thuyền người dân đi lại trên phố ngập |
+| `assets/objects/EnergyBolt/` | `EnergyBolt.png` | PNG trong suốt | **40 × 60 px** | Biểu tượng tia sét vàng / bình nước tăng lực |
+| `assets/objects/SchoolBuilding/` | `SchoolBuilding.png` | PNG trong suốt | **300 × 200 px** | Cổng Parabol trường ĐH Bách Khoa Hà Nội |
+| `assets/avatars/` | `Sanbaka.jpg` hoặc `.png` | JPG / PNG | **120 × 120 px** (1:1) | Chân dung nhân vật chính hiển thị cạnh khung thoại |
+| `assets/background/` | `sanbaka2.jpg` hoặc `.png`| JPG / PNG | **960 × 640 px** | Hình nền bìa lúc ở Menu Start |
+| `assets/fonts/` | `1FTV-VIP-Starborn.ttf` | TTF | TrueType Font | Phông chữ pixel phong cách retro cho tiêu đề |
 
-| Thành phần | Kích thước | Ghi chú cho người vẽ |
-| --- | --- | --- |
-| Nền toàn màn hình | 1000 × 700 | File `background.png` của từng ngày. |
-| Đường/bản đồ giữa màn hình | 720 × 700 | File `road.png`; gồm 3 làn, mỗi làn rộng 240 px. |
-| Nhân vật | 60 × 90 | Ảnh dùng chung trong `common/player/`. |
-| Xe | 100 × 150 | Hình xe nhìn từ trên xuống. |
-| Cá mập trồi lên | 140 × 140 | Vùng hiển thị và va chạm khi đớp. |
-| Cảnh báo cá mập | 140 × 140 | Vòng tròn kèm dấu than; đang thay bằng hình vuông nhấp nháy. |
-| Vây cá | 36 × 40 | Vây nhìn từ trên xuống, bơi về phía dưới màn hình. |
-| Mặt nước lúc lặn | 24 × 24 | Thay vòng tròn trắng nhỏ tại chỗ vây lặn. |
+---
 
-Đường nằm chính giữa; hai bên chừa 260 px mỗi bên cho phần nền. Nhân vật ở gần
-đáy màn hình. Với nhân vật và vật cản, nên xuất PNG có nền trong suốt và hạn chế
-khoảng trống quanh hình để hình vẽ khớp với vùng va chạm.
+## 4. Cấu trúc mã nguồn theo chức năng (Modular OOP Packages)
 
-### Các trạng thái cần ảnh cho cá mập
-
-1. Vây xuất hiện từ biên trên, bơi xuống trong 0,5 giây.
-2. Vây biến mất, để lại dấu mặt nước nhỏ tại chỗ lặn trong ít nhất 1 giây.
-3. Cảnh báo xuất hiện ở một làn trống ngang hàng nhân vật, nhấp nháy trong 1,25 giây.
-4. Cá trồi lên đớp trong 0,45 giây rồi biến mất.
-
-Chỗ lặn và chỗ trồi lên đớp là hai vị trí riêng. Nếu các làn đang bị chiếm,
-cá có thể chờ lâu hơn ở trạng thái lặn.
-
-### Đưa ảnh vào game và xem thử
-
-Hiện game tự đọc **ảnh nền và ảnh đường** có đúng tên `background.png`, `road.png`
-trong `dayN/`. Khi chưa có ảnh, game dùng màu nền và các vạch đường hiện tại.
-Đặt ảnh đúng tên rồi đóng, mở lại game để xem thay đổi.
-
-Ảnh nhân vật, xe, vây, mặt nước, cảnh báo và cá đớp **chưa được nối vào phần vẽ**;
-hiện vẫn là hình tạm. Khi bàn giao các ảnh này, gửi kèm tên file, trạng thái,
-kích thước và thứ tự khung hình nếu có animation để người code tích hợp.
-
-Để xem game, mở terminal trong thư mục `OOP-PROJECT-20261` và chạy:
-
-```powershell
-.\run.cmd
-```
-
-Ngày đang chạy được ghi trên tiêu đề cửa sổ. Phần hướng dẫn code bên dưới có
-cách chọn ngày và chỉnh cấu hình.
-
-## Dành cho người code
-
-### Chạy game
-
-Trong PowerShell hoặc CMD, tại thư mục `OOP-PROJECT-20261`:
-
-```powershell
-.\run.cmd
-```
-
-Nếu terminal đang ở thư mục cha `F:\OOP project`, dùng:
-
-```powershell
-.\OOP-PROJECT-20261\run.cmd
-```
-
-`run.cmd` biên dịch toàn bộ mã Java vào `build/classes` trước khi chạy,
-tránh dùng các file `.class` cũ nằm cạnh mã nguồn.
-Có thể dùng `run.cmd --build-only` để chỉ biên dịch.
-Nếu chạy bằng IDE, đặt `src/main/java` làm source root và chọn entry point `main`.
-
-### Cấu trúc Java
+Toàn bộ 28 file Java đã được tái cấu trúc và phân loại chuẩn theo 5 nhóm trách nhiệm:
 
 ```text
-src/main/java/
-  main.java                        Khởi tạo cửa sổ, entry point giữ nguyên
-  game/config/GameConfig.java      Thông số màn hình và đường ba làn
-  game/level/DayConfig.java        Dữ liệu và các loại vật cản của một ngày
-  game/level/DayConfigLoader.java  Đọc lựa chọn và tỉ lệ vật cản từ file cấu hình
-  game/level/Level.java            Hợp đồng chung của các level
-  game/level/Levels.java           Đăng ký level và chọn ngày khởi chạy
-  game/level/day1/Day1Level.java    Level ngày 1
-  game/level/day1/day1.properties  Cấu hình cạnh code ngày 1
-  game/level/day2/Day2Level.java    Level ngày 2
-  game/level/day2/day2.properties  Cấu hình cạnh code ngày 2
-  game/level/day3/Day3Level.java    Level ngày 3
-  game/level/day3/day3.properties  Cấu hình cạnh code ngày 3
-  game/ui/GamePanel.java            Giao diện, nhận phím, điều phối vòng lặp
-  game/model/Player.java            Nhân vật và chuyển làn mượt
-  game/model/obstacle/Obstacle.java Lớp cha trừu tượng của vật cản
-  game/model/obstacle/Vehicle.java  Xe xanh trượt xuống, kế thừa Obstacle
-  game/model/obstacle/Shark.java    Cá mập: vây, ẩn, cảnh báo nhấp nháy, đớp
-  game/logic/ObstacleSpawner.java   Chọn mẫu và tạo các đợt xe
+src/main/java/sanbaka/
+├── SanbakaGame.java                    # Entry point chính (JFrame 960x640, khởi tạo game loop 60 FPS)
+│
+├── model/                              # [CHỨC NĂNG 1: DỮ LIỆU & THỰC THỂ OOP]
+│   ├── PlayerVehicle.java              # Lớp trừu tượng phương tiện người chơi (tọa độ x, y, tốc độ, bất tử)
+│   ├── PlayerBike.java                 # Xe máy người chơi (Ngày 1, 3, 4, 5)
+│   ├── PlayerBoat.java                 # Thuyền máy người chơi (Ngày 2 phố ngập)
+│   ├── Thing.java                      # Lớp trừu tượng chướng ngại vật & Factory Method Thing.create(kind)
+│   ├── RoadCar.java                    # Xe ô tô NPC có bộ nhớ đệm cache sprite
+│   ├── RoadMotorcycle.java             # Xe máy NPC
+│   ├── RoadBoat.java                   # Thuyền NPC trên phố ngập
+│   ├── EnergyBolt.java                 # Tia sét hồi năng lượng ngày nắng nóng
+│   ├── SchoolBuilding.java             # Cổng trường C1 Bách Khoa (vạch đích kết thúc ngày)
+│   ├── Bird.java                       # Chim cản trở đường bay trực thăng
+│   ├── Confetti.java                   # Pháo giấy chúc mừng kết thúc có hậu (HE)
+│   ├── Line.java                       # Model đại diện một câu thoại kịch bản
+│   ├── Scene.java                      # Model quản lý phân cảnh mở khóa
+│   └── MenuButton.java                 # Model nút bấm tương tác trên Menu
+│
+├── state/                              # [CHỨC NĂNG 2: QUẢN LÝ TRẠNG THÁI & TIẾN TRÌNH]
+│   ├── GameState.java                  # Trạng thái phiên chơi, thông số màn hình, timer, HP, energy
+│   └── GameMenuState.java              # Trạng thái menu, chọn 11 cảnh, lưu/nạp tiến trình (.sanbaka_svbk_progress.properties)
+│
+├── logic/                              # [CHỨC NĂNG 3: VẬT LÝ, LUẬT CHƠI & KỊCH BẢN]
+│   ├── GameLogic.java                  # Vật lý, va chạm hitbox, sinh xe ngẫu nhiên, cơ chế tắc đường, bàn phím
+│   ├── GameStory.java                  # Quản lý dòng thời gian cốt truyện, hiệu ứng typewriter chữ chạy, chuyển cảnh fade
+│   └── StoryData.java                  # Toàn bộ 118 dòng thoại chi tiết cho cả 5 ngày thi
+│
+├── render/                             # [CHỨC NĂNG 4: ĐỒ HỌA & HIỂN THỊ JAVA 2D]
+│   ├── GameVisuals.java                # Vẽ vector cơ sở: sấm sét, mây, mưa, trực thăng, avatar dự phòng
+│   ├── GameEnvironmentRenderer.java    # Vẽ cảnh nền: phòng trọ, ngập nước mùa lũ, giảng đường C1
+│   ├── GameCharacterRenderer.java      # Vẽ giao diện HUD, thanh máu, thanh năng lượng, nhân vật lái xe
+│   ├── GameRoadRenderer.java           # Vẽ lòng đường 3 làn xe, hiệu ứng cuộn mặt đường, bóng đổ xe
+│   ├── GameMenuRenderer.java           # Vẽ giao diện Start Menu, Chọn cảnh, Hướng dẫn, Pause Menu
+│   └── GameScreenRenderer.java         # Điều phối hiển thị Swing (paintComponent) theo từng trạng thái màn hình
+│
+└── assets/                             # [CHỨC NĂNG 5: QUẢN LÝ TÀI NGUYÊN THÔNG MINH]
+    └── ArtAssets.java                  # Bộ nạp ảnh đa tầng (Classpath -> File System) có cache ConcurrentHashMap
 ```
 
-Các tham số có ghi chú ở đầu lớp chịu trách nhiệm cho chúng.
-`Obstacle` chứa hình học, kiểm tra va chạm và khai báo `update`/`draw`;
-`Vehicle` quản lý màu sắc và cách di chuyển; tốc độ được truyền từ cấu hình ngày.
-Loại vật cản mới có thể kế thừa `Obstacle` để có hành vi riêng.
+---
 
-### Cấu hình theo ngày
+## 5. Hướng dẫn Khởi chạy & Điều khiển trò chơi
 
-- Đổi `START_DAY` ở đầu `Levels.java` để chọn level khởi chạy.
-- Ngày 2 hiện xét độc lập 60% có xe, 40% có cá mập trong mỗi lượt; ngày 1 và 3 dùng xe.
-  Mặc định chạy ngày 1; chưa tự động chuyển ngày.
-- Mỗi `DayConfig` có ảnh nền, ảnh đường, màu dự phòng, ngưỡng sinh đợt,
-  khoảng lệch Y và danh sách `ObstacleOption`.
-- Mỗi `ObstacleOption` có xác suất phần trăm riêng và factory tạo vật cản.
-  Mỗi loại được xét một lần mỗi lượt, độc lập với các loại khác. Factory truyền các thông số
-  riêng như tốc độ cho đối tượng, nên spawner không phụ thuộc trực tiếp vào `Vehicle`.
-- Mỗi ngày được phát triển trong package `game.level.dayN`. Lựa chọn vật cản,
-  xác suất, tốc độ xe, khoảng cách sinh và đường dẫn ảnh được chỉnh trong
-  `src/main/java/game/level/dayN/dayN.properties`, ngay cạnh `DayNLevel.java`,
-  không cần sửa hoặc biên dịch Java.
-  Đóng rồi mở game lại để áp dụng cấu hình đã lưu.
-- Khi ghép level mới, thêm lớp `DayNLevel implements Level`, đăng ký trong `Levels`
-  cùng `dayN.properties` trong package ngày đó, đặt ảnh vào `image/dayN/`.
-  `main` chọn level từ danh sách và đưa cấu hình cho
-  `GamePanel`; hiện chưa có điều kiện hoàn thành hoặc tự chuyển ngày.
-- `Shark` hiện vây từ biên trên, bơi xuống với tốc độ cố định 100 px/giây trong 0,5 giây
-  (đi 50 px), sau đó lặn tại chỗ, để lại vòng tròn trắng nhỏ trong 1 giây.
-  Hết thời gian ẩn, cá chọn ngẫu nhiên một làn trống ngang hàng nhân vật,
-  cảnh báo tại vị trí mới trong 1,25 giây (hình vuông vàng nhấp nháy mỗi 0,12 giây),
-  rồi đớp trong 0,45 giây và biến mất. Chỉ giai đoạn đớp gây va chạm.
-  Tham số nằm đầu `Shark.java`; các hình tạm được vẽ trong `draw` để thay bằng ảnh sau.
-- Ngày 2 xét sinh mỗi 1,75 giây, tối đa 5 vật cản cùng tồn tại.
-  Ngày 1 xét mỗi 1,3 giây, ngày 3 mỗi 1 giây, tối đa 8 vật cản
-  (giới hạn mặc định khi chưa khai báo `spawn.maxActive`).
-  Lúc sinh, các vật cản cùng đợt lệch Y theo
-  `spawn.yGap`; khi cá tấn công, vị trí đổi về hàng nhân vật như thiết kế.
+### 5.1. Khởi chạy nhanh
+* **Cách 1: Nhấp đúp chuột (Dành cho mọi thành viên)**
+  Vào thư mục `OOP-PROJECT-20261` và **nhấp đúp chuột** vào file:
+  👉 [`run.cmd`](run.cmd)
+* **Cách 2: Chạy bằng PowerShell**
+  ```powershell
+  .\run.ps1
+  ```
+* **Cách 3: Chạy bằng Command Prompt (CMD)**
+  ```cmd
+  run.cmd
+  ```
+* **Cách 4: Chỉ biên dịch kiểm tra lỗi mà không mở game**
+  ```powershell
+  .\run.ps1 -BuildOnly
+  ```
 
-### Tự chọn vật cản và tỉ lệ từng ngày
+### 5.2. Chạy từ IDE (IntelliJ IDEA / VS Code / Eclipse)
+1. Mở thư mục `OOP-PROJECT-20261` trong IDE.
+2. Cấu hình thư mục:
+   * `src/main/java`: **Sources Root**
+   * `src/main/resources`: **Resources Root**
+   * `src/test/java`: **Test Sources Root**
+3. Chạy file [`src/main/java/sanbaka/SanbakaGame.java`](src/main/java/sanbaka/SanbakaGame.java) hoặc `main.java`.
 
-Mở `src/main/java/game/level/day1/day1.properties`, `day2/day2.properties`
-hoặc `day3/day3.properties` trong cùng thư mục `game/level`.
-Các loại hiện có là `vehicle` (xe) và `shark` (cá mập). Ví dụ mỗi lượt xét
-xe có 70% khả năng xuất hiện, cá mập có 30% khả năng xuất hiện:
+### 5.3. Bảng phím điều khiển khi chơi (Controls)
 
-```properties
-obstacles=vehicle,shark
-vehicle.chance=70
-shark.chance=30
-vehicle.speed=312.5
-spawn.thresholdY=200
-spawn.yGap=60
-spawn.intervalSeconds=1.0
-spawn.maxActive=6
-```
+| Phím điều khiển | Chức năng trong game |
+| :--- | :--- |
+| **Chuột trái** | Tương tác các nút bấm trên Menu (Bắt đầu, Chọn cảnh, Hướng dẫn, Âm lượng) |
+| **Phím Space (Cách) / Enter** | Đọc tiếp hội thoại (Bấm lần 1 để hiện trọn vẹn văn bản gõ máy, lần 2 để qua câu tiếp) |
+| **A / D** hoặc **← / →** | Đổi làn đường sang trái / sang phải né tránh chướng ngại vật |
+| **W / S** hoặc **↑ / ↓** | Tăng tốc / Phanh giảm tốc (ở chặng bay trực thăng: bay lên / bay xuống) |
+| **Phím Esc hoặc P** | Tạm dừng trò chơi (Pause) và mở Menu tùy chọn |
 
-- `obstacles`: danh sách loại được chọn, cách nhau bằng dấu phẩy. Muốn chỉ có xe: `obstacles=vehicle`.
-- `<loại>.chance`: phần trăm độc lập từ `0` đến `100`, nhận cả số thập phân như `12.5`.
-  `0` tắt loại đó, `100` luôn chọn; không khai báo thì mặc định `100`.
-- Không chia theo tổng. Hai loại cùng `100` thì cả hai cùng được chọn;
-  cùng `0` thì không sinh loại nào. Tổng có thể lớn hơn 100.
-- Ví dụ xe `60`, cá `40`: khi còn đủ chỗ, cả hai cùng xuất hiện khoảng 24% lượt,
-  chỉ xe 36%, chỉ cá 16%, không loại nào 24%. Mỗi loại tối đa một con mỗi lượt.
-- Nếu không đủ chỗ trống hoặc chạm giới hạn số lượng, lượt sinh có thể bị bỏ qua.
-  Game không đổi sang loại khác hoặc quay lại xác suất ngay trong khung hình kế tiếp.
-- Vật cản trong cùng đợt được đặt ở các làn khác nhau. Khi chọn chỗ sinh, game kiểm tra
-  vật cản đang có. Cá mập chọn vùng cảnh báo/đớp tránh cả đường xe sẽ chạy qua trong
-  thời gian cảnh báo và đớp; nếu mọi làn đều bị chiếm thì cá tiếp tục lặn chờ.
-  Xe mới cũng không được sinh nếu sẽ chạy vào vùng cá đang giữ chỗ.
-- `spawn.intervalSeconds`: thời gian giữa hai đợt, giảm để sinh dày hơn. Đặt `0`
-  (mặc định nếu không khai báo) để chờ theo `spawn.thresholdY` và trạng thái vật cản;
-  nếu hụt toàn bộ lượt thì chờ 1 giây mới xét lại.
-- `spawn.maxActive`: giới hạn tổng số vật cản cùng tồn tại; khi đầy sẽ chờ có chỗ trống.
-  Xác suất quyết định từng loại có được chọn không; nhịp sinh quyết định tần suất xét.
-- Cần khai báo ít nhất một loại, cho phép đặt tất cả xác suất bằng 0.
-  Tên loại sai, phần trăm ngoài khoảng 0–100 hoặc số không hợp lệ
-  sẽ báo lỗi kèm đường dẫn cấu hình khi khởi chạy.
-- Chọn các loại đã có bằng file cấu hình. Loại có hành vi hoàn toàn mới vẫn cần viết lớp
-  kế thừa `Obstacle` và thêm cách tạo trong `DayConfigLoader`; sau đó dùng được ở mọi ngày.
+---
 
-### Kiểm thử
+## 6. Bộ Kiểm thử Tự động (Automated Smoke Test)
 
-Kiểm tra cấu hình và hành vi vật cản (không mở cửa sổ game):
+Dự án có sẵn bộ test tự động [`SanbakaSmokeTest.java`](src/test/java/sanbaka/SanbakaSmokeTest.java) để cả Dev và Artist có thể chạy kiểm tra xem việc thêm hình ảnh hoặc chỉnh sửa logic có làm hỏng game hay không:
 
 ```powershell
-.\run.cmd --build-only
-$tests = @(Get-ChildItem src/test/java -Recurse -Filter *.java | ForEach-Object { $_.FullName })
-javac -encoding UTF-8 -cp build/classes -d build/test-classes $tests
-java -cp "build/classes;build/test-classes;src/main/java;src/main/resources" game.level.DayConfigLoaderTest
-java -cp "build/classes;build/test-classes;src/main/java;src/main/resources" game.model.obstacle.SharkTest
-java -cp "build/classes;build/test-classes;src/main/java;src/main/resources" game.logic.ObstacleSpawnerTest
+javac -encoding UTF-8 -cp "build/classes" -d "build/classes" src/test/java/sanbaka/SanbakaSmokeTest.java
+java -cp "build/classes;src/main/resources;assets;." sanbaka.SanbakaSmokeTest
 ```
 
-### Nạp tài nguyên
+*Các tiêu chí được kiểm định tự động:*
+* [x] **Story Integrity:** Kiểm tra đủ 118 dòng thoại của 5 ngày thi trong `StoryData`.
+* [x] **Scene Linking:** Kiểm tra tính toàn vẹn của 11 phân đoạn kịch bản mở khóa.
+* [x] **Asset Fallback:** Kiểm tra bộ nạp `ArtAssets` tự động fallback mượt mà khi thiếu file ảnh.
+* [x] **Factory Pattern:** Kiểm tra khởi tạo đa hình các loại xe cộ và chướng ngại vật qua `Thing.create()`.
 
-Đặt ảnh đúng tên để game tự nạp khi khởi chạy lại. `run.cmd` đã đưa `src/main/java`
-vào classpath để đọc các file properties cạnh code, và `src/main/resources` để đọc ảnh.
-Nếu dùng IDE, đánh dấu `src/main/resources` là resources root và bảo đảm các file
-`.properties` trong source root được sao chép cùng cấu trúc package vào thư mục biên dịch,
-hoặc thêm `src/main/java` vào runtime classpath.
-
-### Điều khiển
-
-- Bấm trái/phải để đổi một làn trong 0,2 giây, tăng/giảm tốc mượt.
-- Giữ phím không tự đổi tiếp; cần nhả và bấm lại.
-- Không nhận lệnh đổi làn mới khi đang trượt; phím lên/xuống không còn di chuyển.
-- Va chạm theo vị trí thực trong suốt chuyển động. Mỗi đợt xe chừa ít nhất một làn trống.
-- Cửa sổ cố định 1000×700 để giữ ba làn giữa và lề trống 260 px mỗi bên.
