@@ -134,6 +134,25 @@ public abstract class GameMenuState extends GameState {
         birds.clear();
         cardNarration = false;
         cardNext = CARD_TO_DIALOG;
+        stageProgressMs = 0.0;
+        currentProgressFactor = 1.0;
+        curbEdgeTime = 0.0;
+        curbBurnFraction = 0.0;
+        curbOnFire = false;
+        map2CurbSlowFactor = 1.0;
+        hitSlowUntil = 0;
+        hitSlowFactor = 1.0;
+        knockbackVy = 0.0;
+        knockbackVx = 0.0;
+        boss = null;
+        missiles.clear();
+        enemyPlanes.clear();
+        enemyBombs.clear();
+        bossBullets.clear();
+        explosions.clear();
+        lastMissileFiredAt = 0;
+        flightStartedAt = 0;
+        flightBossTriggered = false;
     }
 
     public void newGame() {
@@ -171,6 +190,7 @@ public abstract class GameMenuState extends GameState {
             stageStarted = now - ROAD_DURATION_MS / 3;
             callStartedAt = 0;
             hp = 100;
+            stageProgressMs = ROAD_DURATION_MS / 3.0;
             elapsed = ROAD_DURATION_MS / 3;
             unlockScene(SC_JAM, 4);
         }
@@ -194,6 +214,13 @@ public abstract class GameMenuState extends GameState {
         lastBird += d;
         if (player.invulnerable > 0) player.invulnerable += d;
         if (lastHitAt > 0) lastHitAt += d;
+        if (hitSlowUntil > 0) hitSlowUntil += d;
+        if (nextWindAt > 0) nextWindAt += d;
+        if (windWarningUntil > 0) windWarningUntil += d;
+        if (windActiveUntil > 0) windActiveUntil += d;
+        if (frozenUntil > 0) frozenUntil += d;
+        if (iceSlipUntil > 0) iceSlipUntil += d;
+        if (lastDogSpawn > 0) lastDogSpawn += d;
         lastFrameAt = now;
         screen = ROAD;
         requestFocusInWindow();

@@ -13,7 +13,7 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
     void drawHud(Graphics2D g) {
         long now = System.currentTimeMillis();
         boolean hot = day == HOT_DAY && !flightMode;
-        panel(g, 20, 18, 270, hot ? 144 : 118, new Color(255, 255, 255, 238));
+        panel(g, 20, 18, 270, hot ? 116 : 88, new Color(255, 255, 255, 238));
         g.setColor(INK);
         int fs = 17;
         Font f;
@@ -21,42 +21,42 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
             f = new Font("Dialog", Font.BOLD, fs--);
         } while (g.getFontMetrics(f).stringWidth(dayTitles[day]) > 236 && fs > 10);
         g.setFont(f);
-        g.drawString(dayTitles[day], 38, 46);
-        g.setFont(new Font("Dialog", Font.PLAIN, 15));
-        int secondsLeft = Math.max(0, (ROAD_DURATION_MS / 1000) - (int) (elapsed / 1000));
-        g.drawString(String.format("THỜI GIAN  %02d:%02d", secondsLeft / 60, secondsLeft % 60), 38, 70);
-        // thanh HP
+        g.drawString(dayTitles[day], 38, 44);
+
+        // thanh HP (Màn 5 trực thăng max HP = 150, các màn đường bộ max HP = 100)
+        int maxHp = flightMode ? FLIGHT_START_HP : 100;
         int shake = now - lastHitAt < 350 ? (int) (Math.sin(now / 22.0) * 3) : 0;
-        drawHeart(g, 47 + shake, 96, 22, new Color(232, 70, 100));
-        int bx = 66 + shake, by = 88, bw = 206, bh = 16;
+        drawHeart(g, 47 + shake, 68, 22, new Color(232, 70, 100));
+        int bx = 66 + shake, by = 60, bw = 206, bh = 16;
         g.setColor(new Color(222, 224, 228));
         g.fillRoundRect(bx, by, bw, bh, 10, 10);
-        int fill = (int) (bw * Math.max(0, hp) / 100.0);
+        int fill = (int) (bw * Math.max(0, hp) / (double) maxHp);
         if (fill > 0) {
-            g.setColor(hp > 50 ? MINT : hp > 25 ? new Color(240, 176, 64) : new Color(232, 70, 90));
+            double hpRatio = (double) hp / maxHp;
+            g.setColor(hpRatio > 0.5 ? MINT : hpRatio > 0.25 ? new Color(240, 176, 64) : new Color(232, 70, 90));
             g.fillRoundRect(bx, by, Math.max(fill, 10), bh, 10, 10);
         }
         g.setFont(new Font("Dialog", Font.BOLD, 11));
-        String ht = "HP  " + Math.max(0, hp) + " / 100";
+        String ht = "HP  " + Math.max(0, hp) + " / " + maxHp;
         int hx = bx + bw / 2 - g.getFontMetrics().stringWidth(ht) / 2;
         g.setColor(INK);
         g.drawString(ht, hx, by + 12);
         // thanh năng lượng (chỉ ngày nắng nóng)
         if (hot) {
-            drawBolt(g, 47, 123, 0.62);
+            drawBolt(g, 47, 96, 0.62);
             g.setColor(new Color(222, 224, 228));
-            g.fillRoundRect(66, 114, 206, 16, 10, 10);
+            g.fillRoundRect(66, 88, 206, 16, 10, 10);
             int ef = (int) (206 * Math.max(0, energy) / 100.0);
             boolean low = energy < 25;
             if (ef > 0) {
                 g.setColor(low && (now / 250) % 2 == 0 ? new Color(232, 70, 90) : new Color(255, 196, 40));
-                g.fillRoundRect(66, 114, Math.max(ef, 10), 16, 10, 10);
+                g.fillRoundRect(66, 88, Math.max(ef, 10), 16, 10, 10);
             }
             g.setFont(new Font("Dialog", Font.BOLD, 11));
             String et = "NĂNG LƯỢNG  " + (int) Math.ceil(Math.max(0, energy));
             int ex = 66 + 103 - g.getFontMetrics().stringWidth(et) / 2;
             g.setColor(INK);
-            g.drawString(et, ex, 126);
+            g.drawString(et, ex, 100);
         }
         panel(g, 700, 18, 238, 58, new Color(255, 255, 255, 225));
         g.setColor(INK);
@@ -65,7 +65,13 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
         g.setColor(new Color(98, 102, 114));
         g.fillRoundRect(720, 49, 196, 8, 8, 8);
         g.setColor(PINK);
-        g.fillRoundRect(720, 49, Math.min(196, (int) (196.0 * elapsed / ROAD_DURATION_MS)), 8, 8, 8);
+        g.fillRoundRect(720, 49, Math.min(196, (int) (196.0 * stageProgressMs / ROAD_DURATION_MS)), 8, 8, 8);
+        if (currentProgressFactor < 0.99) {
+            g.setFont(new Font("Dialog", Font.BOLD, 11));
+            g.setColor(new Color(220, 62, 48));
+            String slowTag = "TỐC ĐỘ " + (int) Math.round(currentProgressFactor * 100) + "%";
+            g.drawString(slowTag, 916 - g.getFontMetrics().stringWidth(slowTag), 42);
+        }
         if (day == 4 && !flightMode && elapsed / 1000.0 >= ROAD_DURATION_MS / 3000.0 - JAM_WINDOW + 1.2) {
             g.setColor(new Color(245, 250, 255, 190));
             g.fillRoundRect(ROAD_X + 140, 150, ROAD_W - 280, 38, 16, 16);
@@ -74,11 +80,93 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
             String jam = "TẮC ĐƯỜNG…";
             g.drawString(jam, ROAD_X + ROAD_W / 2 - g.getFontMetrics().stringWidth(jam) / 2, 175);
         }
+        int bannerY = 22;
+        if (day == COLD_DAY && !flightMode) {
+            if (windDir != 0 && now < windActiveUntil) {
+                boolean warning = now < windWarningUntil;
+                String arrow = windDir > 0 ? "►►" : "◄◄";
+                String windMsg = warning
+                        ? (windDir > 0 ? "CẢNH BÁO GIÓ MÙA ĐÔNG BẮC  " + arrow : arrow + "  CẢNH BÁO GIÓ MÙA ĐÔNG BẮC")
+                        : (windDir > 0 ? "GIÓ MÙA ĐANG THỔI TẠT PHẢI  " + arrow : arrow + "  GIÓ MÙA ĐANG THỔI TẠT TRÁI");
+                g.setFont(new Font("Dialog", Font.BOLD, 13));
+                int mw = g.getFontMetrics().stringWidth(windMsg);
+                g.setColor(warning ? new Color(255, 235, 150, 230) : new Color(205, 238, 255, 235));
+                g.fillRoundRect(W / 2 - mw / 2 - 16, bannerY, mw + 32, 28, 14, 14);
+                g.setColor(INK);
+                g.drawString(windMsg, W / 2 - mw / 2, bannerY + 19);
+                bannerY += 34;
+            }
+            if (now < frozenUntil) {
+                String freezeMsg = "BĂNG LẠNH: TỐC ĐỘ TIẾN GIẢM CÒN 40%";
+                g.setFont(new Font("Dialog", Font.BOLD, 12));
+                int fw = g.getFontMetrics().stringWidth(freezeMsg);
+                g.setColor(new Color(165, 225, 255, 235));
+                g.fillRoundRect(W / 2 - fw / 2 - 14, bannerY, fw + 28, 26, 12, 12);
+                g.setColor(new Color(20, 48, 82));
+                g.drawString(freezeMsg, W / 2 - fw / 2, bannerY + 17);
+                bannerY += 32;
+            }
+        }
+        if (hot && energy < 50.0 && (now / 240) % 2 == 0) {
+            String tiredMsg = energy < 25.0
+                    ? "ẢO GIÁC MÊ SẢNG: SAY SÓNG CHAO ĐẢO · KHẨN CẤP NHẶT TIA SÉT!"
+                    : "SAY NẮNG / KIỆT SỨC: ĐƯỜNG ĐANG CHAO ĐẢO · HÃY NHẶT TIA SÉT!";
+            g.setFont(new Font("Dialog", Font.BOLD, 13));
+            int tw = g.getFontMetrics().stringWidth(tiredMsg);
+            g.setColor(energy < 25.0 ? new Color(255, 205, 140, 240) : new Color(255, 225, 160, 235));
+            g.fillRoundRect(W / 2 - tw / 2 - 16, bannerY, tw + 32, 28, 14, 14);
+            g.setColor(new Color(175, 42, 28));
+            g.drawString(tiredMsg, W / 2 - tw / 2, bannerY + 19);
+            bannerY += 34;
+        }
+        if (!flightMode && day == 1 && map2CurbSlowFactor < 0.98) {
+            int slowPct = (int) Math.round(map2CurbSlowFactor * 100);
+            String curbMsg = String.format("MẮC CẠN SÁT VỈA HÈ: TỐC ĐỘ GIẢM CÒN %d%% · THOÁT RA LÀN GIỮA!", slowPct);
+            g.setFont(new Font("Dialog", Font.BOLD, 12));
+            int cw = g.getFontMetrics().stringWidth(curbMsg);
+            int boxX = W / 2 - cw / 2 - 16;
+            int boxW = cw + 32;
+            g.setColor(new Color(185, 225, 255, 235));
+            g.fillRoundRect(boxX, bannerY, boxW, 28, 14, 14);
+            g.setColor(new Color(20, 60, 110));
+            g.drawString(curbMsg, W / 2 - cw / 2, bannerY + 18);
+            bannerY += 34;
+        } else if (!flightMode && day != 1 && (curbOnFire || curbEdgeTime >= 0.35)) {
+            double ratio = Math.max(0.0, Math.min(1.0, curbEdgeTime / CURB_FIRE_THRESHOLD_SEC));
+            String curbMsg = curbOnFire
+                    ? "XE BỐC LỬA (-10 HP/s) · RỜI KHỎI LỀ ĐƯỜNG ĐỂ LỬA TẮT DẦN!"
+                    : String.format("MA SÁT LỀ ĐƯỜNG: %.1fs / 3.0s SẼ BỐC LỬA!", curbEdgeTime);
+            g.setFont(new Font("Dialog", Font.BOLD, 12));
+            int cw = Math.max(240, g.getFontMetrics().stringWidth(curbMsg));
+            int boxX = W / 2 - cw / 2 - 16;
+            int boxW = cw + 32;
+            g.setColor(curbOnFire
+                    ? ((now / 140) % 2 == 0 ? new Color(235, 48, 36, 238) : new Color(255, 118, 28, 238))
+                    : new Color(255, 238, 185, 235));
+            g.fillRoundRect(boxX, bannerY, boxW, 34, 14, 14);
+            g.setColor(curbOnFire ? Color.WHITE : new Color(168, 42, 20));
+            g.drawString(curbMsg, W / 2 - g.getFontMetrics().stringWidth(curbMsg) / 2, bannerY + 17);
+            g.setColor(new Color(0, 0, 0, 55));
+            g.fillRoundRect(boxX + 14, bannerY + 23, boxW - 28, 6, 6, 6);
+            g.setColor(curbOnFire ? new Color(255, 240, 120) : new Color(235, 90, 28));
+            g.fillRoundRect(boxX + 14, bannerY + 23, (int) ((boxW - 28) * ratio), 6, 6, 6);
+            bannerY += 40;
+        }
+        if (now < hitSlowUntil) {
+            String slowMsg = "CHẤN ĐỘNG VA CHẠM: BỊ ĐẨY LÙI & LÀM CHẬM NGẮN!";
+            g.setFont(new Font("Dialog", Font.BOLD, 12));
+            int sw = g.getFontMetrics().stringWidth(slowMsg);
+            g.setColor(new Color(255, 210, 140, 230));
+            g.fillRoundRect(W / 2 - sw / 2 - 14, bannerY, sw + 28, 24, 12, 12);
+            g.setColor(new Color(140, 32, 24));
+            g.drawString(slowMsg, W / 2 - sw / 2, bannerY + 16);
+        }
         g.setFont(new Font("Dialog", Font.PLAIN, 13));
         String hint = flightMode ? "Né đàn chim · Đừng để HP về 0"
-                : day == 1 ? "Chèo thuyền né xe cộ và thuyền khác · Đừng để HP về 0"
-                : hot ? "Nhặt tia sét để giữ năng lượng · Đừng để HP hay năng lượng về 0"
-                : "Né xe cộ (có xe chạy lấn làn!) · Đừng để HP về 0";
+                : day == 1 ? "Chèo thuyền né xe cộ, thuyền và cá mập · Tránh sát lề kẻo mắc cạn giảm 50% tốc độ"
+                : day == COLD_DAY ? "Tránh vũng băng làm trượt bánh · Ghì lái khi có gió mùa thổi tạt ngang"
+                : hot ? "Nhặt tia sét giữ năng lượng chống ảo giác say sóng · Coi chừng chó chạy rông!"
+                : "Né xe cộ, rào chắn, ổ gà & Ninja Lead tạt làn · Đừng để HP về 0";
         int hw = g.getFontMetrics().stringWidth(hint);
         g.setColor(new Color(255, 255, 255, 190));
         g.fillRoundRect(W / 2 - hw / 2 - 14, 600, hw + 28, 26, 14, 14);
@@ -211,4 +299,3 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
         g.setStroke(oldStroke);
     }
 }
-

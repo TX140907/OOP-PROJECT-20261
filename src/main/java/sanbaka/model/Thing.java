@@ -20,6 +20,13 @@ public abstract class Thing {
             case 6 -> new RoadMotorcycle();
             case 7 -> new EnergyBolt();
             case 8 -> new RoadBoat();
+            case 9 -> new HeavyTruck();
+            case 10 -> new ConstructionBarrier();
+            case 11 -> new Pothole();
+            case 12 -> new NinjaLead();
+            case 13 -> new Shark();
+            case 14 -> new IcePatch();
+            case 15 -> new StrayDog();
             default -> new RoadCar();
         };
     }

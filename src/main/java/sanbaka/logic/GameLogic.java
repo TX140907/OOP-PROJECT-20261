@@ -5,6 +5,7 @@ import java.awt.event.*;
 import java.util.*;
 import javax.swing.*;
 import sanbaka.model.*;
+import sanbaka.state.BossConfig;
 import sanbaka.state.GameState;
 
 /** Xử lý cơ chế chơi game: di chuyển, va chạm, spawn xe, trực thăng, phím bấm. */
@@ -33,6 +34,26 @@ public class GameLogic extends GameStory {
         lastBolt = stageStarted;
         lastHitAt = 0;
         player.invulnerable = 0;
+        playerVx = 0;
+        iceSlipUntil = 0;
+        windDir = 0;
+        windWarningUntil = 0;
+        windActiveUntil = 0;
+        nextWindAt = stageStarted + 2400;
+        frozenUntil = 0;
+        windFreezeChecked = false;
+        lastDogSpawn = stageStarted + 1400;
+        stageProgressMs = 0.0;
+        elapsed = 0;
+        currentProgressFactor = 1.0;
+        curbEdgeTime = 0.0;
+        curbBurnFraction = 0.0;
+        curbOnFire = false;
+        map2CurbSlowFactor = 1.0;
+        hitSlowUntil = 0;
+        hitSlowFactor = 1.0;
+        knockbackVy = 0.0;
+        knockbackVx = 0.0;
         beCause = "";
         retryDialogIndex = dialogIndex;
         requestFocusInWindow();
@@ -40,7 +61,15 @@ public class GameLogic extends GameStory {
 
     public void resumeRoad() {
         long now = System.currentTimeMillis();
-        stageStarted += now - roadPausedAt;
+        long pausedDelta = now - roadPausedAt;
+        stageStarted += pausedDelta;
+        if (hitSlowUntil > 0) hitSlowUntil += pausedDelta;
+        if (nextWindAt > 0) nextWindAt += pausedDelta;
+        if (windWarningUntil > 0) windWarningUntil += pausedDelta;
+        if (windActiveUntil > 0) windActiveUntil += pausedDelta;
+        if (frozenUntil > 0) frozenUntil += pausedDelta;
+        if (iceSlipUntil > 0) iceSlipUntil += pausedDelta;
+        if (lastDogSpawn > 0) lastDogSpawn += pausedDelta;
         lastFrameAt = now;
         screen = ROAD;
         roadPausedForTraffic = false;
@@ -73,11 +102,14 @@ public class GameLogic extends GameStory {
             screen = DIALOG;
         }
         if (screen == ROAD) {
-            elapsed = now - stageStarted;
             if (flightMode) updateFlight(now);
             else updateRoad(now);
             if (hp <= 0 || (day == HOT_DAY && !flightMode && energy <= 0)) {
-                beCause = hp <= 0 ? "Bạn đã hết HP giữa đường." : "Bạn đã kiệt sức vì trời nắng nóng.";
+                if (hp <= 0 && beCause.isEmpty()) {
+                    beCause = "Bạn đã hết HP giữa đường.";
+                } else if (hp > 0) {
+                    beCause = "Bạn đã kiệt sức vì trời nắng nóng.";
+                }
                 screen = ENDING_BE;
             }
             else if (day == 4 && !flightMode && !trafficSceneShown && elapsed >= ROAD_DURATION_MS / 3) {
@@ -142,17 +174,171 @@ public class GameLogic extends GameStory {
     public void updateRoad(long now) {
         double dt = Math.min((now - lastFrameAt) / 1000.0, 0.05);
         lastFrameAt = now;
-        double t = elapsed / 1000.0, dur = ROAD_DURATION_MS / 1000.0;
+        double dur = ROAD_DURATION_MS / 1000.0;
         boolean jamDay = day == 4;
         double jamT1 = dur / 3, jamT0 = jamT1 - JAM_WINDOW;
 
-        if (left) player.x -= PLAYER_SPEED * dt;
-        if (right) player.x += PLAYER_SPEED * dt;
-        player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
-        player.lean += ((right ? 1 : 0) - (left ? 1 : 0) - player.lean) * Math.min(1.0, dt * 10);
-        if (up) player.y -= VERTICAL_SPEED * dt;
-        if (down) player.y += VERTICAL_SPEED * dt;
+        // Hệ số tốc độ theo trạng thái Mệt mỏi (Màn 4 Energy < 50%), Băng lạnh/Vũng băng (Màn 3), Làm chậm ngắn khi va chạm và Sát lề màn 2
+        double deliriumIntensity = (day == HOT_DAY && energy < 50.0) ? (50.0 - energy) / 50.0 : 0.0;
+        double fatigueFactor = deliriumIntensity > 0 ? (0.60 + 0.40 * (1.0 - deliriumIntensity)) : 1.0;
+        boolean isFrozen = (day == COLD_DAY && now < frozenUntil);
+        boolean isIceSlipping = (day == COLD_DAY && now < iceSlipUntil);
+        boolean isHitSlowed = (now < hitSlowUntil);
 
+        // Quãng đường cố định (~40s nếu đi thẳng thuận lợi); NẾU VÀ CHỈ NẾU dính hiệu ứng làm chậm thì tiến độ thực sự chậm lại
+        double progFactor = 1.0;
+        if (isFrozen) progFactor = Math.min(progFactor, 0.40);
+        if (isIceSlipping) progFactor = Math.min(progFactor, 0.72);
+        if (day == HOT_DAY && energy < 50.0) progFactor = Math.min(progFactor, fatigueFactor);
+        if (day == 1 && map2CurbSlowFactor < 0.99) progFactor = Math.min(progFactor, map2CurbSlowFactor);
+        if (isHitSlowed) progFactor = Math.min(progFactor, hitSlowFactor);
+        currentProgressFactor = progFactor;
+
+        stageProgressMs += dt * 1000.0 * currentProgressFactor;
+        elapsed = (long) stageProgressMs;
+        double t = stageProgressMs / 1000.0;
+
+        // Xử lý sự kiện Gió mùa Đông Bắc ở Màn 3 (day == COLD_DAY)
+        if (day == COLD_DAY) {
+            if (dur - t > 2.5 && windDir == 0 && now >= nextWindAt) {
+                windDir = rng.nextBoolean() ? 1 : -1;
+                windWarningUntil = now + 800;
+                windActiveUntil = windWarningUntil + 2000;
+                windFreezeChecked = false;
+                nextWindAt = windActiveUntil + 2500 + rng.nextInt(1400);
+            }
+            if (windDir != 0 && now >= windWarningUntil && now < windActiveUntil && !windFreezeChecked) {
+                windFreezeChecked = true;
+                // Xác suất 45% cơn gió lạnh làm xe bị đóng băng lạnh, giảm tốc độ tiến xuống 40%
+                if (rng.nextInt(100) < 45) {
+                    frozenUntil = now + 2700;
+                }
+            }
+            if (windDir != 0 && now >= windActiveUntil) {
+                windDir = 0;
+            }
+        }
+
+        double forwardSpeedFactor = isFrozen ? 0.40 : (day == 1 ? map2CurbSlowFactor : fatigueFactor);
+        if (isHitSlowed) {
+            forwardSpeedFactor = Math.min(forwardSpeedFactor, hitSlowFactor);
+        }
+        double controlHitPenalty = isHitSlowed ? 0.68 : 1.0;
+
+        if (day == COLD_DAY) {
+            boolean slipping = now < iceSlipUntil;
+            if (slipping) {
+                // Đang trượt bánh do cán qua vũng băng (IcePatch): xe bị trượt ngang theo quán tính
+                playerVx -= Math.copySign(Math.min(Math.abs(playerVx), 340.0 * dt), playerVx);
+                player.x += playerVx * dt;
+                double targetLean = Math.max(-1.25, Math.min(1.25, playerVx / PLAYER_SPEED));
+                player.lean += (targetLean - player.lean) * Math.min(1.0, dt * 10);
+            } else {
+                // Đi bình thường trên mặt đường: BỎ GIA TỐC NGANG, ĐIỀU KHIỂN TRỰC TIẾP NHƯ MỌI MAP KHÁC
+                playerVx = 0;
+                double hSpeed = PLAYER_SPEED * controlHitPenalty;
+                if (left) player.x -= hSpeed * dt;
+                if (right) player.x += hSpeed * dt;
+                player.lean += ((right ? 1 : 0) - (left ? 1 : 0) - player.lean) * Math.min(1.0, dt * 10);
+            }
+            // Gió mùa Đông Bắc thổi tạt ngang (cân bằng lực vừa phải, người chơi vẫn giữ được quyền kiểm soát tay lái)
+            if (windDir != 0 && now >= windWarningUntil && now < windActiveUntil) {
+                double gustProgress = (now - windWarningUntil) / (double) (windActiveUntil - windWarningUntil);
+                double gustEnvelope = Math.sin(Math.max(0.0, Math.min(1.0, gustProgress)) * Math.PI);
+                double windPushSpeed = 105.0 * (0.35 + 0.65 * gustEnvelope);
+                // Giảm bớt lực xô khi xe đã sát mép đường để tránh bị gió ép chặt vào vỉa hè
+                if (windDir > 0 && player.x > PLAYER_MAX_X - 36) {
+                    double curbDist = Math.max(0.0, (PLAYER_MAX_X - player.x) / 36.0);
+                    windPushSpeed *= (0.25 + 0.75 * curbDist);
+                } else if (windDir < 0 && player.x < PLAYER_MIN_X + 36) {
+                    double curbDist = Math.max(0.0, (player.x - PLAYER_MIN_X) / 36.0);
+                    windPushSpeed *= (0.25 + 0.75 * curbDist);
+                }
+                player.x += windDir * windPushSpeed * dt;
+            }
+            player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
+        } else {
+            double speedModifier = day == 1 ? map2CurbSlowFactor : fatigueFactor;
+            double hSpeed = PLAYER_SPEED * speedModifier * controlHitPenalty;
+            if (left) player.x -= hSpeed * dt;
+            if (right) player.x += hSpeed * dt;
+            if (day == HOT_DAY && energy < 50.0) {
+                // Chao đảo ảo giác say nắng khi năng lượng dưới 50%
+                player.x += Math.sin(now / 190.0) * deliriumIntensity * 36.0 * dt;
+            }
+            player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
+            player.lean += ((right ? 1 : 0) - (left ? 1 : 0) - player.lean) * Math.min(1.0, dt * 10);
+        }
+
+        double vSpeed = VERTICAL_SPEED * forwardSpeedFactor;
+        if (up) player.y -= vSpeed * dt;
+        if (down) player.y += vSpeed * dt;
+        if (isFrozen) {
+            // Khi bị đóng băng lạnh (tốc độ tiến chỉ còn 40%), xe bị tụt dần về phía sau
+            player.y += 34.0 * dt;
+        }
+        // Hiệu ứng đẩy lùi mượt sau khi va chạm xe
+        if (knockbackVy > 0) {
+            player.y += knockbackVy * dt;
+            knockbackVy = Math.max(0, knockbackVy - 540.0 * dt);
+        }
+        if (Math.abs(knockbackVx) > 1.0) {
+            player.x += knockbackVx * dt;
+            double dropKx = 480.0 * dt;
+            knockbackVx = Math.abs(knockbackVx) <= dropKx ? 0 : knockbackVx - Math.copySign(dropKx, knockbackVx);
+            player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
+        }
+
+        // Cơ chế Lề đường:
+        // - Ở Map 2 (đường ngập): Bỏ bốc lửa, thay bằng tốc độ chậm dần về 50%
+        // - Ở các map khác: Đi sát biên quá 3 giây sẽ bốc lửa xe và đốt 10 máu/giây; thoát lề đường sẽ hết dần
+        boolean inJamStop = jamDay && t >= jamT0;
+        boolean huggingCurb = !inJamStop
+                && (player.x <= PLAYER_MIN_X + CURB_ZONE_MARGIN || player.x >= PLAYER_MAX_X - CURB_ZONE_MARGIN);
+
+        if (day == 1) {
+            curbOnFire = false;
+            curbEdgeTime = 0.0;
+            curbBurnFraction = 0.0;
+            if (huggingCurb) {
+                // Tốc độ thuyền chậm dần về 50%
+                map2CurbSlowFactor = Math.max(0.50, map2CurbSlowFactor - 0.70 * dt);
+                player.x += Math.sin(now / 35.0) * 1.0;
+                player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
+            } else {
+                map2CurbSlowFactor = Math.min(1.0, map2CurbSlowFactor + 0.90 * dt);
+            }
+        } else {
+            map2CurbSlowFactor = 1.0;
+            if (huggingCurb) {
+                curbEdgeTime = Math.min(CURB_FIRE_THRESHOLD_SEC, curbEdgeTime + dt);
+                if (curbEdgeTime >= CURB_FIRE_THRESHOLD_SEC) {
+                    curbOnFire = true;
+                }
+                player.x += Math.sin(now / 28.0) * 1.4;
+                player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
+            } else {
+                curbEdgeTime = Math.max(0.0, curbEdgeTime - 1.2 * dt);
+                if (curbEdgeTime <= 0.0) {
+                    curbOnFire = false;
+                    curbBurnFraction = 0.0;
+                }
+            }
+            if (curbOnFire) {
+                double burnRate = huggingCurb ? CURB_BURN_DPS : (CURB_BURN_DPS * (curbEdgeTime / CURB_FIRE_THRESHOLD_SEC) * 0.45);
+                curbBurnFraction += burnRate * dt;
+                if (curbBurnFraction >= 1.0) {
+                    int burnDmg = (int) curbBurnFraction;
+                    hp = Math.max(0, hp - burnDmg);
+                    curbBurnFraction -= burnDmg;
+                    if (hp <= 0 && beCause.isEmpty()) {
+                        beCause = "Xe của bạn đã bốc cháy vì đi sát lề đường quá lâu.";
+                    }
+                }
+            }
+        }
+
+        // Tốc độ cuộn mặt đường và chuyển động xung quanh giữ nguyên tự nhiên (không bị chậm theo người chơi)
         double base = (3.6 + day * 0.32) * 60;
         double factor = 1;
         if (jamDay) {
@@ -164,13 +350,23 @@ public class GameLogic extends GameStory {
         groundScroll += scroll * dt;
 
         boolean canSpawn = jamDay ? t < jamT0 - 3.0 : dur - t > 5.5;
-        if (canSpawn && now - lastSpawn > 820 - day * 35) {
+        long spawnInterval = day == 1
+                ? (long) ((820 - day * 35) * 100.0 / 162.0)
+                : (long) ((820 - day * 35) * 100.0 / 148.0);
+        if (canSpawn && now - lastSpawn > spawnInterval) {
             lastSpawn = now;
             trySpawnVehicle();
         }
-        if (canSpawn && day == HOT_DAY && now - lastBolt > 2300) {
-            lastBolt = now;
-            trySpawnBolt();
+        if (canSpawn && day == HOT_DAY && now - lastBolt > 2700 + rng.nextInt(500)) {
+            if (trySpawnBolt()) {
+                lastBolt = now;
+            } else {
+                lastBolt = now - 1800; // Thử lại sớm hơn nếu bị vướng xe cộ
+            }
+        }
+        if (canSpawn && day == HOT_DAY && now - lastDogSpawn > 3200) {
+            lastDogSpawn = now + rng.nextInt(800);
+            trySpawnStrayDog(now);
         }
         if (jamDay && !jamBuilt && t >= jamT0) buildJam(base);
         if (day == HOT_DAY) energy = Math.max(0, energy - ENERGY_DRAIN * dt);
@@ -178,14 +374,48 @@ public class GameLogic extends GameStory {
         double tau = Math.max(0, Math.min(JAM_WINDOW, t - jamT0));
         double jamShift = base * (tau - tau * tau / (2 * JAM_WINDOW));
         double minY = 330;
-        for (Thing o : things) {
+        for (int i = 0; i < things.size(); i++) {
+            Thing o = things.get(i);
             if (o.jam) {
                 o.y = o.y0 + jamShift;
                 if (o.y > -120) minY = Math.max(minY, o.y + o.h / 2 + 34);
+            } else if (o instanceof Shark shark) {
+                if (shark.phase == Shark.PHASE_FIN_APPROACH) {
+                    for (int j = 0; j < things.size(); j++) {
+                        if (i == j) continue;
+                        Thing other = things.get(j);
+                        if (!(other instanceof Shark)
+                                && Math.abs(other.x - shark.x) < (other.w + shark.w) / 2 + 14
+                                && Math.abs(other.y - shark.y) < (other.h + shark.h) / 2 + 26) {
+                            shark.diveNow(now);
+                            break;
+                        }
+                    }
+                } else if (shark.readyToLockWarning(now)) {
+                    lockSharkWarningTarget(shark, scroll, now);
+                }
+                shark.updateShark(dt, now);
+            } else if (o instanceof StrayDog dog) {
+                dog.updateDog(dt, scroll, now, ROAD_X, ROAD_W, things, player.x, player.y, player.w, player.h);
             } else {
+                // Giữ khoảng cách an toàn để không có 2 vật thể đè hình ảnh lên nhau trên cùng làn
+                for (int j = 0; j < things.size(); j++) {
+                    if (i == j) continue;
+                    Thing other = things.get(j);
+                    if (other.jam || other instanceof Shark || other instanceof StrayDog || other.snack || o.snack) continue;
+                    // other nằm phía trên màn hình (nhỏ hơn y) nhưng trôi xuống nhanh hơn (other.fwd < o.fwd)
+                    if (other.y < o.y && (o.y - other.y) < (o.h + other.h) / 2 + 24
+                            && Math.abs(o.x - other.x) < (o.w + other.w) / 2 + 8) {
+                        if (o.fwd > other.fwd) {
+                            o.fwd = other.fwd;
+                        }
+                    }
+                }
                 double rel = scroll * (1 - o.fwd);
                 o.y += rel * dt;
-                if (o.wobbleAmp > 0) {
+                if (o instanceof NinjaLead ninja) {
+                    ninja.updateMovement(dt, laneX(0), laneX(1), laneX(2));
+                } else if (o.wobbleAmp > 0) {
                     double ph = o.wobblePhase + t * o.wobbleFreq * 2 * Math.PI;
                     o.x = o.baseX + o.wobbleAmp * Math.sin(ph);
                     double vx = o.wobbleAmp * o.wobbleFreq * 2 * Math.PI * Math.cos(ph);
@@ -193,13 +423,39 @@ public class GameLogic extends GameStory {
                 }
             }
         }
-        player.y = Math.max(minY, Math.min(555, player.y));
+        player.y = Math.max(minY, Math.min(565, player.y));
 
         Iterator<Thing> iterator = things.iterator();
         while (iterator.hasNext()) {
             Thing o = iterator.next();
+            if (o instanceof Shark shark) {
+                if (shark.isChomping(now) && Math.hypot(shark.x - player.x, shark.y - player.y) < 42) {
+                    if (!shark.hit) {
+                        shark.hit = true;
+                        if (player.invulnerable <= now) {
+                            double pushDir = player.x < shark.x ? -1 : 1;
+                            applyCollisionHit(34, pushDir, 16, 22, 200, 0.38, 1400, 780, now);
+                        }
+                    }
+                }
+                if (shark.done) iterator.remove();
+                continue;
+            }
+            if (o instanceof StrayDog dog) {
+                if (dog.phase == StrayDog.PHASE_DASH_ACROSS && !dog.hit
+                        && Math.abs(dog.x - player.x) < dog.w / 2 + 12
+                        && Math.abs(dog.y - player.y) < dog.h / 2 + 12) {
+                    dog.hit = true;
+                    if (player.invulnerable <= now) {
+                        applyCollisionHit(28, dog.dir, 14, 18, 165, 0.42, 1200, 750, now);
+                    }
+                }
+                if (dog.done || dog.y - dog.h / 2 > H + 30) iterator.remove();
+                continue;
+            }
             if (!o.jam) {
-                double hw = o.snack ? 22 : o.w / 2 + 9, hh = o.snack ? 28 : o.h / 2 + 6;
+                double hw = o.snack ? 22 : ((o.kind == 11 || o.kind == 14) ? o.w / 2 : o.w / 2 + 9);
+                double hh = o.snack ? 28 : ((o.kind == 11 || o.kind == 14) ? o.h / 2 : o.h / 2 + 6);
                 if (Math.abs(o.x - player.x) < hw && Math.abs(o.y - player.y) < hh) {
                     if (o.snack) {
                         energy = Math.min(100, energy + BOLT_ENERGY);
@@ -209,12 +465,34 @@ public class GameLogic extends GameStory {
                     }
                     if (!o.hit) {
                         o.hit = true;
+                        if (o.kind == 14) {
+                            // Cán qua Vũng băng ở Màn 3: làm xe trượt bánh văng ngang mất ma sát
+                            iceSlipUntil = now + 900;
+                            if (Math.abs(playerVx) > 30) {
+                                playerVx = Math.copySign(PLAYER_SPEED * 1.08, playerVx);
+                            } else {
+                                playerVx = (rng.nextBoolean() ? 1 : -1) * PLAYER_SPEED * 0.90;
+                            }
+                            continue;
+                        }
                         if (player.invulnerable <= now) {
-                            hp -= 22;
-                            player.invulnerable = now + 950;
-                            lastHitAt = now;
-                            player.x += (player.x < o.x ? -1 : 1) * 10;
-                            player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
+                            double pushDir = player.x < o.x ? -1 : 1;
+                            if (o.kind == 11) {
+                                // Ổ gà: nâng sát thương lên 16 HP, giật lùi nhẹ + làm chậm ngắn 850ms
+                                applyCollisionHit(16, pushDir, 8, 10, 105, 0.55, 850, 550, now);
+                            } else if (o.kind == 9) {
+                                // Xe tải hạng nặng: 38 HP, đẩy lùi mạnh + làm chậm ngắn 1500ms (tốc độ còn 35%)
+                                applyCollisionHit(38, pushDir, 18, 26, 230, 0.35, 1500, 800, now);
+                                o.y -= 14;
+                            } else if (o.kind == 6 || o.kind == 12) {
+                                // Xe máy NPC / Ninja Lead: 28 HP, đẩy lùi + làm chậm ngắn 1200ms
+                                applyCollisionHit(28, pushDir, 14, 18, 165, 0.42, 1200, 750, now);
+                                o.y -= 12;
+                            } else {
+                                // Ô tô, xe buýt, thuyền, rào chắn: 32 HP, đẩy lùi + làm chậm ngắn 1350ms (tốc độ còn 38%)
+                                applyCollisionHit(32, pushDir, 15, 22, 195, 0.38, 1350, 780, now);
+                                if (o.kind != 10) o.y -= 14;
+                            }
                         }
                     }
                 }
@@ -223,38 +501,248 @@ public class GameLogic extends GameStory {
         }
     }
 
-    public boolean clearToSpawn(Thing t) {
-        for (Thing o : things) {
-            if (Math.abs(o.y - t.y) < (o.h + t.h) / 2 + 40) {
-                double a1 = t.baseX - t.wobbleAmp - t.w / 2, a2 = t.baseX + t.wobbleAmp + t.w / 2;
-                double b1 = o.baseX - o.wobbleAmp - o.w / 2, b2 = o.baseX + o.wobbleAmp + o.w / 2;
-                if (a2 + 10 > b1 && a1 - 10 < b2) return false;
+    private void applyCollisionHit(int dmg, double pushDirX, double pushX, double pushY,
+            double kbVy, double slowFactor, long slowDurationMs, long invulnMs, long now) {
+        hp -= dmg;
+        player.invulnerable = now + invulnMs;
+        lastHitAt = now;
+        player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x + pushDirX * pushX));
+        knockbackVx = pushDirX * (pushX * 4.2);
+        player.y = Math.min(565, player.y + pushY);
+        knockbackVy = Math.max(knockbackVy, kbVy);
+        hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, slowFactor) : slowFactor;
+        hitSlowUntil = Math.max(hitSlowUntil, now + slowDurationMs);
+    }
+
+    private void lockSharkWarningTarget(Shark shark, double scroll, long now) {
+        double[] dxCandidates = {0, -48, 48, -92, 92, -136, 136, -180, 180};
+        double[] dyCandidates = {0, -34, 30, -64};
+        for (double dy : dyCandidates) {
+            for (double dx : dxCandidates) {
+                double cx = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x + dx));
+                double cy = Math.max(335, Math.min(545, player.y + dy));
+                boolean clear = true;
+                for (Thing o : things) {
+                    if (o == shark) continue;
+                    if (o instanceof Shark otherShark) {
+                        if (otherShark.phase >= Shark.PHASE_WARNING && Math.hypot(cx - otherShark.x, cy - otherShark.y) < 84) {
+                            clear = false;
+                            break;
+                        }
+                        continue;
+                    }
+                    double yStart = o.y - (o.h + shark.h) / 2.0 - 16;
+                    double yEnd = o.y + scroll * (1.0 - o.fwd) * 1.35 + (o.h + shark.h) / 2.0 + 16;
+                    double xHalf = (o.w + shark.w) / 2.0 + o.wobbleAmp + 14;
+                    if (Math.abs(cx - o.baseX) < xHalf && cy >= yStart && cy <= yEnd) {
+                        clear = false;
+                        break;
+                    }
+                }
+                if (clear) {
+                    shark.startWarningAt(cx, cy, now);
+                    return;
+                }
             }
         }
+    }
+
+    public boolean clearToSpawn(Thing t) {
+        if (t instanceof Shark) {
+            for (Thing o : things) {
+                if (o.y < 250 && Math.abs(o.x - t.x) < (o.w + t.w) / 2 + 18) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        int blockedLanes = 0;
+        if (!t.snack) {
+            for (int l = 0; l < 3; l++) {
+                if (Math.abs(t.baseX - laneX(l)) < t.w / 2 + t.wobbleAmp + 22) {
+                    blockedLanes |= (1 << l);
+                }
+            }
+        }
+        double tReach = (t instanceof NinjaLead) ? 156 : t.wobbleAmp;
+        for (Thing o : things) {
+            if (o instanceof Shark || o instanceof StrayDog) {
+                if (Math.abs(o.x - t.x) < (o.w + t.w) / 2 + 18 && Math.abs(o.y - t.y) < 220) {
+                    return false;
+                }
+                continue;
+            }
+            double oReach = (o instanceof NinjaLead) ? 156 : o.wobbleAmp;
+            double a1 = t.baseX - tReach - t.w / 2, a2 = t.baseX + tReach + t.w / 2;
+            double b1 = o.baseX - oReach - o.w / 2, b2 = o.baseX + oReach + o.w / 2;
+            if (a2 + 12 > b1 && a1 - 12 < b2) {
+                if (Math.abs(o.y - t.y) < (o.h + t.h) / 2 + 40) return false;
+                // Kiểm tra quỹ đạo trôi đến hết màn hình để ổ gà/vũng băng/rào chắn/xe không bao giờ đè hình ảnh lên nhau
+                double sMax = Math.max(0, (H + o.h / 2 + 30 - o.y) / Math.max(0.1, 1.0 - o.fwd));
+                double oyEnd = o.y + (1.0 - o.fwd) * sMax;
+                double tyEnd = t.y + (1.0 - t.fwd) * sMax;
+                if (oyEnd - tyEnd < (o.h + t.h) / 2 + 38) return false;
+            }
+            if (!t.snack && !o.snack && Math.abs(o.y - t.y) < (o.h + t.h) / 2 + 85) {
+                for (int l = 0; l < 3; l++) {
+                    if (Math.abs(o.baseX - laneX(l)) < o.w / 2 + o.wobbleAmp + 22) {
+                        blockedLanes |= (1 << l);
+                    }
+                }
+            }
+        }
+        if (!t.snack && blockedLanes == 0b111) return false;
         return true;
     }
 
+    public boolean trySpawnStrayDog(long now) {
+        int activeDogs = 0;
+        for (Thing o : things) {
+            if (o instanceof StrayDog) activeDogs++;
+        }
+        if (activeDogs >= 2) return false;
+        // Bảng các hàng xuất phát đa dạng từ phía trước tới sát hàng nhân vật chính (~480..520)
+        double[] rowBases = { 185, 235, 285, 335, 385, 435, 475, 510 };
+        for (int attempt = 0; attempt < 8; attempt++) {
+            int side = rng.nextBoolean() ? -1 : 1; // -1: từ vỉa hè trái chạy sang phải, 1: từ vỉa hè phải chạy sang trái
+            double startX = side < 0 ? (ROAD_X + 22) : (ROAD_X + ROAD_W - 22);
+            double baseRow = rowBases[rng.nextInt(rowBases.length)];
+            double startY = baseRow + (rng.nextDouble() - 0.5) * 26.0;
+            startY = Math.max(165, Math.min(525, startY));
+            boolean clear = true;
+            for (Thing o : things) {
+                if (o instanceof StrayDog && Math.abs(o.y - startY) < 70) {
+                    clear = false;
+                    break;
+                }
+                if (Math.abs(o.y - startY) < o.h / 2 + 30 && Math.abs(o.x - startX) < 95) {
+                    clear = false;
+                    break;
+                }
+            }
+            if (Math.abs(player.y - startY) < 28 && Math.abs(player.x - startX) < 70) {
+                clear = false;
+            }
+            if (clear) {
+                StrayDog dog = (StrayDog) Thing.create(15);
+                dog.kind = 15;
+                dog.w = VEH_W[15];
+                dog.h = VEH_H[15];
+                dog.dir = -side;
+                dog.x = dog.baseX = startX;
+                dog.y = startY;
+                dog.phase = StrayDog.PHASE_BARK_WARN;
+                dog.phaseStartedAt = now;
+                things.add(dog);
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean trySpawnVehicle() {
-        int r = rng.nextInt(100);
-        int kind = r < 28 ? 0 : r < 46 ? 1 : r < 58 ? 2 : r < 70 ? 3 : r < 80 ? 4 : r < 86 ? 5 : 6;
-        if (day == 1) kind = rng.nextInt(100) < 32 ? 8 : (kind == 6 ? 0 : kind);   // ngày ngập: không xe máy, có thêm thuyền chèo
+        int kind;
+        if (day == 1) {
+            // Màn 2 (đường ngập): giữ tỉ lệ các xe/thuyền cũ, thêm cá mập (kind = 13) với tỉ lệ gần ngang xe
+            int activeSharks = 0;
+            for (Thing o : things) {
+                if (o instanceof Shark) activeSharks++;
+            }
+            int r = rng.nextInt(162);
+            if (r >= 100 && activeSharks < 2) {
+                kind = 13;
+            } else {
+                int r2 = r < 100 ? r : rng.nextInt(100);
+                int baseKind = r2 < 28 ? 0 : r2 < 46 ? 1 : r2 < 58 ? 2 : r2 < 70 ? 3 : r2 < 80 ? 4 : r2 < 86 ? 5 : 0;
+                kind = rng.nextInt(100) < 32 ? 8 : baseKind;
+            }
+        } else if (day == COLD_DAY) {
+            // Màn 3 (trời rét, đường trơn): thêm Vũng băng thực thể (kind = 14) làm trượt bánh
+            int r = rng.nextInt(154);
+            kind = r < 28 ? 0 : r < 46 ? 1 : r < 58 ? 2 : r < 70 ? 3 : r < 80 ? 4 : r < 86 ? 5 : r < 100 ? 6
+                    : r < 116 ? 9 : r < 124 ? 10 : r < 142 ? 14 : 12;
+        } else {
+            // Các màn đường bộ khác: giữ nguyên tỉ lệ 0..6 (tổng 100), thêm xe tải to (9), rào chắn (10), ổ gà (11), Ninja Lead (12)
+            int r = rng.nextInt(148);
+            kind = r < 28 ? 0 : r < 46 ? 1 : r < 58 ? 2 : r < 70 ? 3 : r < 80 ? 4 : r < 86 ? 5 : r < 100 ? 6
+                    : r < 118 ? 9 : r < 128 ? 10 : r < 138 ? 11 : 12;
+        }
         for (int attempt = 0; attempt < 6; attempt++) {
             Thing t = Thing.create(kind);
             t.kind = kind;
             t.w = VEH_W[kind];
             t.h = VEH_H[kind];
             t.color = rng.nextInt(8);
-            t.fwd = 0.35;
+
+            if (kind == 13 && t instanceof Shark shark) {
+                t.fwd = 1.0;
+                t.y = -32;
+                double lo = ROAD_X + 68;
+                double hi = ROAD_X + ROAD_W - 68;
+                t.baseX = t.x = lo + rng.nextDouble() * (hi - lo);
+                t.wobbleAmp = 0;
+                shark.diveY = 135 + rng.nextInt(55);
+                if (clearToSpawn(t)) {
+                    things.add(t);
+                    return true;
+                }
+                continue;
+            }
+
+            // Tốc độ đa dạng: rào chắn/ổ gà/vũng băng đứng yên, xe tải/buýt chậm, taxi/ninja lead phóng nhanh
+            double fwd;
+            if (kind == 10 || kind == 11 || kind == 14) {
+                fwd = 0.0; // rào chắn, ổ gà và vũng băng đứng yên trên mặt đường, trôi xuống với tốc độ cuộn đường
+            } else if (kind == 9) {
+                fwd = 0.18 + rng.nextDouble() * 0.05; // xe tải to chạy chậm
+            } else if (kind == 5 || kind == 4) {
+                fwd = 0.22 + rng.nextDouble() * 0.06; // xe buýt, xe tải nhỏ chạy chậm
+            } else if (kind == 2) {
+                fwd = 0.40 + rng.nextDouble() * 0.07; // taxi lướt nhanh
+            } else if (kind == 12) {
+                fwd = 0.43 + rng.nextDouble() * 0.07; // Ninja Lead phóng nhanh để tạt đầu
+            } else if (kind == 6) {
+                fwd = 0.32 + rng.nextDouble() * 0.10; // xe máy thường
+            } else {
+                fwd = 0.34 + rng.nextDouble() * 0.06; // sedan, hatchback, thuyền
+            }
+            t.fwd = fwd;
             t.y = -t.h / 2 - 12;
-            double lo = kind == 6 ? ROAD_X + 14 + t.w / 2 : ROAD_X + 49 + t.w / 2;
-            double hi = kind == 6 ? ROAD_X + ROAD_W - 14 - t.w / 2 : ROAD_X + ROAD_W - 49 - t.w / 2;
-            int pattern = rng.nextInt(100);
+
+            double lo = kind == 6 || kind == 12 ? ROAD_X + 14 + t.w / 2 : ROAD_X + 49 + t.w / 2;
+            double hi = kind == 6 || kind == 12 ? ROAD_X + ROAD_W - 14 - t.w / 2 : ROAD_X + ROAD_W - 49 - t.w / 2;
             double bx;
-            if (kind == 6 || pattern >= 72) bx = lo + rng.nextDouble() * (hi - lo);
-            else if (pattern < 30) bx = laneX(rng.nextInt(3));
-            else bx = dividerX(1 + rng.nextInt(2)) + (rng.nextDouble() - 0.5) * 16;
-            double amp = rng.nextInt(100) < 35 ? 18 + rng.nextInt(22) : 0;
-            bx = Math.max(lo + amp, Math.min(hi - amp, bx));
+            double amp;
+            if (kind == 9) {
+                // Xe tải to kín 1 làn: ưu tiên xuất hiện ở làn 1 (lane 0) và làn 3 (lane 2) để chặn đi sát biên
+                int laneRoll = rng.nextInt(100);
+                int preferredLane = laneRoll < 45 ? 0 : laneRoll < 90 ? 2 : 1;
+                int lane = attempt == 0 ? preferredLane : (attempt == 1 ? (preferredLane == 0 ? 2 : 0) : (attempt % 3));
+                bx = laneX(lane);
+                amp = 0;
+            } else if (kind == 10) {
+                // Rào chắn công trình: đặt trên 1 trong 3 làn đường
+                int lane = rng.nextInt(3);
+                bx = laneX(lane) + (rng.nextDouble() - 0.5) * 16;
+                amp = 0;
+            } else if (kind == 11 || kind == 14) {
+                // Ổ gà cỡ lớn hoặc Vũng băng trơn: xuất hiện trên các làn
+                int lane = rng.nextInt(3);
+                bx = laneX(lane) + (rng.nextDouble() - 0.5) * 20;
+                amp = 0;
+            } else if (kind == 12) {
+                // Ninja Lead: bắt đầu ở 1 trong 3 làn, sau đó sẽ tạt sang làn khác
+                int lane = rng.nextInt(3);
+                bx = laneX(lane);
+                amp = 0;
+            } else {
+                int pattern = rng.nextInt(100);
+                if (kind == 6 || pattern >= 72) bx = lo + rng.nextDouble() * (hi - lo);
+                else if (pattern < 30) bx = laneX(rng.nextInt(3));
+                else bx = dividerX(1 + rng.nextInt(2)) + (rng.nextDouble() - 0.5) * 16;
+                amp = rng.nextInt(100) < 35 ? 18 + rng.nextInt(22) : 0;
+                bx = Math.max(lo + amp, Math.min(hi - amp, bx));
+            }
             t.baseX = bx;
             t.x = bx;
             t.wobbleAmp = amp;
@@ -269,7 +757,7 @@ public class GameLogic extends GameStory {
     }
 
     public boolean trySpawnBolt() {
-        for (int attempt = 0; attempt < 6; attempt++) {
+        for (int attempt = 0; attempt < 10; attempt++) {
             Thing t = Thing.create(7);
             t.kind = 7;
             t.snack = true;
@@ -290,43 +778,92 @@ public class GameLogic extends GameStory {
         double d = base * JAM_WINDOW / 2;
         double cursor = 372;
         int[] pool = {0, 1, 0, 2, 3, 1, 4, 0};
+        java.util.List<Thing> jamList = new ArrayList<>();
+
+        // 1. Xếp các hàng ô tô / xe buýt / xe tải trên 3 làn chính
         while (cursor > -160) {
             double maxH = 0;
-            java.util.List<Thing> row = new ArrayList<>();
             for (int l = 0; l < 3; l++) {
-                int kind = rng.nextInt(14) == 0 ? 5 : pool[rng.nextInt(pool.length)];
+                int kind;
+                if ((l == 0 || l == 2) && rng.nextInt(9) == 0) {
+                    kind = 9; // thỉnh thoảng có xe tải to chắn kín làn biên
+                } else {
+                    kind = rng.nextInt(14) == 0 ? 5 : pool[rng.nextInt(pool.length)];
+                }
                 Thing t = Thing.create(kind);
                 t.kind = kind;
                 t.w = VEH_W[t.kind];
                 t.h = VEH_H[t.kind];
                 t.color = rng.nextInt(8);
-                t.x = t.baseX = laneX(l) + (rng.nextDouble() - 0.5) * 22;
-                t.angle = (rng.nextDouble() - 0.5) * 0.1;
+                double jitterX = kind == 9 ? (rng.nextDouble() - 0.5) * 4 : (rng.nextDouble() - 0.5) * 20;
+                t.x = t.baseX = laneX(l) + jitterX;
+                t.angle = kind == 9 ? (rng.nextDouble() - 0.5) * 0.03 : (rng.nextDouble() - 0.5) * 0.1;
                 t.jam = true;
-                row.add(t);
+                double finalY = cursor - t.h / 2;
+                t.y0 = finalY - d;
+                t.y = t.y0;
+                jamList.add(t);
                 maxH = Math.max(maxH, t.h);
             }
+            cursor -= maxH + 16;
+        }
+
+        // 2. Nhét kín xe máy (kind = 6) vào mọi khoảng trống giữa các ô tô trên cả 3 làn đường
+        double roadLeft = ROAD_X + 45 + 15;
+        double roadRight = ROAD_X + ROAD_W - 45 - 15;
+        for (double my = 366; my > -160; my -= 52) {
+            for (double mxBase = roadLeft; mxBase <= roadRight; mxBase += 28) {
+                double mx = mxBase + (rng.nextDouble() - 0.5) * 6;
+                mx = Math.max(roadLeft, Math.min(roadRight, mx));
+                double finalY = my + (rng.nextDouble() - 0.5) * 10;
+                double mw = VEH_W[6], mh = VEH_H[6];
+
+                boolean overlaps = false;
+                for (Thing o : jamList) {
+                    double oy = o.y0 + d;
+                    if (Math.abs(mx - o.x) < (mw + o.w) / 2.0 + 3 && Math.abs(finalY - oy) < (mh + o.h) / 2.0 + 4) {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                if (!overlaps) {
+                    Thing m = Thing.create(6);
+                    m.kind = 6;
+                    m.w = mw;
+                    m.h = mh;
+                    m.color = rng.nextInt(8);
+                    m.x = m.baseX = mx;
+                    m.angle = (rng.nextDouble() - 0.5) * 0.15;
+                    m.jam = true;
+                    m.y0 = finalY - d;
+                    m.y = m.y0;
+                    jamList.add(m);
+                }
+            }
+        }
+
+        // 3. Xe máy leo lên cả hai bên vỉa hè khi tắc đường
+        for (double my = 362; my > -155; my -= 58) {
             for (int sd = 0; sd < 2; sd++) {
-                if (rng.nextInt(10) < 7) {
+                if (rng.nextInt(10) < 8) {
                     Thing m = Thing.create(6);
                     m.kind = 6;
                     m.w = VEH_W[6];
                     m.h = VEH_H[6];
                     m.color = rng.nextInt(8);
                     m.x = m.baseX = trackX(sd == 0 ? 0 : 4) + (rng.nextDouble() - 0.5) * 8;
+                    m.angle = (rng.nextDouble() - 0.5) * 0.12;
                     m.jam = true;
-                    row.add(m);
+                    double finalY = my + (rng.nextDouble() - 0.5) * 8;
+                    m.y0 = finalY - d;
+                    m.y = m.y0;
+                    jamList.add(m);
                 }
             }
-            for (Thing t : row) {
-                double finalY = cursor - t.h / 2;
-                if (t.kind == 6) finalY = cursor - 30 - rng.nextInt(16);
-                t.y0 = finalY - d;
-                t.y = t.y0;
-                things.add(t);
-            }
-            cursor -= maxH + 16;
         }
+
+        jamList.sort(Comparator.comparingDouble(a -> a.y0));
+        things.addAll(jamList);
     }
 
     public void endCard(long now) {
@@ -407,39 +944,285 @@ public class GameLogic extends GameStory {
         flightMode = true;
         things.clear();
         birds.clear();
+        missiles.clear();
+        enemyPlanes.clear();
+        enemyBombs.clear();
+        bossBullets.clear();
+        explosions.clear();
+        boss = null;
+        flightBossTriggered = false;
+        flightStartedAt = now;
+        lastMissileFiredAt = 0;
         heliX = 170;
         heliY = 300;
         heliTilt = 0;
         lastBird = now;
         player.invulnerable = 0;
         hp = FLIGHT_START_HP;
+        stageProgressMs = Math.max(stageProgressMs, ROAD_DURATION_MS / 3.0);
+        elapsed = (long) stageProgressMs;
+        currentProgressFactor = 1.0;
+        curbEdgeTime = 0.0;
+        curbBurnFraction = 0.0;
+        curbOnFire = false;
+        map2CurbSlowFactor = 1.0;
+        hitSlowUntil = 0;
+        hitSlowFactor = 1.0;
+        knockbackVy = 0.0;
+        knockbackVx = 0.0;
+    }
+
+    public void firePlayerMissile(long now) {
+        if (boss == null || !boss.canPlayerFire(now)) return;
+        long cd = (long) (BossConfig.missileCooldownSec * 1000);
+        if (now - lastMissileFiredAt < cd) return;
+        lastMissileFiredAt = now;
+        missiles.add(new PlayerMissile(heliX + 28, heliY + 22, BossConfig.missileSpeed));
+    }
+
+    public void detonateBomb(double bx, double by, long now) {
+        double radius = BossConfig.enemyBombBlastRadius;
+        explosions.add(new BombExplosion(bx, by, radius, now));
+        if (Math.hypot(bx - heliX, by - heliY) < radius + 15) {
+            if (player.invulnerable <= now) {
+                hp -= BossConfig.damageBombBlast;
+                player.invulnerable = now + 780;
+                lastHitAt = now;
+                knockbackVx = -140.0;
+                hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, 0.42) : 0.42;
+                hitSlowUntil = Math.max(hitSlowUntil, now + 1250);
+            }
+        }
+        Iterator<Bird> bit = birds.iterator();
+        while (bit.hasNext()) {
+            Bird b = bit.next();
+            if (Math.hypot(bx - b.x, by - b.y) <= radius) {
+                bit.remove();
+            }
+        }
+        for (EnemyBomb eb : enemyBombs) {
+            if (eb.active && Math.hypot(bx - eb.x, by - eb.y) <= radius && Math.hypot(bx - eb.x, by - eb.y) > 0.01) {
+                eb.active = false;
+                explosions.add(new BombExplosion(eb.x, eb.y, radius, now));
+            }
+        }
     }
 
     public void updateFlight(long now) {
         double dt = Math.min((now - lastFrameAt) / 1000.0, 0.05);
         lastFrameAt = now;
+        boolean isHitSlowed = (now < hitSlowUntil);
+        currentProgressFactor = isHitSlowed ? hitSlowFactor : 1.0;
+
+        // Nếu Boss còn sống (hoặc chưa xong giai đoạn đánh Boss), giữ tiến trình trước khi xuất hiện trường học
+        if (boss == null || !boss.defeated) {
+            stageProgressMs = Math.min(ROAD_DURATION_MS - 7000.0, stageProgressMs + dt * 1000.0 * currentProgressFactor);
+        } else {
+            stageProgressMs += dt * 1000.0 * currentProgressFactor;
+        }
+        elapsed = (long) stageProgressMs;
+
         double flightLen = ROAD_DURATION_MS * 2.0 / 3.0;
-        double progress = Math.max(0, Math.min(1, (elapsed - ROAD_DURATION_MS / 3.0) / flightLen));
+        double progress = Math.max(0, Math.min(1, (stageProgressMs - ROAD_DURATION_MS / 3.0) / flightLen));
 
         double dx = (right ? 1 : 0) - (left ? 1 : 0);
         double dy = (down ? 1 : 0) - (up ? 1 : 0);
-        heliX = Math.max(90, Math.min(W - 120, heliX + dx * PLAYER_SPEED * 1.15 * dt));
-        heliY = Math.max(80, Math.min(500, heliY + dy * VERTICAL_SPEED * dt));
+        double moveScale = isHitSlowed ? 0.65 : 1.0;
+        if (Math.abs(knockbackVx) > 1.0) {
+            heliX += knockbackVx * dt;
+            double drop = 440.0 * dt;
+            knockbackVx = Math.abs(knockbackVx) <= drop ? 0 : knockbackVx - Math.copySign(drop, knockbackVx);
+        }
+        heliX = Math.max(90, Math.min(W - 120, heliX + dx * PLAYER_SPEED * 1.15 * moveScale * dt));
+        heliY = Math.max(80, Math.min(500, heliY + dy * VERTICAL_SPEED * moveScale * dt));
         heliTilt += (dx * 0.14 - heliTilt) * Math.min(1.0, dt * 8);
         skyScroll += (240 + 120 * progress) * dt;
 
-        boolean canSpawn = elapsed < ROAD_DURATION_MS - 3000;
-        if (canSpawn && now - lastBird > 820 - 340 * progress) {
-            lastBird = now;
-            double speed = 300 + 150 * progress;
-            double baseY = 130 + rng.nextInt(340);
-            int count = rng.nextInt(5) == 0 ? 3 : 1;
-            for (int i = 0; i < count; i++) {
-                double off = i - (count - 1) / 2.0;
-                birds.add(new Bird(W + 40 + Math.abs(off) * 42, baseY + off * 62, -speed, rng.nextDouble() * 6.28));
+        long flightTime = (flightStartedAt > 0) ? (now - flightStartedAt) : 0;
+        long birdPhaseDurationMs = 15_000; // Đàn chim ở đầu màn 5 lượt 2 kéo dài tầm 15 giây
+
+        // 1. Giai đoạn đàn chim đầu màn 5 lượt 2 (kéo dài 15 giây, khi chim hết boss mới xuất hiện)
+        if (!flightBossTriggered) {
+            if (flightTime < birdPhaseDurationMs) {
+                double birdProgress = Math.min(1.0, flightTime / (double) birdPhaseDurationMs);
+                if (now - lastBird > 760 - 310 * birdProgress) {
+                    lastBird = now;
+                    double speed = 300 + 150 * birdProgress;
+                    int pattern = rng.nextInt(100);
+                    if (pattern < 28) {
+                        double yTop = 78 + rng.nextInt(50);
+                        double yMid = 220 + rng.nextInt(140);
+                        double yBot = 452 + rng.nextInt(50);
+                        birds.add(new Bird(W + 40, yTop, -speed, rng.nextDouble() * 6.28));
+                        birds.add(new Bird(W + 108, yMid, -speed, rng.nextDouble() * 6.28));
+                        birds.add(new Bird(W + 58, yBot, -speed, rng.nextDouble() * 6.28));
+                    } else if (pattern < 56) {
+                        double targetY = Math.max(78, Math.min(502, heliY + (rng.nextDouble() - 0.5) * 44));
+                        double edgeY = (heliY < 290) ? (458 + rng.nextInt(44)) : (78 + rng.nextInt(48));
+                        if (Math.abs(targetY - edgeY) < 90) edgeY = 230 + rng.nextInt(120);
+                        birds.add(new Bird(W + 40, targetY, -speed * 1.04, rng.nextDouble() * 6.28));
+                        birds.add(new Bird(W + 86, edgeY, -speed, rng.nextDouble() * 6.28));
+                    } else if (pattern < 80) {
+                        double baseY = 140 + rng.nextInt(300);
+                        double spread = 68 + rng.nextInt(22);
+                        for (int i = 0; i < 3; i++) {
+                            double off = i - 1.0;
+                            double by = Math.max(76, Math.min(504, baseY + off * spread));
+                            birds.add(new Bird(W + 40 + Math.abs(off) * 48, by, -speed, rng.nextDouble() * 6.28));
+                        }
+                    } else {
+                        double y1 = 76 + rng.nextInt(429);
+                        birds.add(new Bird(W + 40, y1, -speed * 1.06, rng.nextDouble() * 6.28));
+                        if (rng.nextBoolean()) {
+                            double y2 = 76 + rng.nextInt(429);
+                            if (Math.abs(y2 - y1) >= 95) birds.add(new Bird(W + 76, y2, -speed, rng.nextDouble() * 6.28));
+                        }
+                    }
+                }
+            } else {
+                // Đã hết 15s: ngừng spawn chim, đợi đàn chim bay hết khuất màn hình mới kích hoạt Boss
+                if (birds.isEmpty() || flightTime >= birdPhaseDurationMs + 2800) {
+                    birds.clear();
+                    flightBossTriggered = true;
+                    boss = new BossEnemy();
+                    boss.triggerBossSequence(now);
+                }
             }
         }
 
+        // 2. Cập nhật Boss khi đã xuất hiện
+        if (boss != null) {
+            boss.update(dt, now, heliX, heliY, this);
+        }
+
+        // 3. Cập nhật các vụ nổ bom bán kính sát thương diện rộng
+        Iterator<BombExplosion> exit = explosions.iterator();
+        while (exit.hasNext()) {
+            BombExplosion exp = exit.next();
+            exp.update(now);
+            if (!exp.active) exit.remove();
+        }
+
+        // 3. Cập nhật Tên lửa người chơi & Xử lý va chạm
+        Iterator<PlayerMissile> mit = missiles.iterator();
+        while (mit.hasNext()) {
+            PlayerMissile m = mit.next();
+            m.update(dt);
+            if (!m.active) {
+                mit.remove();
+                continue;
+            }
+            if (boss != null && boss.combatActive && Math.abs(m.x - boss.x) < 38 && Math.abs(m.y - boss.y) < 52) {
+                m.active = false;
+                boss.takeMissileHit(BossConfig.missileDamage, now);
+                mit.remove();
+                continue;
+            }
+            boolean hitPlane = false;
+            for (EnemyPlane ep : enemyPlanes) {
+                if (ep.active && Math.abs(m.x - ep.x) < 46 && Math.abs(m.y - ep.y) < 24) {
+                    m.active = false;
+                    ep.takeHit(BossConfig.missileDamage, now);
+                    hitPlane = true;
+                    break;
+                }
+            }
+            if (hitPlane) {
+                mit.remove();
+                continue;
+            }
+            boolean hitBomb = false;
+            for (EnemyBomb eb : enemyBombs) {
+                if (eb.active && Math.abs(m.x - eb.x) < 28 && Math.abs(m.y - eb.y) < 28) {
+                    m.active = false;
+                    eb.active = false;
+                    detonateBomb(eb.x, eb.y, now);
+                    hitBomb = true;
+                    break;
+                }
+            }
+            if (hitBomb) {
+                mit.remove();
+                continue;
+            }
+            boolean hitBird = false;
+            Iterator<Bird> bit = birds.iterator();
+            while (bit.hasNext()) {
+                Bird b = bit.next();
+                if (Math.abs(m.x - b.x) < 26 && Math.abs(m.y - b.y) < 22) {
+                    m.active = false;
+                    bit.remove();
+                    hitBird = true;
+                    break;
+                }
+            }
+            if (hitBird) {
+                mit.remove();
+            }
+        }
+
+        // 4. Cập nhật Máy bay địch
+        Iterator<EnemyPlane> pit = enemyPlanes.iterator();
+        while (pit.hasNext()) {
+            EnemyPlane ep = pit.next();
+            ep.update(dt);
+            if (!ep.hasShot && !ep.isFlybySquadron && ep.x < 720) {
+                ep.hasShot = true;
+                if (rng.nextDouble() < BossConfig.attack1PlaneShootChance) {
+                    bossBullets.add(new BossBullet(ep.x - ep.w / 2, ep.y, -BossConfig.enemyPlaneBulletSpeed, 0, BossBullet.TYPE_PLANE_STRAIGHT));
+                }
+            }
+            if (ep.active && Math.abs(ep.x - heliX) < 62 && Math.abs(ep.y - heliY) < 34) {
+                if (player.invulnerable <= now) {
+                    hp -= BossConfig.damagePlaneCollision;
+                    player.invulnerable = now + 780;
+                    lastHitAt = now;
+                    knockbackVx = -180.0;
+                    hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, 0.42) : 0.42;
+                    hitSlowUntil = Math.max(hitSlowUntil, now + 1250);
+                }
+                ep.takeHit(1, now);
+            }
+            if (!ep.active) pit.remove();
+        }
+
+        // 5. Cập nhật Bom rơi chéo
+        Iterator<EnemyBomb> ebit = enemyBombs.iterator();
+        while (ebit.hasNext()) {
+            EnemyBomb eb = ebit.next();
+            eb.update(dt);
+            if (eb.y > 540) {
+                eb.active = false;
+                detonateBomb(eb.x, eb.y, now);
+            }
+            if (eb.active && Math.abs(eb.x - heliX) < 52 && Math.abs(eb.y - heliY) < 36) {
+                eb.active = false;
+                detonateBomb(eb.x, eb.y, now);
+            }
+            if (!eb.active) ebit.remove();
+        }
+
+        // 6. Cập nhật Đạn của Boss & Máy bay
+        Iterator<BossBullet> buit = bossBullets.iterator();
+        while (buit.hasNext()) {
+            BossBullet bb = buit.next();
+            bb.update(dt);
+            if (bb.active && Math.abs(bb.x - heliX) < 42 && Math.abs(bb.y - heliY) < 26) {
+                if (player.invulnerable <= now) {
+                    int dmg = (bb.kind == BossBullet.TYPE_AIMED) ? BossConfig.damageBossBullet : BossConfig.damagePlaneBullet;
+                    hp -= dmg;
+                    player.invulnerable = now + 780;
+                    lastHitAt = now;
+                    knockbackVx = -140.0;
+                    hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, 0.42) : 0.42;
+                    hitSlowUntil = Math.max(hitSlowUntil, now + 1200);
+                }
+                bb.active = false;
+            }
+            if (!bb.active) buit.remove();
+        }
+
+        // 7. Cập nhật Chim & Va chạm với trực thăng
         Iterator<Bird> it = birds.iterator();
         while (it.hasNext()) {
             Bird b = it.next();
@@ -448,9 +1231,13 @@ public class GameLogic extends GameStory {
             double by = b.y + Math.sin(b.phase * 0.35) * 6;
             if (Math.abs(b.x - heliX) < 52 && Math.abs(by - heliY) < 30) {
                 if (player.invulnerable <= now) {
-                    hp -= 22;
-                    player.invulnerable = now + 950;
+                    hp -= BossConfig.damageBirdCollision;
+                    player.invulnerable = now + 780;
                     lastHitAt = now;
+                    heliX = Math.max(90, heliX - 22);
+                    knockbackVx = -165.0;
+                    hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, 0.42) : 0.42;
+                    hitSlowUntil = Math.max(hitSlowUntil, now + 1250);
                 }
                 it.remove();
             } else if (b.x < -80) {
@@ -472,6 +1259,9 @@ public class GameLogic extends GameStory {
             if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) right = true;
             if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) up = true;
             if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) down = true;
+            if (flightMode && key == KeyEvent.VK_E) {
+                firePlayerMissile(System.currentTimeMillis());
+            }
         }
         if (screen == TITLE || screen == PAUSE) {
             if (key == KeyEvent.VK_ENTER) activateHoveredMenuButton();

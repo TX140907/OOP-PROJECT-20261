@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.nio.file.*;
 import java.util.*;
 import javax.imageio.ImageIO;
+import sanbaka.assets.ArtAssets;
 import sanbaka.logic.GameLogic;
 import sanbaka.model.Bird;
 import sanbaka.model.Confetti;
@@ -328,6 +329,14 @@ public class GameVisuals extends GameLogic {
     }
 
     public void drawBird(Graphics2D g, double x, double y, double phase) {
+        BufferedImage sprite = ArtAssets.load("Bird", "Bird.png");
+        if (sprite != null) {
+            AffineTransform old = g.getTransform();
+            g.translate(x, y + Math.sin(phase) * 2.5);
+            g.drawImage(sprite, -30, -24, 60, 48, null);
+            g.setTransform(old);
+            return;
+        }
         double flap = Math.sin(phase);
         Color body = new Color(44, 50, 70);
         Path2D.Double wing = new Path2D.Double();
@@ -356,6 +365,173 @@ public class GameVisuals extends GameLogic {
         wing.closePath();
         g.setColor(new Color(60, 68, 94));
         g.fill(wing);
+    }
+
+    /**
+     * Vẽ hiệu ứng xe bốc lửa khi đi sát lề đường quá 3 giây (hoặc tia lửa ma sát trước khi bốc cháy).
+     * Hỗ trợ đội hình ảnh thay thế bằng file PNG riêng tại: assets/objects/VehicleFire/VehicleFire.png
+     */
+    public void drawVehicleFireEffect(Graphics2D g, double cx, double cy, double curbTime, boolean onFire, long now) {
+        if (curbTime <= 0.15) return;
+        double ratio = Math.max(0.0, Math.min(1.0, curbTime / CURB_FIRE_THRESHOLD_SEC));
+        AffineTransform old = g.getTransform();
+        Stroke oldStroke = g.getStroke();
+        Composite oldComp = g.getComposite();
+
+        if (!onFire) {
+            // Giai đoạn ma sát lề đường (< 3 giây): tia lửa xẹt dưới bánh xe và khói nóng
+            int sideDir = cx < W / 2.0 ? -1 : 1;
+            double sparkX = cx + sideDir * 14;
+            g.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            for (int i = 0; i < 6; i++) {
+                double phase = (now / 45.0 + i * 1.1) % 1.0;
+                double sx = sparkX - sideDir * phase * 14 + Math.sin(now / 30.0 + i) * 4;
+                double sy = cy - 10 + i * 7 + phase * 18;
+                int alpha = (int) (220 * ratio * (1.0 - phase));
+                g.setColor(new Color(255, 180 + (i % 2) * 60, 40, Math.max(0, Math.min(255, alpha))));
+                g.draw(new Line2D.Double(sx, sy, sx - sideDir * 5, sy + 9));
+            }
+            g.setStroke(oldStroke);
+            return;
+        }
+
+        // Giai đoạn bốc lửa (đốt 10 HP/s, và giảm dần kích thước/alpha khi người chơi thoát khỏi lề đường)
+        float alpha = (float) Math.max(0.18, Math.min(1.0, 0.25 + 0.75 * ratio));
+        double scale = 0.45 + 0.60 * ratio + Math.sin(now / 42.0) * 0.06;
+        BufferedImage fireSprite = ArtAssets.load("VehicleFire", "VehicleFire.png");
+        if (fireSprite != null) {
+            g.setComposite(AlphaComposite.SrcOver.derive(alpha));
+            g.translate(cx, cy);
+            g.scale(scale, scale);
+            g.drawImage(fireSprite, -38, -54, 76, 96, null);
+            g.setTransform(old);
+            g.setComposite(oldComp);
+            return;
+        }
+
+        g.setComposite(AlphaComposite.SrcOver.derive(alpha));
+        g.translate(cx, cy + 8);
+        g.scale(scale, scale);
+
+        // Khói đen bốc lên phía trên ngọn lửa
+        for (int i = 0; i < 4; i++) {
+            double p = ((now / 340.0) + i * 0.25) % 1.0;
+            double kx = Math.sin(now / 120.0 + i * 2) * 10;
+            double ky = -28 - p * 42;
+            double kr = 8 + p * 12;
+            g.setColor(new Color(45, 45, 52, (int) (135 * (1.0 - p))));
+            g.fill(new Ellipse2D.Double(kx - kr, ky - kr, kr * 2, kr * 1.6));
+        }
+
+        // Ngọn lửa 3 lớp (Đỏ cam ngoài -> Cam rực giữa -> Vàng trắng lõi)
+        double wave1 = Math.sin(now / 48.0) * 6;
+        double wave2 = Math.cos(now / 38.0) * 5;
+        Path2D.Double outerFlame = new Path2D.Double();
+        outerFlame.moveTo(0, 26);
+        outerFlame.curveTo(-30, 18, -32, -16, -12 + wave1 * 0.5, -36);
+        outerFlame.lineTo(-4, -18);
+        outerFlame.lineTo(wave1, -52);
+        outerFlame.lineTo(8, -20);
+        outerFlame.lineTo(16 + wave2 * 0.5, -38);
+        outerFlame.curveTo(32, -14, 30, 18, 0, 26);
+        outerFlame.closePath();
+        g.setColor(new Color(235, 52, 24, 225));
+        g.fill(outerFlame);
+
+        Path2D.Double midFlame = new Path2D.Double();
+        midFlame.moveTo(0, 22);
+        midFlame.curveTo(-20, 14, -22, -10, -7 + wave2 * 0.4, -28);
+        midFlame.lineTo(wave2, -40);
+        midFlame.lineTo(9 - wave1 * 0.4, -26);
+        midFlame.curveTo(22, -10, 20, 14, 0, 22);
+        midFlame.closePath();
+        g.setColor(new Color(255, 142, 24, 235));
+        g.fill(midFlame);
+
+        Path2D.Double coreFlame = new Path2D.Double();
+        coreFlame.moveTo(0, 18);
+        coreFlame.curveTo(-11, 10, -11, -6, wave1 * 0.3, -24);
+        coreFlame.curveTo(11, -6, 11, 10, 0, 18);
+        coreFlame.closePath();
+        g.setColor(new Color(255, 238, 115, 240));
+        g.fill(coreFlame);
+
+        g.setTransform(old);
+        g.setComposite(oldComp);
+        g.setStroke(oldStroke);
+    }
+
+    /**
+     * Vẽ hiệu ứng bọt nước và tia nước tóe lên khi xuồng máy cọ sát lề đường ngập nước ở Màn 2.
+     */
+    public void drawBoatCurbSplash(Graphics2D g, double cx, double cy, double intensity, long now) {
+        Stroke oldStroke = g.getStroke();
+        g.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        int sideDir = cx < W / 2.0 ? -1 : 1;
+        for (int i = 0; i < 5; i++) {
+            double ph = ((now / 130.0) + i * 0.22) % 1.0;
+            double sx = cx + sideDir * (ph * 16 + Math.sin(now / 35.0 + i) * 3);
+            double sy = cy - 8 + i * 6 + ph * 14;
+            int alpha = (int) (210 * intensity * (1.0 - ph));
+            g.setColor(new Color(235, 248, 255, Math.max(0, Math.min(255, alpha))));
+            g.draw(new Line2D.Double(sx, sy, sx + sideDir * 6, sy - 8));
+            g.fill(new Ellipse2D.Double(sx - 2, sy - 2, 4, 4));
+        }
+        g.setStroke(oldStroke);
+    }
+
+    /**
+     * Vẽ hiệu ứng chấn động đẩy lùi & làm chậm ngắn sau khi đâm xe.
+     * Hỗ trợ đội hình ảnh thay thế bằng file PNG riêng tại: assets/objects/CollisionImpact/CollisionImpact.png
+     */
+    public void drawCollisionSlowEffect(Graphics2D g, double cx, double cy, long now) {
+        if (now >= hitSlowUntil) return;
+        BufferedImage impactSprite = ArtAssets.load("CollisionImpact", "CollisionImpact.png");
+        if (impactSprite != null) {
+            AffineTransform old = g.getTransform();
+            g.translate(cx, cy);
+            g.drawImage(impactSprite, -36, -44, 72, 88, null);
+            g.setTransform(old);
+            return;
+        }
+        Stroke oldStroke = g.getStroke();
+        long sinceHit = now - lastHitAt;
+        if (sinceHit >= 0 && sinceHit < 320) {
+            double p = sinceHit / 320.0;
+            double r = 18 + p * 34;
+            g.setColor(new Color(255, 210, 70, (int) (210 * (1.0 - p))));
+            g.setStroke(new BasicStroke(3.0f * (float) (1.0 - p) + 1.0f));
+            g.draw(new Ellipse2D.Double(cx - r, cy - r, r * 2, r * 2));
+        }
+        // Vệt khói xám giảm tốc quanh xe khi đang bị làm chậm ngắn
+        for (int i = 0; i < 3; i++) {
+            double ph = ((now / 260.0) + i * 0.33) % 1.0;
+            double sx = cx + (i - 1) * 14;
+            double sy = cy + 16 + ph * 22;
+            double sr = 6 + ph * 7;
+            g.setColor(new Color(90, 96, 108, (int) (130 * (1.0 - ph))));
+            g.fill(new Ellipse2D.Double(sx - sr, sy - sr, sr * 2, sr * 2));
+        }
+        g.setStroke(oldStroke);
+    }
+
+    /**
+     * Vẽ hiệu ứng đóng băng xe ở Màn 3 (Trời rét).
+     * Hỗ trợ đội hình ảnh thay thế bằng file PNG riêng tại: assets/objects/FreezeEffect/FreezeEffect.png
+     */
+    public void drawFreezeEffect(Graphics2D g, double cx, double cy, long now) {
+        if (now >= frozenUntil) return;
+        BufferedImage freezeSprite = ArtAssets.load("FreezeEffect", "FreezeEffect.png");
+        if (freezeSprite != null) {
+            g.drawImage(freezeSprite, (int) Math.round(cx - 28), (int) Math.round(cy - 44), 56, 88, null);
+            return;
+        }
+        g.setColor(new Color(145, 220, 255, 110));
+        g.fill(new Ellipse2D.Double(cx - 24, cy - 42, 48, 84));
+        g.setColor(new Color(225, 248, 255, 210));
+        g.setStroke(new BasicStroke(2.0f));
+        g.draw(new Ellipse2D.Double(cx - 24, cy - 42, 48, 84));
+        g.setStroke(new BasicStroke(1f));
     }
 
     public void drawBird(Graphics2D g, Bird b) {
@@ -434,7 +610,7 @@ public class GameVisuals extends GameLogic {
 
     public double finishY() {
         if (day == 4) return -9999;
-        double r = Math.max(0, (ROAD_DURATION_MS - elapsed) / 1000.0);
+        double r = Math.max(0, (ROAD_DURATION_MS - stageProgressMs) / 1000.0);
         if (r >= SCHOOL_APPROACH) return -9999;
         double base = (3.6 + day * 0.32) * 60;
         return FINISH_Y - base * (0.2 * r + 0.4 * r * r / SCHOOL_APPROACH);

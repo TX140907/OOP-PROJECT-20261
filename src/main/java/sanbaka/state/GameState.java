@@ -84,7 +84,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public double roadOffset = 0;
     public boolean left = false, right = false, up = false, down = false;
     // ---- trực thăng: ngày 5, 2/3 đường sau ----
-    public static final int FLIGHT_START_HP = 100;
+    public static final int FLIGHT_START_HP = 150;
     public boolean flightMode = false;
     public double heliX = 170, heliY = 300, heliTilt = 0;
     public double skyScroll = 0;
@@ -107,6 +107,42 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public boolean jamBuilt = false;
     public int retryDialogIndex = 0;
     public String beCause = "";
+    // ---- Màn 3 (Trời rét, đường trơn: quán tính, vũng băng, gió mùa & đóng băng 40% tốc độ tiến) ----
+    public static final int COLD_DAY = 2;
+    public double playerVx = 0;
+    public long iceSlipUntil = 0;
+    public int windDir = 0;
+    public long windWarningUntil = 0;
+    public long windActiveUntil = 0;
+    public long nextWindAt = 0;
+    public long frozenUntil = 0;
+    public boolean windFreezeChecked = false;
+    // ---- Màn 4 (Nắng nóng: chó chạy rông & mệt mỏi khi Energy thấp) ----
+    public long lastDogSpawn = 0;
+    // ---- Cơ chế Quãng đường cố định (40s nếu đi thuận lợi), Bốc lửa lề đường & Đẩy lùi/Làm chậm khi va chạm ----
+    public double stageProgressMs = 0.0;
+    public double currentProgressFactor = 1.0;
+    public static final double CURB_ZONE_MARGIN = 26.0;
+    public static final double CURB_FIRE_THRESHOLD_SEC = 3.0;
+    public static final double CURB_BURN_DPS = 10.0;
+    public double curbEdgeTime = 0.0;
+    public double curbBurnFraction = 0.0;
+    public boolean curbOnFire = false;
+    public double map2CurbSlowFactor = 1.0;
+    public long hitSlowUntil = 0;
+    public double hitSlowFactor = 1.0;
+    public double knockbackVy = 0.0;
+    public double knockbackVx = 0.0;
+    // ---- Màn 5: Boss Trận Không Chiến & Tên Lửa Trực Thăng (phím E) ----
+    public BossEnemy boss = null;
+    public java.util.List<PlayerMissile> missiles = new ArrayList<>();
+    public java.util.List<EnemyPlane> enemyPlanes = new ArrayList<>();
+    public java.util.List<EnemyBomb> enemyBombs = new ArrayList<>();
+    public java.util.List<BossBullet> bossBullets = new ArrayList<>();
+    public java.util.List<BombExplosion> explosions = new ArrayList<>();
+    public long lastMissileFiredAt = 0;
+    public long flightStartedAt = 0;
+    public boolean flightBossTriggered = false;
     // ---- chuyển cảnh ----
     public static final int FADE = 8, CARD = 9, INTRO = 10;
     public static final double PLAYER_MIN_X = ROAD_X + 45 + 22;
@@ -132,8 +168,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         new Color(148, 205, 240), new Color(94, 119, 151), new Color(186, 202, 218), new Color(255, 194, 117), new Color(175, 202, 226)
     };
 
-    public static final double[] VEH_W = {50, 48, 50, 54, 58, 60, 26, 30, 40};
-    public static final double[] VEH_H = {86, 76, 86, 100, 132, 168, 60, 40, 84};
+    public static final double[] VEH_W = {50, 48, 50, 54, 58, 60, 26, 30, 40, 136, 68, 76, 28, 68, 88, 48};
+    public static final double[] VEH_H = {86, 76, 86, 100, 132, 168, 60, 40, 84, 172, 36, 48, 62, 68, 54, 30};
     public static final Color[] CAR_COLORS = {
         new Color(219, 93, 96), new Color(81, 146, 185), new Color(240, 242, 246), new Color(176, 184, 196),
         new Color(240, 200, 90), new Color(94, 170, 128), new Color(150, 110, 180), new Color(58, 62, 76)

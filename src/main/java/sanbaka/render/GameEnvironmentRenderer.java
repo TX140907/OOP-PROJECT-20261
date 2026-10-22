@@ -507,7 +507,7 @@ public class GameEnvironmentRenderer extends GameVisuals {
     void drawFlightScene(Graphics2D g) {
         long now = System.currentTimeMillis();
         drawSkyScene(g, skyScroll);
-        double rem = Math.max(0, (ROAD_DURATION_MS - elapsed) / 1000.0);
+        double rem = Math.max(0, (ROAD_DURATION_MS - stageProgressMs) / 1000.0);
         if (rem < 8.0) SchoolBuilding.draw(g, W / 2.0 + rem / 8.0 * 700, 572, 0.62, this);
         Stroke oldStroke = g.getStroke();
         g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
@@ -519,12 +519,31 @@ public class GameEnvironmentRenderer extends GameVisuals {
         }
         g.setStroke(oldStroke);
         for (Bird b : birds) drawBird(g, b.x, b.y + Math.sin(b.phase * 0.35) * 6, b.phase);
+
+        // Vẽ Bom rơi chéo
+        for (sanbaka.model.EnemyBomb eb : enemyBombs) eb.draw(g, this);
+
+        // Vẽ hiệu ứng nổ bom bán kính sát thương diện rộng
+        for (sanbaka.model.BombExplosion exp : explosions) exp.draw(g, this);
+
+        // Vẽ Máy bay địch
+        for (sanbaka.model.EnemyPlane ep : enemyPlanes) ep.draw(g, this);
+
+        // Vẽ Đạn của Boss & Máy bay
+        for (sanbaka.model.BossBullet bb : bossBullets) bb.draw(g, this);
+
+        // Vẽ Tên lửa người chơi
+        for (sanbaka.model.PlayerMissile pm : missiles) pm.draw(g, this);
+
+        // Vẽ Trùm Cuối (Boss), thanh máu 20 vạch đỉnh màn hình & nút [E] nhấp nháy
+        if (boss != null) boss.draw(g, this, heliX, heliY);
         Composite oldComposite = g.getComposite();
         if (player.invulnerable > now && (now / 90) % 2 == 0) {
             g.setComposite(AlphaComposite.SrcOver.derive(0.4f));
         }
         drawHelicopter(g, heliX, heliY, heliTilt, now / 1000.0, 0.9);
         g.setComposite(oldComposite);
+        if (now < hitSlowUntil) drawCollisionSlowEffect(g, heliX, heliY, now);
     }
 }
 

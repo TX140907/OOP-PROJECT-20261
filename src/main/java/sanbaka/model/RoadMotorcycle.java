@@ -2,11 +2,22 @@ package sanbaka.model;
 
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import sanbaka.assets.ArtAssets;
 import sanbaka.render.GameVisuals;
 
-/** Xe máy NPC và phần vẽ riêng của nó. */
+/** Xe máy NPC và phần vẽ riêng của nó (có bộ đệm sprite để tối ưu khi tắc đường đông xe). */
 public class RoadMotorcycle extends Thing {
+    private static final int SPRITE_CACHE_LIMIT = 32;
+    private static final Map<String, BufferedImage> SPRITE_CACHE = new LinkedHashMap<>(SPRITE_CACHE_LIMIT, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, BufferedImage> eldest) {
+            return size() > SPRITE_CACHE_LIMIT;
+        }
+    };
+
     @Override
     public void draw(Graphics2D g, GameVisuals scene) {
         AffineTransform old = g.getTransform();
@@ -14,16 +25,33 @@ public class RoadMotorcycle extends Thing {
         g.translate(x, y);
         g.rotate(angle);
         double hh = h / 2;
-        g.setColor(new Color(0, 0, 0, 55));
-        g.fill(new RoundRectangle2D.Double(-w / 2 + 4, -hh + 7, w, h, 20, 20));
-        java.awt.image.BufferedImage art = ArtAssets.load("RoadMotorcycle", "RoadMotorcycle.png");
+        BufferedImage art = ArtAssets.load("RoadMotorcycle", "RoadMotorcycle.png");
         if (art != null) {
+            g.setColor(new Color(0, 0, 0, 55));
+            g.fill(new RoundRectangle2D.Double(-w / 2 + 4, -hh + 7, w, h, 20, 20));
             g.drawImage(art, (int) (-w / 2), (int) (-h / 2), (int) w, (int) h, null);
             g.setTransform(old);
             g.setStroke(oldStroke);
             return;
         }
-        drawBike(g, scene);
+
+        boolean brake = this.jam || this.fwd == 0;
+        String key = (this.color % 8) + ":" + (int) this.w + ":" + (int) this.h + ":" + brake;
+        int padX = (int) Math.ceil(this.w / 2.0 + 10);
+        int padY = (int) Math.ceil(this.h / 2.0 + 10);
+        BufferedImage sprite = SPRITE_CACHE.get(key);
+        if (sprite == null) {
+            sprite = new BufferedImage(padX * 2, padY * 2, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D sg = sprite.createGraphics();
+            sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            sg.translate(padX, padY);
+            sg.setColor(new Color(0, 0, 0, 55));
+            sg.fill(new RoundRectangle2D.Double(-w / 2 + 4, -hh + 7, w, h, 20, 20));
+            drawBike(sg, scene);
+            sg.dispose();
+            SPRITE_CACHE.put(key, sprite);
+        }
+        g.drawImage(sprite, -padX, -padY, null);
         g.setTransform(old);
         g.setStroke(oldStroke);
     }
@@ -51,4 +79,3 @@ public class RoadMotorcycle extends Thing {
         g.fill(new Rectangle2D.Double(-3, hh - 4, 6, 3));
     }
 }
-
