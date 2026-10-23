@@ -16,7 +16,7 @@ if errorlevel 1 goto failed
 
 if /i "%~1"=="--build-only" goto success
 
-java -Dsun.awt.noerasebackground=true -Dsun.java2d.d3d=true -Dsun.java2d.transaccel=true -Dsun.java2d.ddforcevram=true -Dsun.java2d.noddraw=false -Dsun.java2d.opengl=false -Dsanbaka.perfLog=false -cp "build/classes;src/main/resources;assets;src/main/java;." sanbaka.SanbakaGame
+java -Dsun.awt.noerasebackground=true -Dsun.java2d.d3d=false -Dsun.java2d.transaccel=true -Dsun.java2d.ddforcevram=true -Dsun.java2d.noddraw=false -Dsun.java2d.opengl=true -Dsanbaka.perfLog=false -cp "build/classes;src/main/resources;assets;src/main/java;." sanbaka.SanbakaGame
 if errorlevel 1 goto failed
 
 :success
@@ -26,3 +26,4 @@ exit /b 0
 :failed
 popd
 exit /b 1
+
