@@ -124,6 +124,7 @@ public class GameLogic extends GameStory {
                 } else if (hp > 0) {
                     beCause = "Bạn đã kiệt sức vì trời nắng nóng.";
                 }
+                retryAtTrafficCheckpoint = day == 4 && flightMode;
                 screen = ENDING_BE;
             }
             else if (day == 4 && !flightMode && !trafficSceneShown && elapsed >= ROAD_DURATION_MS / 3) {
@@ -1582,4 +1583,7 @@ public class GameLogic extends GameStory {
         return ROAD_X + 45 + (ROAD_W - 90) * i / 3.0;
     }
 }
+
+
+
 

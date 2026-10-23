@@ -130,6 +130,14 @@ public class SanbakaGame extends GameScreenRenderer {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Tuần thi của SVBK");
             SanbakaGame game = new SanbakaGame();
+            java.net.URL iconUrl = SanbakaGame.class.getResource("/assets/avatars/Sanbaka.jpg");
+            if (iconUrl != null) {
+                try {
+                    frame.setIconImage(javax.imageio.ImageIO.read(iconUrl));
+                } catch (java.io.IOException ignored) {
+                    // Keep the default window icon if the image cannot be loaded.
+                }
+            }
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setContentPane(game);
             frame.pack();
@@ -140,3 +148,5 @@ public class SanbakaGame extends GameScreenRenderer {
         });
     }
 }
+
+
