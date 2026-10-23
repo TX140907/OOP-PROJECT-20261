@@ -128,6 +128,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public long lastHitAt = 0;
     public boolean jamBuilt = false;
     public int retryDialogIndex = 0;
+    public boolean retryAtTrafficCheckpoint = false;
     public String beCause = "";
     // ---- Màn 3 (Trời rét, đường trơn: quán tính, vũng băng, gió mùa & đóng băng 70% tốc độ tiến, trà gừng) ----
     public static final int COLD_DAY = 2;
@@ -242,4 +243,6 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         typedDialogStartedAt = 0;
     }
 }
+
+
 

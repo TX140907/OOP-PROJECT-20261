@@ -124,6 +124,7 @@ public class GameLogic extends GameStory {
                 } else if (hp > 0) {
                     beCause = "Bạn đã kiệt sức vì trời nắng nóng.";
                 }
+                retryAtTrafficCheckpoint = day == 4 && flightMode;
                 screen = ENDING_BE;
             }
             else if (day == 4 && !flightMode && !trafficSceneShown && elapsed >= ROAD_DURATION_MS / 3) {
@@ -1529,8 +1530,13 @@ public class GameLogic extends GameStory {
             if (System.currentTimeMillis() - cardStart > 700) endCard(System.currentTimeMillis());
         }
         else if (screen == ENDING_BE) {
-            dialogIndex = retryDialogIndex;   // chơi lại đúng ngày vừa thua
-            beginDay();
+            if (retryAtTrafficCheckpoint) {
+                retryAtTrafficCheckpoint = false;
+                startScene(sceneIndex(SC_JAM, 4));
+            } else {
+                dialogIndex = retryDialogIndex;   // Chặng xe máy: chơi lại đầu ngày.
+                beginDay();
+            }
         }
         else if (screen == ENDING_HE) {
             screen = TITLE;
@@ -1562,4 +1568,7 @@ public class GameLogic extends GameStory {
         return ROAD_X + 45 + (ROAD_W - 90) * i / 3.0;
     }
 }
+
+
+
 
