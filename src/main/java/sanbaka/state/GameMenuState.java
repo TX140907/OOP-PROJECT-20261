@@ -125,7 +125,7 @@ public abstract class GameMenuState extends GameState {
     }
 
     public void resetRunState() {
-        left = right = up = down = false;
+        left = right = up = down = keyE = false;
         flightMode = false;
         roadPausedForTraffic = false;
         trafficSceneShown = false;
@@ -221,6 +221,7 @@ public abstract class GameMenuState extends GameState {
         if (frozenUntil > 0) frozenUntil += d;
         if (iceSlipUntil > 0) iceSlipUntil += d;
         if (lastDogSpawn > 0) lastDogSpawn += d;
+        if (lastStudentSpawn > 0) lastStudentSpawn += d;
         lastFrameAt = now;
         screen = ROAD;
         requestFocusInWindow();

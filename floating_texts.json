@@ -1,0 +1,93 @@
+{
+  "_comment": "File cấu hình chữ nổi (Floating Combat Text). Bạn có thể tự do thêm, bớt hoặc chỉnh sửa các câu thoại in hoa dưới đây.",
+  "harmful": {
+    "collision": [
+      "VA CHẠM!",
+      "VÃ Ò!",
+      "MẤT MÁU!",
+      "ĐAU THẾ!"
+    ],
+    "curb_fire": [
+      "BỐC LỬA!",
+      "NÓNG QUÁ!",
+      "CHÁY XE!"
+    ],
+    "ice_slip": [
+      "TRƯỢT BĂNG!",
+      "MẤT LÁI!",
+      "TRƠN TRƯỢT!",
+      "XÒE RỒI!"
+    ],
+    "freeze": [
+      "ĐÓNG BĂNG!",
+      "BỊ LÀM CHẬM!",
+      "TÊ CÓNG!"
+    ],
+    "pothole": [
+      "SỤT Ổ GÀ!",
+      "XÓC NẢY NGƯỜI!",
+      "THỤT HỐ!",
+      "HỎNG LỐP!"
+    ],
+    "dog_bark": [
+      "TUẤT RƯỢT!",
+      "GIẬT CẢ MÌNH!",
+      "GÂU GÂU!",
+      "CẨN THẬN TUẤT!"
+    ],
+    "low_energy": [
+      "SAY NẮNG!",
+      "HOA CẢ MẮT!",
+      "KIỆT SỨC!",
+      "CẦN NĂNG LƯỢNG!"
+    ],
+    "shark": [
+      "CÁ MẬP CẮN!",
+      "NGUY HIỂM!",
+      "NGU LỚM"
+    ],
+    "boss_hit": [
+      "TRÚNG ĐẠN!",
+      "SÁT THƯƠNG CAO!",
+      "CẢNH BÁO!"
+    ],
+    "shield_break": [
+      "T CÓ KHIÊN"
+    ]
+  },
+  "beneficial": {
+    "energy_bolt": [
+      "NẠP ĐẦY PIN!",
+      "TĂNG LỰC!",
+      "HỒI NĂNG LƯỢNG!",
+      "+27 NĂNG LƯỢNG!"
+    ],
+    "ginger_tea": [
+      "TRÀ GỪNG ẤM!",
+      "HÓA GIẢI ĐÓNG BĂNG!",
+      "GIỮ ẤM CƠ THỂ!",
+      "+15 MÁU!"
+    ],
+    "shield_pickup": [
+      "T CÓ KHIÊN"
+    ],
+    "shield_block": [
+      "T CÓ KHIÊN"
+    ],
+    "heal": [
+      "HỒI MÁU!",
+      "KHỎE LẠI RỒI!",
+      "TĂNG SINH LỰC!"
+    ],
+    "missile_hit": [
+      "TRÚNG MỤC TIÊU!",
+      "BẮN TỐT LẮM!",
+      "BÙM!"
+    ],
+    "speed_up": [
+      "TĂNG TỐC!",
+      "LƯỚT NHANH!"
+    ]
+  }
+}
+

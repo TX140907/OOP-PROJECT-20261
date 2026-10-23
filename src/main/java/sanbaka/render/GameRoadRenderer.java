@@ -10,18 +10,41 @@ import java.util.*;
 import javax.swing.*;
 
 public class GameRoadRenderer extends GameCharacterRenderer {
+    private static final Color[] GRASS_COLORS = {
+        new Color(112, 169, 115), new Color(96, 146, 110), new Color(176, 198, 184),
+        new Color(166, 172, 100), new Color(112, 169, 115)
+    };
+    private static final Color[] ASPHALT_COLORS = {
+        new Color(84, 92, 104), new Color(74, 86, 104), new Color(104, 112, 124),
+        new Color(98, 98, 102), new Color(84, 92, 104)
+    };
+    private static final LinearGradientPaint SUN_GLARE = new LinearGradientPaint(
+        0, 0, 0, 250, new float[]{0f, 0.55f, 1f},
+        new Color[]{new Color(255, 255, 255, 255), new Color(255, 255, 255, 232), new Color(255, 255, 255, 0)}
+    );
+    private static final BasicStroke STROKE_1F = new BasicStroke(1f);
+    private static final BasicStroke STROKE_2F = new BasicStroke(2f);
+    private static final BasicStroke STROKE_RAIN = new BasicStroke(1.6f);
+    private static final BasicStroke STROKE_GUST = new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+    private static final BasicStroke STROKE_DAMAGE = new BasicStroke(36f);
+    private static final BasicStroke STROKE_HEAT_PULSE = new BasicStroke(28f);
+    private static final BasicStroke STROKE_CRACK = new BasicStroke(1.2f);
+
     private final Path2D.Double rainPath = new Path2D.Double();
+    private final Path2D.Double heatWavePath = new Path2D.Double();
+    private final Ellipse2D.Double snowflakeShape = new Ellipse2D.Double();
 
     void drawRoad(Graphics2D g) {
         if (flightMode) drawFlightScene(g);
         else drawRoadScene(g);
         drawHud(g);
+        floatingTextManager.draw(g, System.currentTimeMillis());
         long since = System.currentTimeMillis() - lastHitAt;
         if (since < 450) {
             g.setColor(new Color(255, 30, 60, (int) (120 * (1 - since / 450.0))));
-            g.setStroke(new BasicStroke(36f));
+            g.setStroke(STROKE_DAMAGE);
             g.drawRect(-10, -10, W + 20, H + 20);
-            g.setStroke(new BasicStroke(1f));
+            g.setStroke(STROKE_1F);
         }
     }
 
@@ -32,10 +55,10 @@ public class GameRoadRenderer extends GameCharacterRenderer {
         AffineTransform oldSceneTransform = null;
         if (day == HOT_DAY && energy < 50.0) {
             double delirium = (50.0 - energy) / 50.0;
-            double swayX = Math.sin(now / 420.0) * 26.0 * delirium;
-            double swayY = Math.cos(now / 520.0) * 12.0 * delirium;
-            double swayAngle = Math.sin(now / 640.0) * 0.038 * delirium;
-            double swayScale = 1.0 + Math.sin(now / 360.0) * 0.022 * delirium;
+            double swayX = Math.sin(now / 336.0) * 26.0 * delirium; // 420.0 / 1.25
+            double swayY = Math.cos(now / 416.0) * 12.0 * delirium; // 520.0 / 1.25
+            double swayAngle = Math.sin(now / 512.0) * 0.038 * delirium; // 640.0 / 1.25
+            double swayScale = 1.0 + Math.sin(now / 288.0) * 0.022 * delirium; // 360.0 / 1.25
 
             oldSceneTransform = g.getTransform();
             g.translate(W / 2.0 + swayX, H / 2.0 + swayY);
@@ -43,11 +66,7 @@ public class GameRoadRenderer extends GameCharacterRenderer {
             g.scale(swayScale, swayScale);
             g.translate(-W / 2.0, -H / 2.0);
         }
-        Color[] grass = {
-            new Color(112, 169, 115), new Color(96, 146, 110), new Color(176, 198, 184),
-            new Color(166, 172, 100), new Color(112, 169, 115)
-        };
-        g.setColor(grass[day]);
+        g.setColor(GRASS_COLORS[day]);
         g.fillRect(-80, -80, W + 160, H + 160);
         for (int n = (int) Math.floor((s - H) / 120.0) - 1; n <= (int) Math.floor(s / 120.0) + 1; n++) {
             if ((n & 1) == 0) {
@@ -87,11 +106,7 @@ public class GameRoadRenderer extends GameCharacterRenderer {
         }
         // Ngày 2 (day == 1) bị ngập: bỏ toàn bộ mặt đường và vạch sơn bên dưới lớp nước.
         if (day != 1) {
-            Color[] asphalt = {
-                new Color(84, 92, 104), new Color(74, 86, 104), new Color(104, 112, 124),
-                new Color(98, 98, 102), new Color(84, 92, 104)
-            };
-            g.setColor(asphalt[day]);
+            g.setColor(ASPHALT_COLORS[day]);
             g.fillRect(rx0, 0, rx1 - rx0, H);
             g.setColor(new Color(0, 0, 0, 16));
             for (int l = 0; l < 3; l++) {
@@ -105,10 +120,10 @@ public class GameRoadRenderer extends GameCharacterRenderer {
                 g.setColor(new Color(0, 0, 0, 26));
                 g.fill(new RoundRectangle2D.Double(px, py, 36 + h % 30, 12 + h % 10, 6, 6));
                 g.setColor(new Color(0, 0, 0, 40));
-                g.setStroke(new BasicStroke(1.2f));
+                g.setStroke(STROKE_CRACK);
                 g.draw(new Line2D.Double(px + 60, py + 30, px + 74, py + 52));
                 g.draw(new Line2D.Double(px + 74, py + 52, px + 70, py + 70));
-                g.setStroke(new BasicStroke(1f));
+                g.setStroke(STROKE_1F);
                 if (hash(n, 3) % 9 == 0) {
                     double cy = s - (n + 1) * 160.0 + 80;
                     g.setColor(new Color(245, 245, 238, 205));
@@ -142,6 +157,9 @@ public class GameRoadRenderer extends GameCharacterRenderer {
             if (o.kind != 11 && o.kind != 14 && !(o instanceof Shark shark && shark.isGroundLayer())) o.draw(g, this);
         }
         player.draw(g, this);
+        if (shieldActive) {
+            drawShieldAura(g, player.x, player.y, now);
+        }
         if (day == 2 && now < frozenUntil) {
             drawFreezeEffect(g, player.x, player.y, now);
         }
@@ -158,7 +176,7 @@ public class GameRoadRenderer extends GameCharacterRenderer {
             g.setColor(new Color(10, 24, 50, 30));
             g.fillRect(-80, -80, W + 160, H + 160);
             g.setColor(new Color(205, 225, 250, 150));
-            g.setStroke(new BasicStroke(1.6f));
+            g.setStroke(STROKE_RAIN);
             rainPath.reset();
             for (int i = 0; i < 110; i++) {
                 double rx = (i * 137 + now * 0.12) % (W + 60) - 30;
@@ -167,58 +185,55 @@ public class GameRoadRenderer extends GameCharacterRenderer {
                 rainPath.lineTo(rx - 4, ry + 16);
             }
             g.draw(rainPath);
-            g.setStroke(new BasicStroke(1f));
+            g.setStroke(STROKE_1F);
         } else if (day == 2) {
             g.setColor(new Color(190, 215, 245, 30));
             g.fillRect(-80, -80, W + 160, H + 160);
             boolean gustActive = windDir != 0 && now >= windWarningUntil && now < windActiveUntil;
             g.setColor(new Color(255, 255, 255, 220));
-            Ellipse2D.Double snowflake = new Ellipse2D.Double();
             for (int i = 0; i < 90; i++) {
                 double windPush = gustActive ? windDir * (now * 0.45) : Math.sin(now / 900.0 + i) * 18;
                 double fx = ((i * 97 + windPush) % W + W) % W;
                 double fyy = (i * 61 + now * 0.07 * (1 + i % 3)) % (H + 20) - 10;
                 double fr = 2 + (i % 3);
-                snowflake.setFrame(fx, fyy, fr, fr);
-                g.fill(snowflake);
+                snowflakeShape.setFrame(fx, fyy, fr, fr);
+                g.fill(snowflakeShape);
             }
             if (gustActive) {
                 // Vệt gió mùa Đông Bắc thổi tạt ngang màn hình
                 g.setColor(new Color(220, 244, 255, 145));
-                g.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+                g.setStroke(STROKE_GUST);
                 for (int i = 0; i < 28; i++) {
                     double wy = (i * 47 + now * 0.18) % H;
                     double wx = ((i * 131 + windDir * now * 0.85) % (W + 120) + (W + 120)) % (W + 120) - 60;
                     g.draw(new Line2D.Double(wx, wy, wx + windDir * 58, wy + 8));
                 }
-                g.setStroke(new BasicStroke(1f));
+                g.setStroke(STROKE_1F);
             }
         } else if (day == HOT_DAY) {
             g.setColor(new Color(255, 214, 110, energy < 35 ? 48 : 26));
             g.fillRect(-80, -80, W + 160, H + 160);
-            g.setPaint(new LinearGradientPaint(0, 0, 0, 250, new float[]{0f, 0.55f, 1f},
-                    new Color[]{new Color(255, 255, 255, 255), new Color(255, 255, 255, 232), new Color(255, 255, 255, 0)}));
+            g.setPaint(SUN_GLARE);
             g.fillRect(0, 0, W, 250);
             g.setColor(new Color(255, 255, 255, energy < 35 ? 95 : 60));
-            g.setStroke(new BasicStroke(2f));
-            Path2D.Double heatWave = new Path2D.Double();
+            g.setStroke(STROKE_2F);
             int waveCount = energy < 35 ? 8 : 5;
             for (int i = 0; i < waveCount; i++) {
-                heatWave.reset();
+                heatWavePath.reset();
                 double wy = 190 + i * 18;
-                heatWave.moveTo(rx0, wy);
+                heatWavePath.moveTo(rx0, wy);
                 double amp = energy < 35 ? 7.5 : 4.0;
-                for (int x = rx0; x <= rx1; x += 20) heatWave.lineTo(x, wy + Math.sin(now / 210.0 + x * 0.05 + i) * amp);
-                g.draw(heatWave);
+                for (int x = rx0; x <= rx1; x += 20) heatWavePath.lineTo(x, wy + Math.sin(now / 210.0 + x * 0.05 + i) * amp);
+                g.draw(heatWavePath);
             }
             if (energy < 35) {
                 // Viền mờ choáng nắng khi Energy xuống thấp
                 int pulseAlpha = 35 + (int) (35 * (0.5 + 0.5 * Math.sin(now / 140.0)));
                 g.setColor(new Color(255, 95, 30, pulseAlpha));
-                g.setStroke(new BasicStroke(28f));
+                g.setStroke(STROKE_HEAT_PULSE);
                 g.drawRect(0, 0, W, H);
             }
-            g.setStroke(new BasicStroke(1f));
+            g.setStroke(STROKE_1F);
         }
     }
 

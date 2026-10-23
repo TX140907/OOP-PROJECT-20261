@@ -10,17 +10,24 @@ import java.util.*;
 import javax.swing.*;
 
 public class GameCharacterRenderer extends GameEnvironmentRenderer {
+    private static final Font[] DAY_TITLE_FONTS = {
+        new Font("Dialog", Font.BOLD, 16),
+        new Font("Dialog", Font.BOLD, 13),
+        new Font("Dialog", Font.BOLD, 13),
+        new Font("Dialog", Font.BOLD, 16),
+        new Font("Dialog", Font.BOLD, 15)
+    };
+    private static final Font FONT_HUD_11 = new Font("Dialog", Font.BOLD, 11);
+    private static final Font FONT_HUD_14 = new Font("Dialog", Font.BOLD, 14);
+    private static final Font FONT_HUD_16 = new Font("Dialog", Font.BOLD, 16);
+    private static final Color COLOR_FPS_TAG = new Color(125, 134, 148);
+
     void drawHud(Graphics2D g) {
         long now = System.currentTimeMillis();
         boolean hot = day == HOT_DAY && !flightMode;
         panel(g, 20, 18, 270, hot ? 116 : 88, new Color(255, 255, 255, 238));
         g.setColor(INK);
-        int fs = 17;
-        Font f;
-        do {
-            f = new Font("Dialog", Font.BOLD, fs--);
-        } while (g.getFontMetrics(f).stringWidth(dayTitles[day]) > 236 && fs > 10);
-        g.setFont(f);
+        g.setFont(DAY_TITLE_FONTS[Math.max(0, Math.min(4, day))]);
         g.drawString(dayTitles[day], 38, 44);
 
         // thanh HP (Màn 5 trực thăng max HP = 150, các màn đường bộ max HP = 100)
@@ -36,7 +43,7 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
             g.setColor(hpRatio > 0.5 ? MINT : hpRatio > 0.25 ? new Color(240, 176, 64) : new Color(232, 70, 90));
             g.fillRoundRect(bx, by, Math.max(fill, 10), bh, 10, 10);
         }
-        g.setFont(new Font("Dialog", Font.BOLD, 11));
+        g.setFont(FONT_HUD_11);
         String ht = "HP  " + Math.max(0, hp) + " / " + maxHp;
         int hx = bx + bw / 2 - g.getFontMetrics().stringWidth(ht) / 2;
         g.setColor(INK);
@@ -52,7 +59,7 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
                 g.setColor(low && (now / 250) % 2 == 0 ? new Color(232, 70, 90) : new Color(255, 196, 40));
                 g.fillRoundRect(66, 88, Math.max(ef, 10), 16, 10, 10);
             }
-            g.setFont(new Font("Dialog", Font.BOLD, 11));
+            g.setFont(FONT_HUD_11);
             String et = "NĂNG LƯỢNG  " + (int) Math.ceil(Math.max(0, energy));
             int ex = 66 + 103 - g.getFontMetrics().stringWidth(et) / 2;
             g.setColor(INK);
@@ -60,18 +67,22 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
         }
         panel(g, 700, 18, 238, 58, new Color(255, 255, 255, 225));
         g.setColor(INK);
-        g.setFont(new Font("Dialog", Font.BOLD, 14));
+        g.setFont(FONT_HUD_14);
         g.drawString(flightMode ? "ĐƯỜNG BAY" : "ĐƯỜNG ĐI", 720, 42);
         g.setColor(new Color(98, 102, 114));
         g.fillRoundRect(720, 49, 196, 8, 8, 8);
         g.setColor(PINK);
-        g.fillRoundRect(720, 49, Math.min(196, (int) (196.0 * stageProgressMs / ROAD_DURATION_MS)), 8, 8, 8);
+        g.fillRoundRect(720, 49, Math.min(196, (int) (196.0 * stageProgressMs / getStageDurationMs())), 8, 8, 8);
         if (currentProgressFactor < 0.99) {
-            g.setFont(new Font("Dialog", Font.BOLD, 11));
+            g.setFont(FONT_HUD_11);
             g.setColor(new Color(220, 62, 48));
             String slowTag = "TỐC ĐỘ " + (int) Math.round(currentProgressFactor * 100) + "%";
             g.drawString(slowTag, 916 - g.getFontMetrics().stringWidth(slowTag), 42);
         }
+        // Hiển thị chỉ số FPS thực tế
+        g.setFont(FONT_HUD_11);
+        g.setColor(COLOR_FPS_TAG);
+        g.drawString(Math.round(currentFps) + " FPS", 702, 14);
         if (day == 4 && !flightMode && elapsed / 1000.0 >= ROAD_DURATION_MS / 3000.0 - JAM_WINDOW + 1.2) {
             g.setColor(new Color(245, 250, 255, 190));
             g.fillRoundRect(ROAD_X + 140, 150, ROAD_W - 280, 38, 16, 16);
@@ -97,7 +108,7 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
                 bannerY += 34;
             }
             if (now < frozenUntil) {
-                String freezeMsg = "BĂNG LẠNH: TỐC ĐỘ TIẾN GIẢM CÒN 40%";
+                String freezeMsg = "BĂNG LẠNH: TỐC ĐỘ TIẾN GIẢM CÒN 70%";
                 g.setFont(new Font("Dialog", Font.BOLD, 12));
                 int fw = g.getFontMetrics().stringWidth(freezeMsg);
                 g.setColor(new Color(165, 225, 255, 235));

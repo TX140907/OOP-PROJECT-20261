@@ -26,12 +26,13 @@ public class GameLogic extends GameStory {
         airSceneShown = false;
         roadPausedForTraffic = false;
         flightMode = false;
+        left = right = up = down = keyE = false;
         birds.clear();
         player.lean = 0;
         energy = 100;
         groundScroll = 0;
         jamBuilt = false;
-        lastBolt = stageStarted;
+        lastBolt = stageStarted - 800; // Xuất hiện tia sét sớm ngay đầu màn 4
         lastHitAt = 0;
         player.invulnerable = 0;
         playerVx = 0;
@@ -43,6 +44,8 @@ public class GameLogic extends GameStory {
         frozenUntil = 0;
         windFreezeChecked = false;
         lastDogSpawn = stageStarted + 1400;
+        lastStudentSpawn = stageStarted + 2200;
+        studentSpawnCount = 0;
         stageProgressMs = 0.0;
         elapsed = 0;
         currentProgressFactor = 1.0;
@@ -54,6 +57,13 @@ public class GameLogic extends GameStory {
         hitSlowFactor = 1.0;
         knockbackVy = 0.0;
         knockbackVx = 0.0;
+        shieldActive = false;
+        shieldSpawnCount = 0;
+        lastShieldSpawn = stageStarted;
+        teaSpawnCount = 0;
+        lastTeaSpawn = stageStarted;
+        warmUntil = 0;
+        floatingTextManager.clear();
         beCause = "";
         retryDialogIndex = dialogIndex;
         requestFocusInWindow();
@@ -70,6 +80,10 @@ public class GameLogic extends GameStory {
         if (frozenUntil > 0) frozenUntil += pausedDelta;
         if (iceSlipUntil > 0) iceSlipUntil += pausedDelta;
         if (lastDogSpawn > 0) lastDogSpawn += pausedDelta;
+        if (lastStudentSpawn > 0) lastStudentSpawn += pausedDelta;
+        if (warmUntil > 0) warmUntil += pausedDelta;
+        if (lastShieldSpawn > 0) lastShieldSpawn += pausedDelta;
+        if (lastTeaSpawn > 0) lastTeaSpawn += pausedDelta;
         lastFrameAt = now;
         screen = ROAD;
         roadPausedForTraffic = false;
@@ -118,7 +132,7 @@ public class GameLogic extends GameStory {
                 unlockScene(SC_JAM, 4);
                 startFade(FADE_JAM, now);
             }
-            else if (elapsed >= ROAD_DURATION_MS) {
+            else if (elapsed >= getStageDurationMs()) {
                 startFade(FADE_END, now);
             }
         }
@@ -174,7 +188,7 @@ public class GameLogic extends GameStory {
     public void updateRoad(long now) {
         double dt = Math.min((now - lastFrameAt) / 1000.0, 0.05);
         lastFrameAt = now;
-        double dur = ROAD_DURATION_MS / 1000.0;
+        double dur = getStageDurationMs() / 1000.0;
         boolean jamDay = day == 4;
         double jamT1 = dur / 3, jamT0 = jamT1 - JAM_WINDOW;
 
@@ -187,7 +201,7 @@ public class GameLogic extends GameStory {
 
         // Quãng đường cố định (~40s nếu đi thẳng thuận lợi); NẾU VÀ CHỈ NẾU dính hiệu ứng làm chậm thì tiến độ thực sự chậm lại
         double progFactor = 1.0;
-        if (isFrozen) progFactor = Math.min(progFactor, 0.40);
+        if (isFrozen) progFactor = Math.min(progFactor, 0.70);
         if (isIceSlipping) progFactor = Math.min(progFactor, 0.72);
         if (day == HOT_DAY && energy < 50.0) progFactor = Math.min(progFactor, fatigueFactor);
         if (day == 1 && map2CurbSlowFactor < 0.99) progFactor = Math.min(progFactor, map2CurbSlowFactor);
@@ -203,15 +217,21 @@ public class GameLogic extends GameStory {
             if (dur - t > 2.5 && windDir == 0 && now >= nextWindAt) {
                 windDir = rng.nextBoolean() ? 1 : -1;
                 windWarningUntil = now + 800;
-                windActiveUntil = windWarningUntil + 2000;
+                windActiveUntil = windWarningUntil + 3000;
                 windFreezeChecked = false;
                 nextWindAt = windActiveUntil + 2500 + rng.nextInt(1400);
             }
             if (windDir != 0 && now >= windWarningUntil && now < windActiveUntil && !windFreezeChecked) {
                 windFreezeChecked = true;
-                // Xác suất 45% cơn gió lạnh làm xe bị đóng băng lạnh, giảm tốc độ tiến xuống 40%
-                if (rng.nextInt(100) < 45) {
-                    frozenUntil = now + 2700;
+                // Nếu đang giữ ấm bởi Trà gừng (now < warmUntil) thì miễn nhiễm đóng băng
+                if (now >= warmUntil) {
+                    // Xác suất 45% cơn gió lạnh làm xe bị đóng băng lạnh, giảm tốc độ tiến xuống 70%
+                    if (rng.nextInt(100) < 45) {
+                        frozenUntil = now + 2700;
+                        floatingTextManager.spawn(player.x + 28, player.y - 12, "freeze", false);
+                    }
+                } else {
+                    floatingTextManager.spawn(player.x + 28, player.y - 12, "ginger_tea", true);
                 }
             }
             if (windDir != 0 && now >= windActiveUntil) {
@@ -219,7 +239,7 @@ public class GameLogic extends GameStory {
             }
         }
 
-        double forwardSpeedFactor = isFrozen ? 0.40 : (day == 1 ? map2CurbSlowFactor : fatigueFactor);
+        double forwardSpeedFactor = isFrozen ? 0.70 : (day == 1 ? map2CurbSlowFactor : fatigueFactor);
         if (isHitSlowed) {
             forwardSpeedFactor = Math.min(forwardSpeedFactor, hitSlowFactor);
         }
@@ -259,23 +279,25 @@ public class GameLogic extends GameStory {
             player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
         } else {
             double speedModifier = day == 1 ? map2CurbSlowFactor : fatigueFactor;
-            double hSpeed = PLAYER_SPEED * speedModifier * controlHitPenalty;
+            double stageSpeedMult = (day == HOT_DAY) ? 1.25 : 1.0;
+            double hSpeed = PLAYER_SPEED * stageSpeedMult * speedModifier * controlHitPenalty;
             if (left) player.x -= hSpeed * dt;
             if (right) player.x += hSpeed * dt;
             if (day == HOT_DAY && energy < 50.0) {
-                // Chao đảo ảo giác say nắng khi năng lượng dưới 50%
-                player.x += Math.sin(now / 190.0) * deliriumIntensity * 36.0 * dt;
+                // Chao đảo ảo giác say nắng khi năng lượng dưới 50% (nhanh hơn 1.25 lần)
+                player.x += Math.sin(now / 152.0) * deliriumIntensity * 36.0 * dt;
             }
             player.x = Math.max(PLAYER_MIN_X, Math.min(PLAYER_MAX_X, player.x));
             player.lean += ((right ? 1 : 0) - (left ? 1 : 0) - player.lean) * Math.min(1.0, dt * 10);
         }
 
-        double vSpeed = VERTICAL_SPEED * forwardSpeedFactor;
+        double stageVerticalMult = (day == HOT_DAY) ? 1.25 : 1.0;
+        double vSpeed = VERTICAL_SPEED * stageVerticalMult * forwardSpeedFactor;
         if (up) player.y -= vSpeed * dt;
         if (down) player.y += vSpeed * dt;
         if (isFrozen) {
-            // Khi bị đóng băng lạnh (tốc độ tiến chỉ còn 40%), xe bị tụt dần về phía sau
-            player.y += 34.0 * dt;
+            // Khi bị đóng băng lạnh (tốc độ tiến còn 70%), xe chỉ ghì nhẹ về phía sau
+            player.y += 12.0 * dt;
         }
         // Hiệu ứng đẩy lùi mượt sau khi va chạm xe
         if (knockbackVy > 0) {
@@ -331,6 +353,7 @@ public class GameLogic extends GameStory {
                     int burnDmg = (int) curbBurnFraction;
                     hp = Math.max(0, hp - burnDmg);
                     curbBurnFraction -= burnDmg;
+                    floatingTextManager.spawnDebounced(player.x + 28, player.y - 12, "curb_fire", false, 1200);
                     if (hp <= 0 && beCause.isEmpty()) {
                         beCause = "Xe của bạn đã bốc cháy vì đi sát lề đường quá lâu.";
                     }
@@ -340,6 +363,7 @@ public class GameLogic extends GameStory {
 
         // Tốc độ cuộn mặt đường và chuyển động xung quanh giữ nguyên tự nhiên (không bị chậm theo người chơi)
         double base = (3.6 + day * 0.32) * 60;
+        if (day == HOT_DAY) base *= 1.25; // Màn 4 diễn ra nhanh hơn 1.25 lần
         double factor = 1;
         if (jamDay) {
             if (t >= jamT0) factor = 1 - Math.min(1, (t - jamT0) / JAM_WINDOW);
@@ -353,23 +377,51 @@ public class GameLogic extends GameStory {
         long spawnInterval = day == 1
                 ? (long) ((820 - day * 35) * 100.0 / 162.0)
                 : (long) ((820 - day * 35) * 100.0 / 148.0);
+        if (day == HOT_DAY) spawnInterval = (long) (spawnInterval / 1.25);
         if (canSpawn && now - lastSpawn > spawnInterval) {
             lastSpawn = now;
             trySpawnVehicle();
         }
-        if (canSpawn && day == HOT_DAY && now - lastBolt > 2700 + rng.nextInt(500)) {
+        if (canSpawn && day == HOT_DAY && now - lastBolt > 1500 + rng.nextInt(350)) {
             if (trySpawnBolt()) {
                 lastBolt = now;
             } else {
-                lastBolt = now - 1800; // Thử lại sớm hơn nếu bị vướng xe cộ
+                lastBolt = now - 1000; // Thử lại sớm hơn nếu bị vướng xe cộ
             }
         }
-        if (canSpawn && day == HOT_DAY && now - lastDogSpawn > 3200) {
-            lastDogSpawn = now + rng.nextInt(800);
+        if (canSpawn && day == COLD_DAY && teaSpawnCount < 4 && now - lastTeaSpawn > 7500 + rng.nextInt(1500)) {
+            if (trySpawnGingerTea()) {
+                lastTeaSpawn = now;
+            } else {
+                lastTeaSpawn = now - 1000;
+            }
+        }
+        if (canSpawn && day == HOT_DAY && shieldSpawnCount < 3 && now - lastShieldSpawn > 8000 + rng.nextInt(1500)) {
+            if (trySpawnShield()) {
+                lastShieldSpawn = now;
+            } else {
+                lastShieldSpawn = now - 1000;
+            }
+        }
+        if (canSpawn && day == HOT_DAY && now - lastDogSpawn > 2560) {
+            lastDogSpawn = now + rng.nextInt(640);
             trySpawnStrayDog(now);
         }
+        if (canSpawn && day == 0 && studentSpawnCount < 4 && now - lastStudentSpawn > 8000 + rng.nextInt(1500)) {
+            if (trySpawnStudent(now)) {
+                lastStudentSpawn = now;
+                studentSpawnCount++;
+            } else {
+                lastStudentSpawn = now - 1000;
+            }
+        }
         if (jamDay && !jamBuilt && t >= jamT0) buildJam(base);
-        if (day == HOT_DAY) energy = Math.max(0, energy - ENERGY_DRAIN * dt);
+        if (day == HOT_DAY) {
+            energy = Math.max(0, energy - ENERGY_DRAIN * 1.25 * dt);
+            if (energy < 30.0) {
+                floatingTextManager.spawnDebounced(player.x + 28, player.y - 12, "low_energy", false, 3500);
+            }
+        }
 
         double tau = Math.max(0, Math.min(JAM_WINDOW, t - jamT0));
         double jamShift = base * (tau - tau * tau / (2 * JAM_WINDOW));
@@ -397,12 +449,14 @@ public class GameLogic extends GameStory {
                 shark.updateShark(dt, now);
             } else if (o instanceof StrayDog dog) {
                 dog.updateDog(dt, scroll, now, ROAD_X, ROAD_W, things, player.x, player.y, player.w, player.h);
+            } else if (o instanceof Student student) {
+                student.updateStudent(dt, scroll, now, ROAD_X, ROAD_W, things, player.x, player.y, player.w, player.h);
             } else {
                 // Giữ khoảng cách an toàn để không có 2 vật thể đè hình ảnh lên nhau trên cùng làn
                 for (int j = 0; j < things.size(); j++) {
                     if (i == j) continue;
                     Thing other = things.get(j);
-                    if (other.jam || other instanceof Shark || other instanceof StrayDog || other.snack || o.snack) continue;
+                    if (other.jam || other instanceof Shark || other instanceof StrayDog || other instanceof Student || other.snack || o.snack) continue;
                     // other nằm phía trên màn hình (nhỏ hơn y) nhưng trôi xuống nhanh hơn (other.fwd < o.fwd)
                     if (other.y < o.y && (o.y - other.y) < (o.h + other.h) / 2 + 24
                             && Math.abs(o.x - other.x) < (o.w + other.w) / 2 + 8) {
@@ -434,7 +488,7 @@ public class GameLogic extends GameStory {
                         shark.hit = true;
                         if (player.invulnerable <= now) {
                             double pushDir = player.x < shark.x ? -1 : 1;
-                            applyCollisionHit(34, pushDir, 16, 22, 200, 0.38, 1400, 780, now);
+                            applyCollisionHit(34, pushDir, 16, 22, 200, 0.38, 1400, 780, now, "shark");
                         }
                     }
                 }
@@ -447,10 +501,24 @@ public class GameLogic extends GameStory {
                         && Math.abs(dog.y - player.y) < dog.h / 2 + 12) {
                     dog.hit = true;
                     if (player.invulnerable <= now) {
-                        applyCollisionHit(28, dog.dir, 14, 18, 165, 0.42, 1200, 750, now);
+                        applyCollisionHit(28, dog.dir, 14, 18, 165, 0.42, 1200, 750, now, "dog_bark");
                     }
                 }
                 if (dog.done || dog.y - dog.h / 2 > H + 30) iterator.remove();
+                continue;
+            }
+            if (o instanceof Student student) {
+                if (student.phase == Student.PHASE_CROSSING && !student.isHitInvulnerable(now)
+                        && Math.abs(student.x - player.x) < student.w / 2 + 10
+                        && Math.abs(student.y - player.y) < student.h / 2 + 12) {
+                    student.onPlayerHit(now);
+                    if (player.invulnerable <= now) {
+                        applyCollisionHit(16, student.dir, 10, 14, 130, 0.50, 800, 750, now, null);
+                    }
+                }
+                if (student.done || student.y - student.h / 2 > H + 40 || student.y + student.h / 2 < -120) {
+                    iterator.remove();
+                }
                 continue;
             }
             if (!o.jam) {
@@ -458,10 +526,30 @@ public class GameLogic extends GameStory {
                 double hh = o.snack ? 28 : ((o.kind == 11 || o.kind == 14) ? o.h / 2 : o.h / 2 + 6);
                 if (Math.abs(o.x - player.x) < hw && Math.abs(o.y - player.y) < hh) {
                     if (o.snack) {
-                        energy = Math.min(100, energy + BOLT_ENERGY);
-                        score += 50;
-                        iterator.remove();
-                        continue;
+                        if (o.kind == 16) {
+                            // Trà gừng ở Màn 3: hóa giải đóng băng, giữ ấm và hồi phục máu
+                            frozenUntil = 0;
+                            warmUntil = now + 6500;
+                            hp = Math.min(flightMode ? FLIGHT_START_HP : 100, hp + 15);
+                            score += 60;
+                            floatingTextManager.spawn(player.x + 28, player.y - 12, "ginger_tea", true);
+                            iterator.remove();
+                            continue;
+                        } else if (o.kind == 17) {
+                            // Khiên bảo vệ ở Màn 4: miễn 1 lần va chạm
+                            shieldActive = true;
+                            score += 60;
+                            floatingTextManager.spawn(player.x + 28, player.y - 12, "shield_pickup", true);
+                            iterator.remove();
+                            continue;
+                        } else {
+                            energy = Math.min(100, energy + BOLT_ENERGY);
+                            hp = Math.min(flightMode ? FLIGHT_START_HP : 100, hp + BOLT_HP);
+                            score += 50;
+                            floatingTextManager.spawn(player.x + 28, player.y - 12, "energy_bolt", true);
+                            iterator.remove();
+                            continue;
+                        }
                     }
                     if (!o.hit) {
                         o.hit = true;
@@ -473,24 +561,25 @@ public class GameLogic extends GameStory {
                             } else {
                                 playerVx = (rng.nextBoolean() ? 1 : -1) * PLAYER_SPEED * 0.90;
                             }
+                            floatingTextManager.spawnDebounced(player.x + 28, player.y - 12, "ice_slip", false, 800);
                             continue;
                         }
                         if (player.invulnerable <= now) {
                             double pushDir = player.x < o.x ? -1 : 1;
                             if (o.kind == 11) {
                                 // Ổ gà: nâng sát thương lên 16 HP, giật lùi nhẹ + làm chậm ngắn 850ms
-                                applyCollisionHit(16, pushDir, 8, 10, 105, 0.55, 850, 550, now);
+                                applyCollisionHit(16, pushDir, 8, 10, 105, 0.55, 850, 550, now, "pothole");
                             } else if (o.kind == 9) {
                                 // Xe tải hạng nặng: 38 HP, đẩy lùi mạnh + làm chậm ngắn 1500ms (tốc độ còn 35%)
-                                applyCollisionHit(38, pushDir, 18, 26, 230, 0.35, 1500, 800, now);
+                                applyCollisionHit(38, pushDir, 18, 26, 230, 0.35, 1500, 800, now, "collision");
                                 o.y -= 14;
                             } else if (o.kind == 6 || o.kind == 12) {
                                 // Xe máy NPC / Ninja Lead: 28 HP, đẩy lùi + làm chậm ngắn 1200ms
-                                applyCollisionHit(28, pushDir, 14, 18, 165, 0.42, 1200, 750, now);
+                                applyCollisionHit(28, pushDir, 14, 18, 165, 0.42, 1200, 750, now, "collision");
                                 o.y -= 12;
                             } else {
                                 // Ô tô, xe buýt, thuyền, rào chắn: 32 HP, đẩy lùi + làm chậm ngắn 1350ms (tốc độ còn 38%)
-                                applyCollisionHit(32, pushDir, 15, 22, 195, 0.38, 1350, 780, now);
+                                applyCollisionHit(32, pushDir, 15, 22, 195, 0.38, 1350, 780, now, "collision");
                                 if (o.kind != 10) o.y -= 14;
                             }
                         }
@@ -503,6 +592,18 @@ public class GameLogic extends GameStory {
 
     private void applyCollisionHit(int dmg, double pushDirX, double pushX, double pushY,
             double kbVy, double slowFactor, long slowDurationMs, long invulnMs, long now) {
+        applyCollisionHit(dmg, pushDirX, pushX, pushY, kbVy, slowFactor, slowDurationMs, invulnMs, now, "collision");
+    }
+
+    private void applyCollisionHit(int dmg, double pushDirX, double pushX, double pushY,
+            double kbVy, double slowFactor, long slowDurationMs, long invulnMs, long now, String subcategory) {
+        if (shieldActive) {
+            shieldActive = false;
+            player.invulnerable = now + 650;
+            lastHitAt = now;
+            floatingTextManager.spawn(player.x + 28, player.y - 12, "shield_block", true);
+            return;
+        }
         hp -= dmg;
         player.invulnerable = now + invulnMs;
         lastHitAt = now;
@@ -512,6 +613,9 @@ public class GameLogic extends GameStory {
         knockbackVy = Math.max(knockbackVy, kbVy);
         hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, slowFactor) : slowFactor;
         hitSlowUntil = Math.max(hitSlowUntil, now + slowDurationMs);
+        if (subcategory != null && !subcategory.isEmpty()) {
+            floatingTextManager.spawn(player.x + 28, player.y - 12, subcategory, false);
+        }
     }
 
     private void lockSharkWarningTarget(Shark shark, double scroll, long now) {
@@ -566,7 +670,7 @@ public class GameLogic extends GameStory {
         }
         double tReach = (t instanceof NinjaLead) ? 156 : t.wobbleAmp;
         for (Thing o : things) {
-            if (o instanceof Shark || o instanceof StrayDog) {
+            if (o instanceof Shark || o instanceof StrayDog || o instanceof Student) {
                 if (Math.abs(o.x - t.x) < (o.w + t.w) / 2 + 18 && Math.abs(o.y - t.y) < 220) {
                     return false;
                 }
@@ -634,6 +738,54 @@ public class GameLogic extends GameStory {
                 dog.phase = StrayDog.PHASE_BARK_WARN;
                 dog.phaseStartedAt = now;
                 things.add(dog);
+                floatingTextManager.spawnDebounced(player.x + 28, player.y - 12, "dog_bark", false, 2500);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean trySpawnStudent(long now) {
+        if (day != 0) return false;
+        int activeStudents = 0;
+        for (Thing o : things) {
+            if (o instanceof Student) activeStudents++;
+        }
+        if (activeStudents >= 1) return false; // Chỉ tối đa 1 sinh viên qua đường cùng thời điểm ở Màn 1
+
+        double[] rowBases = { 150, 195, 240, 285, 330 };
+        for (int attempt = 0; attempt < 6; attempt++) {
+            int side = rng.nextBoolean() ? -1 : 1; // -1: vỉa hè trái sang phải, 1: vỉa hè phải sang trái
+            double startX = side < 0 ? (ROAD_X + 16) : (ROAD_X + ROAD_W - 16);
+            double baseRow = rowBases[rng.nextInt(rowBases.length)];
+            double startY = baseRow + (rng.nextDouble() - 0.5) * 18.0;
+
+            boolean clear = true;
+            for (Thing o : things) {
+                if (o instanceof Student && Math.abs(o.y - startY) < 70) {
+                    clear = false;
+                    break;
+                }
+                if (Math.abs(o.y - startY) < o.h / 2 + 25 && Math.abs(o.x - startX) < 70) {
+                    clear = false;
+                    break;
+                }
+            }
+            if (Math.abs(player.y - startY) < 35 && Math.abs(player.x - startX) < 60) {
+                clear = false;
+            }
+
+            if (clear) {
+                Student student = (Student) Thing.create(18);
+                student.kind = 18;
+                student.w = VEH_W[18];
+                student.h = VEH_H[18];
+                student.dir = -side;
+                student.x = student.baseX = startX;
+                student.y = startY;
+                student.phase = Student.PHASE_SIDEWALK_WAIT;
+                student.phaseStartedAt = now;
+                things.add(student);
                 return true;
             }
         }
@@ -657,10 +809,14 @@ public class GameLogic extends GameStory {
                 kind = rng.nextInt(100) < 32 ? 8 : baseKind;
             }
         } else if (day == COLD_DAY) {
-            // Màn 3 (trời rét, đường trơn): thêm Vũng băng thực thể (kind = 14) làm trượt bánh
-            int r = rng.nextInt(154);
-            kind = r < 28 ? 0 : r < 46 ? 1 : r < 58 ? 2 : r < 70 ? 3 : r < 80 ? 4 : r < 86 ? 5 : r < 100 ? 6
-                    : r < 116 ? 9 : r < 124 ? 10 : r < 142 ? 14 : 12;
+            // Màn 3 (trời rét, đường trơn): xe máy có mật độ tăng gấp 1.5 lần
+            int r = rng.nextInt(167);
+            kind = r < 28 ? 0 : r < 46 ? 1 : r < 58 ? 2 : r < 70 ? 3 : r < 80 ? 4 : r < 86 ? 5
+                    : r < 107 ? 6   // Xe máy thường (kind = 6): trọng số tăng 1.5 lần (14 -> 21)
+                    : r < 123 ? 9   // Xe tải (kind = 9)
+                    : r < 131 ? 10  // Rào chắn (kind = 10)
+                    : r < 149 ? 14  // Vũng băng (kind = 14)
+                    : 12;           // Ninja Lead (kind = 12): trọng số tăng 1.5 lần (12 -> 18)
         } else {
             // Các màn đường bộ khác: giữ nguyên tỉ lệ 0..6 (tổng 100), thêm xe tải to (9), rào chắn (10), ổ gà (11), Ninja Lead (12)
             int r = rng.nextInt(148);
@@ -700,9 +856,10 @@ public class GameLogic extends GameStory {
             } else if (kind == 2) {
                 fwd = 0.40 + rng.nextDouble() * 0.07; // taxi lướt nhanh
             } else if (kind == 12) {
-                fwd = 0.43 + rng.nextDouble() * 0.07; // Ninja Lead phóng nhanh để tạt đầu
+                fwd = (0.43 + rng.nextDouble() * 0.07) * (day == COLD_DAY ? 1.5 : 1.0); // Màn 3 Ninja Lead tăng vận tốc 1.5 lần
+                if (t instanceof NinjaLead ninja && day == COLD_DAY) ninja.speedScale = 1.5;
             } else if (kind == 6) {
-                fwd = 0.32 + rng.nextDouble() * 0.10; // xe máy thường
+                fwd = (0.32 + rng.nextDouble() * 0.10) * (day == COLD_DAY ? 1.5 : 1.0); // Màn 3 xe máy tăng vận tốc 1.5 lần
             } else {
                 fwd = 0.34 + rng.nextDouble() * 0.06; // sedan, hatchback, thuyền
             }
@@ -746,7 +903,35 @@ public class GameLogic extends GameStory {
             t.baseX = bx;
             t.x = bx;
             t.wobbleAmp = amp;
-            t.wobbleFreq = 0.7 + rng.nextDouble() * 0.7;
+            t.wobbleFreq = (0.7 + rng.nextDouble() * 0.7) * (day == COLD_DAY && (kind == 6 || kind == 12) ? 1.5 : 1.0);
+            t.wobblePhase = rng.nextDouble() * 6.28;
+            if (clearToSpawn(t)) {
+                things.add(t);
+                if (day == COLD_DAY && t.kind != 6 && t.kind != 12 && rng.nextInt(100) < 36) {
+                    trySpawnMotorcycle();
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean trySpawnMotorcycle() {
+        for (int attempt = 0; attempt < 4; attempt++) {
+            Thing t = Thing.create(6);
+            t.kind = 6;
+            t.w = VEH_W[6];
+            t.h = VEH_H[6];
+            t.color = rng.nextInt(8);
+            t.fwd = (0.32 + rng.nextDouble() * 0.10) * 1.5;
+            t.y = -t.h / 2 - 12;
+            double lo = ROAD_X + 14 + t.w / 2;
+            double hi = ROAD_X + ROAD_W - 14 - t.w / 2;
+            double bx = lo + rng.nextDouble() * (hi - lo);
+            double amp = rng.nextInt(100) < 45 ? 20 + rng.nextInt(25) : 0;
+            t.baseX = t.x = Math.max(lo + amp, Math.min(hi - amp, bx));
+            t.wobbleAmp = amp;
+            t.wobbleFreq = (0.7 + rng.nextDouble() * 0.7) * 1.5;
             t.wobblePhase = rng.nextDouble() * 6.28;
             if (clearToSpawn(t)) {
                 things.add(t);
@@ -767,6 +952,42 @@ public class GameLogic extends GameStory {
             t.y = -30;
             if (clearToSpawn(t)) {
                 things.add(t);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean trySpawnGingerTea() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            Thing t = Thing.create(16);
+            t.kind = 16;
+            t.snack = true;
+            t.w = VEH_W[16];
+            t.h = VEH_H[16];
+            t.baseX = t.x = ROAD_X + 75 + rng.nextDouble() * (ROAD_W - 150);
+            t.y = -30;
+            if (clearToSpawn(t)) {
+                things.add(t);
+                teaSpawnCount++;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean trySpawnShield() {
+        for (int attempt = 0; attempt < 10; attempt++) {
+            Thing t = Thing.create(17);
+            t.kind = 17;
+            t.snack = true;
+            t.w = VEH_W[17];
+            t.h = VEH_H[17];
+            t.baseX = t.x = ROAD_X + 75 + rng.nextDouble() * (ROAD_W - 150);
+            t.y = -30;
+            if (clearToSpawn(t)) {
+                things.add(t);
+                shieldSpawnCount++;
                 return true;
             }
         }
@@ -942,6 +1163,7 @@ public class GameLogic extends GameStory {
 
     public void startFlight(long now) {
         flightMode = true;
+        keyE = false;
         things.clear();
         birds.clear();
         missiles.clear();
@@ -1038,6 +1260,11 @@ public class GameLogic extends GameStory {
         heliTilt += (dx * 0.14 - heliTilt) * Math.min(1.0, dt * 8);
         skyScroll += (240 + 120 * progress) * dt;
 
+        // Nếu người chơi giữ phím E: tự động bắn tên lửa ngay khi hết thời gian hồi chiêu
+        if (keyE) {
+            firePlayerMissile(now);
+        }
+
         long flightTime = (flightStartedAt > 0) ? (now - flightStartedAt) : 0;
         long birdPhaseDurationMs = 15_000; // Đàn chim ở đầu màn 5 lượt 2 kéo dài tầm 15 giây
 
@@ -1115,6 +1342,7 @@ public class GameLogic extends GameStory {
             if (boss != null && boss.combatActive && Math.abs(m.x - boss.x) < 38 && Math.abs(m.y - boss.y) < 52) {
                 m.active = false;
                 boss.takeMissileHit(BossConfig.missileDamage, now);
+                floatingTextManager.spawn(boss.x - 20, boss.y, "missile_hit", true);
                 mit.remove();
                 continue;
             }
@@ -1123,6 +1351,7 @@ public class GameLogic extends GameStory {
                 if (ep.active && Math.abs(m.x - ep.x) < 46 && Math.abs(m.y - ep.y) < 24) {
                     m.active = false;
                     ep.takeHit(BossConfig.missileDamage, now);
+                    floatingTextManager.spawn(ep.x, ep.y, "missile_hit", true);
                     hitPlane = true;
                     break;
                 }
@@ -1137,6 +1366,7 @@ public class GameLogic extends GameStory {
                     m.active = false;
                     eb.active = false;
                     detonateBomb(eb.x, eb.y, now);
+                    floatingTextManager.spawn(eb.x, eb.y, "missile_hit", true);
                     hitBomb = true;
                     break;
                 }
@@ -1180,6 +1410,7 @@ public class GameLogic extends GameStory {
                     knockbackVx = -180.0;
                     hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, 0.42) : 0.42;
                     hitSlowUntil = Math.max(hitSlowUntil, now + 1250);
+                    floatingTextManager.spawn(heliX + 28, heliY - 12, "boss_hit", false);
                 }
                 ep.takeHit(1, now);
             }
@@ -1216,6 +1447,7 @@ public class GameLogic extends GameStory {
                     knockbackVx = -140.0;
                     hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, 0.42) : 0.42;
                     hitSlowUntil = Math.max(hitSlowUntil, now + 1200);
+                    floatingTextManager.spawn(heliX + 28, heliY - 12, "boss_hit", false);
                 }
                 bb.active = false;
             }
@@ -1238,6 +1470,7 @@ public class GameLogic extends GameStory {
                     knockbackVx = -165.0;
                     hitSlowFactor = (now < hitSlowUntil) ? Math.min(hitSlowFactor, 0.42) : 0.42;
                     hitSlowUntil = Math.max(hitSlowUntil, now + 1250);
+                    floatingTextManager.spawn(heliX + 28, heliY - 12, "collision", false);
                 }
                 it.remove();
             } else if (b.x < -80) {
@@ -1259,8 +1492,11 @@ public class GameLogic extends GameStory {
             if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) right = true;
             if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) up = true;
             if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) down = true;
-            if (flightMode && key == KeyEvent.VK_E) {
-                firePlayerMissile(System.currentTimeMillis());
+            if (key == KeyEvent.VK_E) {
+                keyE = true;
+                if (flightMode) {
+                    firePlayerMissile(System.currentTimeMillis());
+                }
             }
         }
         if (screen == TITLE || screen == PAUSE) {
@@ -1311,6 +1547,7 @@ public class GameLogic extends GameStory {
         if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) right = false;
         if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) up = false;
         if (key == KeyEvent.VK_DOWN || key == KeyEvent.VK_S) down = false;
+        if (key == KeyEvent.VK_E) keyE = false;
     }
 
     @Override

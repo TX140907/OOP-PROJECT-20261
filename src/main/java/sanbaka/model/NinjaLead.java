@@ -14,6 +14,7 @@ public class NinjaLead extends Thing {
     public int cutPhase = 0; // 0: chờ, 1: nhấp nháy xi-nhan + báo hiệu, 2: đang tạt, 3: đã tạt xong
     public long phaseStart = 0;
     public double triggerY = 110;
+    public double speedScale = 1.0;
 
     public void updateMovement(double dt, double lane0X, double lane1X, double lane2X) {
         if (cutPhase == 0) {
@@ -43,7 +44,7 @@ public class NinjaLead extends Thing {
             }
         } else if (cutPhase == 2) {
             // Giai đoạn đánh lái tạt chéo
-            double shiftSpeed = 160.0; // px/s
+            double shiftSpeed = 160.0 * speedScale; // px/s
             this.x += cutDir * shiftSpeed * dt;
             this.angle = cutDir * 0.22;
             if ((cutDir > 0 && this.x >= targetX) || (cutDir < 0 && this.x <= targetX)) {

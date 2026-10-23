@@ -276,10 +276,14 @@ public class GameScreenRenderer extends GameMenuRenderer {
     }
 
     protected void paintComponent(Graphics gg) {
+        countFrame();
         long perfStart = PERF_LOG_ENABLED ? System.nanoTime() : 0L;
         super.paintComponent(gg);
         Graphics2D g=(Graphics2D)gg;
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING,RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+        g.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED);
+        g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED);
         btns.clear();
         g.setColor(CREAM);
         g.fillRect(0,0,W,H);
@@ -309,6 +313,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
             g.setColor(new Color(0, 0, 0, (int) (255 * (1 - fadeIn / 700.0))));
             g.fillRect(0, 0, W, H);
         }
+        Toolkit.getDefaultToolkit().sync();
         if (PERF_LOG_ENABLED) recordPerformance(true, System.nanoTime() - perfStart);
     }
 

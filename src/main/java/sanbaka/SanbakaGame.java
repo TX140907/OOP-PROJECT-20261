@@ -33,6 +33,17 @@ public class SanbakaGame extends GameScreenRenderer {
             @Override public void mouseMoved(java.awt.event.MouseEvent e) { onMouse(e.getX(), e.getY()); }
             @Override public void mouseDragged(java.awt.event.MouseEvent e) { onMouse(e.getX(), e.getY()); }
         });
+        timer.setCoalesce(true);
+        // Khởi động thread giữ độ phân giải timer 1ms cho Windows OS (tránh trễ 15.6ms)
+        Thread timerPrecisionThread = new Thread(() -> {
+            try {
+                while (true) Thread.sleep(Integer.MAX_VALUE);
+            } catch (InterruptedException ignored) {}
+        });
+        timerPrecisionThread.setDaemon(true);
+        timerPrecisionThread.setName("HighPrecisionTimerFixer");
+        timerPrecisionThread.start();
+
         timer.start();
         dialogBackground = loadDialogBackground();
     }
@@ -88,6 +99,29 @@ public class SanbakaGame extends GameScreenRenderer {
         }
         System.err.println("Không tìm thấy sanbaka2.jpg; game sẽ dùng nền mặc định.");
         return null;
+    }
+
+    static {
+        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            if (System.getProperty("sun.java2d.d3d") == null) {
+                System.setProperty("sun.java2d.d3d", "true");
+            }
+            if (System.getProperty("sun.java2d.transaccel") == null) {
+                System.setProperty("sun.java2d.transaccel", "true");
+            }
+            if (System.getProperty("sun.java2d.ddforcevram") == null) {
+                System.setProperty("sun.java2d.ddforcevram", "true");
+            }
+            if (System.getProperty("sun.java2d.noddraw") == null) {
+                System.setProperty("sun.java2d.noddraw", "false");
+            }
+            if (System.getProperty("sun.java2d.opengl") == null) {
+                System.setProperty("sun.java2d.opengl", "false");
+            }
+            if (System.getProperty("sun.awt.noerasebackground") == null) {
+                System.setProperty("sun.awt.noerasebackground", "true");
+            }
+        }
     }
 
     public static void main(String[] args) {

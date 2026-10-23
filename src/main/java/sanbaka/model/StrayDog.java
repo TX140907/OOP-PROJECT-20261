@@ -16,8 +16,13 @@ public class StrayDog extends Thing {
     public static final int PHASE_BARK_WARN = 0;
     public static final int PHASE_DASH_ACROSS = 1;
 
-    private static final long WARN_MS = 650;
-    private static final double DASH_SPEED = 275.0;
+    public static final long WARN_MS = 880; // Thời gian đứng ở vỉa hè sủa báo hiệu trước khi phóng qua đường
+    public static final double DASH_SPEED = 343.75; // 275.0 * 1.25
+
+    private static final Font WARN_FONT = new Font("Dialog", Font.BOLD, 12);
+    private static final BasicStroke WARN_DASH_STROKE = new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10f, new float[]{8f, 6f}, 0f);
+    private static final BasicStroke WARN_BOX_STROKE = new BasicStroke(1.5f);
+    private static final BasicStroke STROKE_RESET_1F = new BasicStroke(1f);
 
     public int phase = PHASE_BARK_WARN;
     public long phaseStartedAt = System.currentTimeMillis();
@@ -106,9 +111,9 @@ public class StrayDog extends Thing {
 
                 // Điều khiển né theo phương Y (lượn tiến hoặc lùi)
                 double diffY = targetDodgeY - this.y;
-                double maxVy = 250.0;
-                double desiredVy = Math.max(-maxVy, Math.min(maxVy, diffY * 8.0));
-                dodgeVy += (desiredVy - dodgeVy) * Math.min(1.0, dt * 14.0);
+                double maxVy = 312.5; // 250.0 * 1.25
+                double desiredVy = Math.max(-maxVy, Math.min(maxVy, diffY * 10.0));
+                dodgeVy += (desiredVy - dodgeVy) * Math.min(1.0, dt * 17.5);
                 this.y += dodgeVy * dt;
                 this.y = Math.max(90, Math.min(560, this.y));
 
@@ -131,7 +136,7 @@ public class StrayDog extends Thing {
             }
 
             // Độ nghiêng thân chó khi lượn né xe
-            tiltAngle = Math.max(-0.24, Math.min(0.24, (dodgeVy / 250.0) * 0.35));
+            tiltAngle = Math.max(-0.24, Math.min(0.24, (dodgeVy / 312.5) * 0.35));
 
             this.x += dir * speed * dt;
             this.baseX = this.x;
@@ -251,22 +256,22 @@ public class StrayDog extends Thing {
 
     private void drawCrossingWarning(Graphics2D g, long now) {
         boolean blink = (now / 130) % 2 == 0;
-        // Vệt mũi tên cảnh báo hướng chó sắp lao ngang qua đường
-        g.setColor(blink ? new Color(255, 80, 60, 210) : new Color(255, 180, 40, 160));
-        g.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 10f, new float[]{8f, 6f}, 0f));
+        // Vệt mũi tên chấm cảnh báo hướng chó sắp lao ngang qua đường
+        g.setColor(blink ? new Color(255, 80, 60, 220) : new Color(255, 180, 40, 160));
+        g.setStroke(WARN_DASH_STROKE);
         g.draw(new Line2D.Double(dir * 24, 0, dir * 130, 0));
-        g.setStroke(new BasicStroke(1f));
+        g.setStroke(STROKE_RESET_1F);
 
-        // Khung chữ "GÂU! !" trên đầu chó
+        // Khung cảnh báo ! trên đầu chó
         double by = -28;
         g.setColor(new Color(255, 245, 210, 240));
-        g.fill(new RoundRectangle2D.Double(-24, by - 14, 48, 18, 8, 8));
+        g.fill(new RoundRectangle2D.Double(-18, by - 14, 36, 18, 8, 8));
         g.setColor(new Color(220, 50, 50));
-        g.setStroke(new BasicStroke(1.5f));
-        g.draw(new RoundRectangle2D.Double(-24, by - 14, 48, 18, 8, 8));
-        g.setFont(new Font("Dialog", Font.BOLD, 11));
-        String bark = "GÂU! !";
-        int tw = g.getFontMetrics().stringWidth(bark);
-        g.drawString(bark, -tw / 2, (int) by - 1);
+        g.setStroke(WARN_BOX_STROKE);
+        g.draw(new RoundRectangle2D.Double(-18, by - 14, 36, 18, 8, 8));
+        g.setFont(WARN_FONT);
+        String warn = "!";
+        int tw = g.getFontMetrics().stringWidth(warn);
+        g.drawString(warn, -tw / 2, (int) by + 1);
     }
 }

@@ -1,6 +1,6 @@
 package sanbaka;
 
-import java.util.List;
+import java.util.*;
 import sanbaka.assets.ArtAssets;
 import sanbaka.logic.StoryData;
 import sanbaka.model.*;
@@ -27,6 +27,15 @@ public class SanbakaSmokeTest {
         testPlayerMissileAndDestructibleEntities();
         testBombDetonationChainReaction();
         testMap4EnergyBoltBalance();
+        testMap4PacingAndDuration();
+        testShieldItemAbsorbsCollision();
+        testGingerTeaCuresFreezeAndHeals();
+        testMap3WindDurationAndFreeze70();
+        testFloatingTextParserAndDisplay();
+        testItemSpawnCounts();
+        testMap3MotorcycleDensityAndVelocity();
+        testGpuHardwareAccelerationFlags();
+        testStudentCrossingMechanics();
 
         System.out.println("[PASS] All SanbakaSmokeTest checks passed successfully!");
     }
@@ -635,6 +644,28 @@ public class SanbakaSmokeTest {
             throw new AssertionError("Expected 2 missiles after cooldown expired, got: " + logic.missiles.size());
         }
 
+        // Kiểm tra cơ chế giữ phím E: tên lửa tự động bắn ngay lúc vừa hồi chiêu
+        logic.keyE = true;
+        int missilesBeforeHoldingE = logic.missiles.size();
+        // Khi chưa hết hồi chiêu -> không bắn
+        logic.updateFlight(after15s + afterCd + 10);
+        if (logic.missiles.size() != missilesBeforeHoldingE) {
+            throw new AssertionError("Holding E must not fire before cooldown expires!");
+        }
+        // Khi vừa hết hồi chiêu -> tự động bắn ngay
+        long nextReadyTime = after15s + afterCd + (long)(sanbaka.state.BossConfig.missileCooldownSec * 1000) + 20;
+        logic.updateFlight(nextReadyTime);
+        if (logic.missiles.size() != missilesBeforeHoldingE + 1) {
+            throw new AssertionError("Holding E must automatically fire missile immediately upon cooldown expiration!");
+        }
+        // Nhả phím E -> dừng bắn tự động
+        logic.keyE = false;
+        long afterReleaseTime = nextReadyTime + (long)(sanbaka.state.BossConfig.missileCooldownSec * 1000) + 50;
+        logic.updateFlight(afterReleaseTime);
+        if (logic.missiles.size() != missilesBeforeHoldingE + 1) {
+            throw new AssertionError("Releasing key E must stop automatic continuous missile firing!");
+        }
+
         // Kiểm tra độ bền & kích thước Máy bay tiêm kích địch (cần 3 phát đạn, kích thước tiêm kích lớn tương xứng)
         EnemyPlane plane = new EnemyPlane(500, 300, 350, 3, false);
         if (plane.w < 80.0 || plane.h < 40.0) {
@@ -715,10 +746,10 @@ public class SanbakaSmokeTest {
             for (Thing t : logic.things) {
                 t.y += 20;
             }
-            double dur = sanbaka.state.GameState.ROAD_DURATION_MS / 1000.0;
+            double dur = logic.getStageDurationMs() / 1000.0;
             double t = (current - start) / 1000.0;
             boolean canSpawn = dur - t > 5.5;
-            if (canSpawn && current - logic.lastBolt > 2700 + logic.rng.nextInt(500)) {
+            if (canSpawn && current - logic.lastBolt > 1500 + logic.rng.nextInt(350)) {
                 if (logic.trySpawnBolt()) {
                     logic.lastBolt = current;
                     boltCount++;
@@ -726,9 +757,464 @@ public class SanbakaSmokeTest {
             }
         }
 
-        if (boltCount < 10 || boltCount > 14) {
-            throw new AssertionError("Stage 4 must spawn around 11-13 energy bolts (approx +4 bolts), got: " + boltCount);
+        if (boltCount < 15 || boltCount > 21) {
+            throw new AssertionError("Stage 4 must spawn around 16-19 energy bolts (increased frequency), got: " + boltCount);
         }
-        System.out.println("  ✓ testMap4EnergyBoltBalance passed (" + boltCount + " bolts spawned across stage)");
+
+        // Kiểm tra cơ chế ăn tia sét: +27 Năng lượng và +5 Máu (HP)
+        logic.energy = 50.0;
+        logic.hp = 80;
+        EnergyBolt bolt = new EnergyBolt();
+        bolt.x = logic.player.x;
+        bolt.y = logic.player.y;
+        bolt.snack = true;
+        logic.things.clear();
+        logic.things.add(bolt);
+        logic.lastFrameAt = current;
+        logic.updateRoad(current + 16);
+        if (logic.energy < 76.5) { // 50 + 27 = 77 (trừ chút ít do energy drain trong 1 frame)
+            throw new AssertionError("Collecting EnergyBolt must restore +27 energy, got: " + logic.energy);
+        }
+        if (logic.hp != 85) { // 80 + 5 = 85
+            throw new AssertionError("Collecting EnergyBolt must heal +5 HP, got: " + logic.hp);
+        }
+
+        System.out.println("  ✓ testMap4EnergyBoltBalance passed (" + boltCount + " bolts spawned, +27 Energy & +5 HP verified)");
+    }
+
+    private static void testMap4PacingAndDuration() {
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        // Kiểm tra thời lượng Màn 4 = 35 giây, các màn khác = 40 giây
+        logic.day = sanbaka.state.GameState.HOT_DAY;
+        if (logic.getStageDurationMs() != 35_000) {
+            throw new AssertionError("Stage 4 duration must be 35,000 ms (35 seconds), got: " + logic.getStageDurationMs());
+        }
+
+        for (int d = 0; d < 5; d++) {
+            if (d == sanbaka.state.GameState.HOT_DAY) continue;
+            logic.day = d;
+            if (logic.getStageDurationMs() != 40_000) {
+                throw new AssertionError("Stage " + (d + 1) + " duration must be 40,000 ms, got: " + logic.getStageDurationMs());
+            }
+        }
+
+        // Kiểm tra tốc độ chó chạy rông tăng 1.25 lần
+        if (Math.abs(StrayDog.DASH_SPEED - 343.75) > 0.01) {
+            throw new AssertionError("Stray dog dash speed must be 343.75 px/s (275 * 1.25), got: " + StrayDog.DASH_SPEED);
+        }
+
+        System.out.println("  ✓ testMap4PacingAndDuration passed");
+    }
+
+    private static void testShieldItemAbsorbsCollision() {
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.day = sanbaka.state.GameState.HOT_DAY;
+        logic.beginDay();
+        long now = logic.lastFrameAt;
+
+        if (logic.shieldActive) {
+            throw new AssertionError("Shield must be inactive initially!");
+        }
+
+        // Nhặt vật phẩm khiên chắn (ShieldItem)
+        ShieldItem shield = new ShieldItem();
+        shield.x = logic.player.x;
+        shield.y = logic.player.y;
+        logic.things.clear();
+        logic.things.add(shield);
+        now += 16;
+        logic.updateRoad(now);
+
+        if (!logic.shieldActive) {
+            throw new AssertionError("Shield must be active after collecting ShieldItem!");
+        }
+        if (!logic.things.isEmpty()) {
+            throw new AssertionError("ShieldItem must be consumed after pickup!");
+        }
+
+        // Thử va chạm với ô tô chướng ngại vật
+        logic.player.invulnerable = 0;
+        int preHp = logic.hp;
+        RoadCar car = new RoadCar();
+        car.x = logic.player.x;
+        car.y = logic.player.y;
+        logic.things.add(car);
+        now += 16;
+        logic.updateRoad(now);
+
+        if (logic.shieldActive) {
+            throw new AssertionError("Shield must break after absorbing 1 collision!");
+        }
+        if (logic.hp != preHp) {
+            throw new AssertionError("Shield must completely absorb damage (HP unchanged)! Expected: " + preHp + ", got: " + logic.hp);
+        }
+        if (logic.knockbackVx != 0 || logic.knockbackVy != 0) {
+            throw new AssertionError("Shield must negate knockback! Vx: " + logic.knockbackVx + ", Vy: " + logic.knockbackVy);
+        }
+        if (now < logic.hitSlowUntil) {
+            throw new AssertionError("Shield must negate hit slow effect!");
+        }
+
+        // Va chạm lần thứ hai khi không còn khiên: phải mất máu bình thường
+        logic.player.invulnerable = 0;
+        RoadCar car2 = new RoadCar();
+        car2.x = logic.player.x;
+        car2.y = logic.player.y;
+        logic.things.clear();
+        logic.things.add(car2);
+        now += 16;
+        logic.updateRoad(now);
+
+        if (logic.hp >= preHp) {
+            throw new AssertionError("Subsequent hit without shield must inflict damage! hp: " + logic.hp);
+        }
+
+        System.out.println("  ✓ testShieldItemAbsorbsCollision passed");
+    }
+
+    private static void testGingerTeaCuresFreezeAndHeals() {
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.day = sanbaka.state.GameState.COLD_DAY;
+        logic.beginDay();
+        long now = logic.lastFrameAt;
+
+        // Giả lập trạng thái bị đóng băng và máu thấp
+        logic.frozenUntil = now + 5000;
+        logic.hp = 60;
+
+        // Sinh vật phẩm Trà gừng (GingerTea) tại vị trí người chơi
+        GingerTea tea = new GingerTea();
+        tea.x = logic.player.x;
+        tea.y = logic.player.y;
+        logic.things.clear();
+        logic.things.add(tea);
+        now += 16;
+        logic.updateRoad(now);
+
+        if (logic.frozenUntil != 0) {
+            throw new AssertionError("Ginger tea must immediately cure freeze effect (frozenUntil == 0)!");
+        }
+        if (logic.warmUntil <= now) {
+            throw new AssertionError("Ginger tea must grant warm effect (warmUntil > now)!");
+        }
+        if (logic.hp != 75) { // 60 + 15 = 75
+            throw new AssertionError("Ginger tea must heal +15 HP! Expected 75, got: " + logic.hp);
+        }
+
+        // Khi đang có hiệu ứng giữ ấm (warmUntil), luồng gió lạnh thổi qua không thể làm đóng băng
+        logic.windDir = 1;
+        logic.windWarningUntil = now;
+        logic.windActiveUntil = now + 3000;
+        logic.windFreezeChecked = false;
+        now += 20;
+        logic.updateRoad(now);
+
+        if (logic.frozenUntil > now) {
+            throw new AssertionError("Player with ginger tea warm buff must be immune to wind freeze!");
+        }
+
+        System.out.println("  ✓ testGingerTeaCuresFreezeAndHeals passed");
+    }
+
+    private static void testMap3WindDurationAndFreeze70() {
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.day = sanbaka.state.GameState.COLD_DAY;
+        logic.beginDay();
+        long now = logic.lastFrameAt;
+
+        // 1. Kiểm tra thời gian gió thổi tăng thêm 1 giây (active duration = 3000ms)
+        logic.windDir = 0;
+        logic.nextWindAt = now;
+        now += 16;
+        logic.updateRoad(now);
+
+        if (logic.windDir != 0) {
+            long activeDuration = logic.windActiveUntil - logic.windWarningUntil;
+            if (activeDuration != 3000) {
+                throw new AssertionError("Wind active duration must be 3000ms (+1s), got: " + activeDuration);
+            }
+        }
+
+        // 2. Kiểm tra hiệu ứng đóng băng làm tốc độ tiến giảm về 70%
+        logic.frozenUntil = now + 4000;
+        now += 16;
+        logic.updateRoad(now);
+
+        if (Math.abs(logic.currentProgressFactor - 0.70) > 0.001) {
+            throw new AssertionError("Freeze progress factor must be exactly 0.70 (70%), got: " + logic.currentProgressFactor);
+        }
+
+        System.out.println("  ✓ testMap3WindDurationAndFreeze70 passed");
+    }
+
+    private static void testFloatingTextParserAndDisplay() {
+        sanbaka.render.FloatingTextManager ftm = new sanbaka.render.FloatingTextManager();
+
+        Map<String, List<String>> harmful = ftm.getHarmfulMap();
+        Map<String, List<String>> beneficial = ftm.getBeneficialMap();
+
+        if (harmful == null || harmful.isEmpty() || beneficial == null || beneficial.isEmpty()) {
+            throw new AssertionError("Harmful and beneficial text categories must be loaded!");
+        }
+
+        // Kiểm tra các tình huống con bắt buộc
+        String[] requiredHarmful = {"collision", "curb_fire", "ice_slip", "freeze", "pothole", "dog_bark", "low_energy", "shark", "boss_hit", "shield_break"};
+        for (String req : requiredHarmful) {
+            if (!harmful.containsKey(req) || harmful.get(req).isEmpty()) {
+                throw new AssertionError("Missing harmful subcategory: " + req);
+            }
+        }
+
+        String[] requiredBeneficial = {"energy_bolt", "ginger_tea", "shield_pickup", "shield_block", "heal", "missile_hit", "speed_up"};
+        for (String req : requiredBeneficial) {
+            if (!beneficial.containsKey(req) || beneficial.get(req).isEmpty()) {
+                throw new AssertionError("Missing beneficial subcategory: " + req);
+            }
+        }
+
+        // Kiểm tra tất cả câu chữ phải là CHỮ IN HOA
+        for (Map.Entry<String, List<String>> e : harmful.entrySet()) {
+            for (String s : e.getValue()) {
+                if (!s.equals(s.toUpperCase())) {
+                    throw new AssertionError("Harmful phrase must be UPPERCASE: " + s);
+                }
+            }
+        }
+        for (Map.Entry<String, List<String>> e : beneficial.entrySet()) {
+            for (String s : e.getValue()) {
+                if (!s.equals(s.toUpperCase())) {
+                    throw new AssertionError("Beneficial phrase must be UPPERCASE: " + s);
+                }
+            }
+        }
+
+        // Kiểm tra spawn chữ nổi cạnh nhân vật
+        ftm.clear();
+        ftm.spawn(300, 400, "ginger_tea", true);
+        ftm.spawn(300, 400, "collision", false);
+
+        if (ftm.getActiveCount() != 2) {
+            throw new AssertionError("Expected 2 active floating texts, got: " + ftm.getActiveCount());
+        }
+
+        // Kiểm tra hàm draw không ném lỗi
+        java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(960, 640, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = img.createGraphics();
+        ftm.draw(g, System.currentTimeMillis() + 200);
+        g.dispose();
+
+        System.out.println("  ✓ testFloatingTextParserAndDisplay passed");
+    }
+
+    private static void testItemSpawnCounts() {
+        // Map 4: Kiểm tra spawn đúng 3 khiên trên toàn map
+        sanbaka.logic.GameLogic logic4 = new sanbaka.logic.GameLogic();
+        logic4.day = sanbaka.state.GameState.HOT_DAY;
+        logic4.beginDay();
+        long start4 = logic4.stageStarted;
+        int shieldsSpawned = 0;
+        for (long t = 0; t <= 35_000; t += 100) {
+            long now = start4 + t;
+            double dur = logic4.getStageDurationMs() / 1000.0;
+            double sec = t / 1000.0;
+            boolean canSpawn = dur - sec > 5.5;
+            if (canSpawn && logic4.shieldSpawnCount < 3 && now - logic4.lastShieldSpawn > 8000 + logic4.rng.nextInt(1500)) {
+                if (logic4.trySpawnShield()) {
+                    logic4.lastShieldSpawn = now;
+                    shieldsSpawned++;
+                }
+            }
+        }
+        if (shieldsSpawned != 3) {
+            throw new AssertionError("Stage 4 must spawn exactly 3 shields, got: " + shieldsSpawned);
+        }
+
+        // Map 3: Kiểm tra spawn đúng 4 trà gừng trên toàn map
+        sanbaka.logic.GameLogic logic3 = new sanbaka.logic.GameLogic();
+        logic3.day = sanbaka.state.GameState.COLD_DAY;
+        logic3.beginDay();
+        long start3 = logic3.stageStarted;
+        int teasSpawned = 0;
+        for (long t = 0; t <= 40_000; t += 100) {
+            long now = start3 + t;
+            double dur = logic3.getStageDurationMs() / 1000.0;
+            double sec = t / 1000.0;
+            boolean canSpawn = dur - sec > 5.5;
+            if (canSpawn && logic3.teaSpawnCount < 4 && now - logic3.lastTeaSpawn > 7500 + logic3.rng.nextInt(1500)) {
+                if (logic3.trySpawnGingerTea()) {
+                    logic3.lastTeaSpawn = now;
+                    teasSpawned++;
+                }
+            }
+        }
+        if (teasSpawned != 4) {
+            throw new AssertionError("Stage 3 must spawn exactly 4 ginger teas, got: " + teasSpawned);
+        }
+
+        System.out.println("  ✓ testItemSpawnCounts passed (3 shields in map 4, 4 ginger teas in map 3)");
+    }
+
+    private static void testMap3MotorcycleDensityAndVelocity() {
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.day = sanbaka.state.GameState.COLD_DAY;
+        logic.beginDay();
+
+        int motoCountCold = 0;
+        int totalCold = 600;
+        double totalColdFwd = 0;
+        for (int i = 0; i < totalCold; i++) {
+            logic.things.clear();
+            if (logic.trySpawnVehicle()) {
+                for (Thing t : logic.things) {
+                    if (t.kind == 6 || t.kind == 12) {
+                        motoCountCold++;
+                        totalColdFwd += t.fwd;
+                    }
+                }
+            }
+        }
+
+        double avgColdFwd = totalColdFwd / motoCountCold;
+        // Kiểm tra vận tốc fwd xe máy ở Màn 3 tăng 1.5 lần (~0.48 - 0.63, trung bình ~0.55 so với 0.37 thông thường)
+        if (avgColdFwd < 0.45) {
+            throw new AssertionError("Stage 3 motorcycle forward speed must be increased 1.5x (avg > 0.45), got: " + avgColdFwd);
+        }
+
+        // So sánh mật độ với ngày bình thường (Day 0)
+        sanbaka.logic.GameLogic logic0 = new sanbaka.logic.GameLogic();
+        logic0.day = 0;
+        logic0.beginDay();
+        int motoCountDay0 = 0;
+        for (int i = 0; i < totalCold; i++) {
+            logic0.things.clear();
+            if (logic0.trySpawnVehicle()) {
+                for (Thing t : logic0.things) {
+                    if (t.kind == 6 || t.kind == 12) {
+                        motoCountDay0++;
+                    }
+                }
+            }
+        }
+
+        double ratio = (double) motoCountCold / Math.max(1, motoCountDay0);
+        if (ratio < 1.30) {
+            throw new AssertionError("Stage 3 motorcycle density must be around 1.5x higher than normal day, ratio: " + ratio);
+        }
+
+        System.out.println("  ✓ testMap3MotorcycleDensityAndVelocity passed (Speed: " + String.format("%.2f", avgColdFwd) + ", Density ratio: " + String.format("%.2f", ratio) + "x)");
+    }
+
+    private static void testGpuHardwareAccelerationFlags() {
+        try {
+            Class.forName("sanbaka.SanbakaGame");
+        } catch (ClassNotFoundException e) {
+            throw new AssertionError("SanbakaGame class not found", e);
+        }
+        if (System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            String d3d = System.getProperty("sun.java2d.d3d");
+            String transaccel = System.getProperty("sun.java2d.transaccel");
+            String ddforcevram = System.getProperty("sun.java2d.ddforcevram");
+            if (!"true".equalsIgnoreCase(d3d)) {
+                throw new AssertionError("GPU Direct3D acceleration flag sun.java2d.d3d must be true on Windows, got: " + d3d);
+            }
+            if (!"true".equalsIgnoreCase(transaccel)) {
+                throw new AssertionError("GPU translucent acceleration flag sun.java2d.transaccel must be true on Windows, got: " + transaccel);
+            }
+            if (!"true".equalsIgnoreCase(ddforcevram)) {
+                throw new AssertionError("GPU VRAM allocation flag sun.java2d.ddforcevram must be true on Windows, got: " + ddforcevram);
+            }
+        }
+        System.out.println("  ✓ testGpuHardwareAccelerationFlags passed (Direct3D & VRAM acceleration enabled)");
+    }
+
+    private static void testStudentCrossingMechanics() {
+        Thing t = Thing.create(18);
+        if (!(t instanceof Student)) {
+            throw new AssertionError("Thing.create(18) should produce an instance of Student, got: " + t.getClass());
+        }
+        Student s = (Student) t;
+        if (s.w != 32.0 || s.h != 38.0) {
+            throw new AssertionError("Student dimensions should be 32x38, got: " + s.w + "x" + s.h);
+        }
+
+        List<Thing> things = new ArrayList<>();
+        RoadCar car = (RoadCar) Thing.create(0);
+        car.x = car.baseX = 350.0;
+        car.y = 200.0;
+        car.w = 50.0;
+        car.h = 86.0;
+        car.wobbleAmp = 0;
+        things.add(car);
+
+        s.x = 280.0;
+        s.y = 200.0;
+        s.dir = 1;
+        s.phase = Student.PHASE_CROSSING;
+
+        s.updateStudent(0.016, 260.0, System.currentTimeMillis(), 220, 520, things, 0, 0, 0, 0);
+        if (!s.isYielding) {
+            throw new AssertionError("Student must yield when approaching a car in path X with vertical overlap!");
+        }
+        if (s.x + s.w / 2.0 > car.x - car.w / 2.0) {
+            throw new AssertionError("Student must not penetrate into the car body!");
+        }
+
+        RoadMotorcycle moto = (RoadMotorcycle) Thing.create(6);
+        moto.baseX = 450.0;
+        moto.x = 450.0;
+        moto.y = 200.0;
+        moto.w = 26.0;
+        moto.h = 60.0;
+        moto.wobbleAmp = 25.0;
+        things.clear();
+        things.add(moto);
+
+        s.x = 360.0;
+        s.y = 200.0;
+        s.dir = 1;
+        s.updateStudent(0.016, 260.0, System.currentTimeMillis(), 220, 520, things, 0, 0, 0, 0);
+        if (!s.isYielding) {
+            throw new AssertionError("Student must yield before entering the swept width of a wobbling motorcycle!");
+        }
+        double motoDangerMinX = moto.baseX - moto.w / 2.0 - moto.wobbleAmp - 18.0;
+        if (s.x + s.w / 2.0 > motoDangerMinX) {
+            throw new AssertionError("Student must remain strictly outside the wobbling danger zone!");
+        }
+
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.day = 0;
+        logic.beginDay();
+        int initialHp = logic.hp;
+        Student crossingStudent = (Student) Thing.create(18);
+        crossingStudent.x = logic.player.x;
+        crossingStudent.y = logic.player.y;
+        crossingStudent.phase = Student.PHASE_CROSSING;
+        logic.things.add(crossingStudent);
+
+        int activeTextBefore = logic.floatingTextManager.getActiveCount();
+        logic.updateRoad(System.currentTimeMillis() + 100);
+
+        if (logic.hp >= initialHp) {
+            throw new AssertionError("Player must receive collision damage when hitting a student, initialHp: " + initialHp + ", current: " + logic.hp);
+        }
+        if (logic.floatingTextManager.getActiveCount() > activeTextBefore) {
+            throw new AssertionError("No floating text should be spawned for student collision, got count: " + logic.floatingTextManager.getActiveCount());
+        }
+        if (!logic.things.contains(crossingStudent)) {
+            throw new AssertionError("Student must continue crossing the street after collision with player!");
+        }
+
+        logic.day = 1;
+        if (logic.trySpawnStudent(System.currentTimeMillis())) {
+            throw new AssertionError("Student must not spawn in Day 1 (flooded day)!");
+        }
+        logic.day = 0;
+        logic.things.clear();
+        boolean spawned = logic.trySpawnStudent(System.currentTimeMillis());
+        if (!spawned) {
+            throw new AssertionError("trySpawnStudent should succeed on empty Day 0 road!");
+        }
+
+        System.out.println("  ✓ testStudentCrossingMechanics passed (Yields to cars/wobble, no clipping, continues after player collision, no text)");
     }
 }

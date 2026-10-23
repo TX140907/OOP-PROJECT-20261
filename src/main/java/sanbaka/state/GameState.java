@@ -16,6 +16,21 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     private long perfPaintTotalNanos, perfUpdateTotalNanos;
     private long perfPaintMaxNanos, perfUpdateMaxNanos;
 
+    public double currentFps = 60.0;
+    private long fpsTimerStart = System.currentTimeMillis();
+    private int fpsFrameCount = 0;
+
+    public void countFrame() {
+        fpsFrameCount++;
+        long now = System.currentTimeMillis();
+        long diff = now - fpsTimerStart;
+        if (diff >= 400) {
+            currentFps = (fpsFrameCount * 1000.0) / Math.max(1, diff);
+            fpsFrameCount = 0;
+            fpsTimerStart = now;
+        }
+    }
+
     public void recordPerformance(boolean paint, long durationNanos) {
         if (!PERF_LOG_ENABLED) return;
         long now = System.nanoTime();
@@ -48,10 +63,16 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public static final int ROAD_W = 550;
     public static final int TRACKS = 5;
     public static final int ROAD_DURATION_MS = 40_000;
+    public static final int HOT_DAY_DURATION_MS = 35_000;
+
+    public int getStageDurationMs() {
+        return day == HOT_DAY ? HOT_DAY_DURATION_MS : ROAD_DURATION_MS;
+    }
+
     public static final double PLAYER_SPEED = 260.0;
     public static final double VERTICAL_SPEED = 240.0;
     public static final Color INK = new Color(35, 42, 60), CREAM = new Color(250, 247, 239), PINK = new Color(237, 119, 155), MINT = new Color(94, 181, 154);
-    public final javax.swing.Timer timer = new javax.swing.Timer(16, this);
+    public final javax.swing.Timer timer = new javax.swing.Timer(15, this);
     public final java.util.List<Line> lines = new ArrayList<>();
     public final Random rng = new Random();
     public static final int TITLE = 0;
@@ -82,7 +103,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public long elapsed = 0;
     public long lastFrameAt = 0;
     public double roadOffset = 0;
-    public boolean left = false, right = false, up = false, down = false;
+    public boolean left = false, right = false, up = false, down = false, keyE = false;
     // ---- trực thăng: ngày 5, 2/3 đường sau ----
     public static final int FLIGHT_START_HP = 150;
     public boolean flightMode = false;
@@ -96,7 +117,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     // ---- đường bộ: cảnh vật, tắc đường, năng lượng ngày nắng nóng ----
     public static final int HOT_DAY = 3;
     public static final double ENERGY_DRAIN = 3.5;
-    public static final double BOLT_ENERGY = 20;
+    public static final double BOLT_ENERGY = 27;
+    public static final int BOLT_HP = 5;
     public static final double JAM_WINDOW = 3.6;
     public static final double SCHOOL_APPROACH = 3.5;
     public static final double FINISH_Y = 335;
@@ -107,7 +129,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public boolean jamBuilt = false;
     public int retryDialogIndex = 0;
     public String beCause = "";
-    // ---- Màn 3 (Trời rét, đường trơn: quán tính, vũng băng, gió mùa & đóng băng 40% tốc độ tiến) ----
+    // ---- Màn 3 (Trời rét, đường trơn: quán tính, vũng băng, gió mùa & đóng băng 70% tốc độ tiến, trà gừng) ----
     public static final int COLD_DAY = 2;
     public double playerVx = 0;
     public long iceSlipUntil = 0;
@@ -117,8 +139,19 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public long nextWindAt = 0;
     public long frozenUntil = 0;
     public boolean windFreezeChecked = false;
-    // ---- Màn 4 (Nắng nóng: chó chạy rông & mệt mỏi khi Energy thấp) ----
+    public int teaSpawnCount = 0;
+    public long lastTeaSpawn = 0;
+    public long warmUntil = 0;
+    // ---- Màn 1 (Trời đẹp: sinh viên băng qua đường) ----
+    public long lastStudentSpawn = 0;
+    public int studentSpawnCount = 0;
+    // ---- Màn 4 (Nắng nóng: chó chạy rông & mệt mỏi khi Energy thấp, khiên bảo vệ 1 lần va chạm) ----
     public long lastDogSpawn = 0;
+    public boolean shieldActive = false;
+    public int shieldSpawnCount = 0;
+    public long lastShieldSpawn = 0;
+    // ---- Hệ thống chữ nổi Floating Combat Text cấu hình qua floating_texts.json ----
+    public sanbaka.render.FloatingTextManager floatingTextManager = new sanbaka.render.FloatingTextManager();
     // ---- Cơ chế Quãng đường cố định (40s nếu đi thuận lợi), Bốc lửa lề đường & Đẩy lùi/Làm chậm khi va chạm ----
     public double stageProgressMs = 0.0;
     public double currentProgressFactor = 1.0;
@@ -168,8 +201,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         new Color(148, 205, 240), new Color(94, 119, 151), new Color(186, 202, 218), new Color(255, 194, 117), new Color(175, 202, 226)
     };
 
-    public static final double[] VEH_W = {50, 48, 50, 54, 58, 60, 26, 30, 40, 136, 68, 76, 28, 68, 88, 48};
-    public static final double[] VEH_H = {86, 76, 86, 100, 132, 168, 60, 40, 84, 172, 36, 48, 62, 68, 54, 30};
+    public static final double[] VEH_W = {50, 48, 50, 54, 58, 60, 26, 30, 40, 136, 68, 76, 28, 68, 88, 48, 34, 36, 32};
+    public static final double[] VEH_H = {86, 76, 86, 100, 132, 168, 60, 40, 84, 172, 36, 48, 62, 68, 54, 30, 34, 36, 38};
     public static final Color[] CAR_COLORS = {
         new Color(219, 93, 96), new Color(81, 146, 185), new Color(240, 242, 246), new Color(176, 184, 196),
         new Color(240, 200, 90), new Color(94, 170, 128), new Color(150, 110, 180), new Color(58, 62, 76)

@@ -27,6 +27,9 @@ public abstract class Thing {
             case 13 -> new Shark();
             case 14 -> new IcePatch();
             case 15 -> new StrayDog();
+            case 16 -> new GingerTea();
+            case 17 -> new ShieldItem();
+            case 18 -> new Student();
             default -> new RoadCar();
         };
     }

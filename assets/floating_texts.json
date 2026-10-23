@@ -1,0 +1,106 @@
+{
+  "_comment": "File cấu hình chữ nổi (Floating Combat Text). Bạn có thể tự do thêm, bớt hoặc chỉnh sửa các câu thoại in hoa dưới đây.",
+  "harmful": {
+    "collision": [
+      "VA CHẠM!",
+      "ÚI TRỜI!",
+      "CẨN THẬN!",
+      "MẤT MÁU!",
+      "CHOÁNG VÁNG!"
+    ],
+    "curb_fire": [
+      "BỐC LỬA!",
+      "CẠ VỈA HÈ!",
+      "NÓNG QUÁ!",
+      "CHÁY XE!"
+    ],
+    "ice_slip": [
+      "TRƯỢT BĂNG!",
+      "MẤT LÁI!",
+      "TRƠN TRƯỢT!",
+      "XÒE RỒI!"
+    ],
+    "freeze": [
+      "ĐÓNG BĂNG!",
+      "RÉT CĂM CĂM!",
+      "BỊ LÀM CHẬM!",
+      "TÊ CỐNG!"
+    ],
+    "pothole": [
+      "SỤT Ổ GÀ!",
+      "XÓC NẢY NGƯỜI!",
+      "THỤT HỐ!",
+      "HỎNG LỐP!"
+    ],
+    "dog_bark": [
+      "CHÓ RƯỢT!",
+      "GIẬT CẢ MÌNH!",
+      "GÂU GÂU!",
+      "CẨN THẬN CHÓ!"
+    ],
+    "low_energy": [
+      "SAY NẮNG!",
+      "HOA CẢ MẮT!",
+      "KIỆT SỨC!",
+      "CẦN NĂNG LƯỢNG!"
+    ],
+    "shark": [
+      "CÁ MẬP CẮN!",
+      "NGUY HIỂM!",
+      "ĐỚP HỤT!",
+      "TOANG RỒI!"
+    ],
+    "boss_hit": [
+      "TRÚNG ĐẠN!",
+      "SÁT THƯƠNG CAO!",
+      "CẢNH BÁO!"
+    ],
+    "shield_break": [
+      "KHIÊN ĐÃ VỠ!",
+      "MẤT BẢO HỘ!",
+      "HẾT KHIÊN!"
+    ]
+  },
+  "beneficial": {
+    "energy_bolt": [
+      "NẠP ĐẦY PIN!",
+      "TĂNG LỰC!",
+      "HỒI NĂNG LƯỢNG!",
+      "+27 NĂNG LƯỢNG!"
+    ],
+    "ginger_tea": [
+      "TRÀ GỪNG ẤM!",
+      "HÓA GIẢI ĐÓNG BĂNG!",
+      "GIỮ ẤM CƠ THỂ!",
+      "+15 MÁU!"
+    ],
+    "shield_pickup": [
+      "KHIÊN BẢO VỆ!",
+      "BẢO HỘ 1 ĐÒN!",
+      "KHIÊN NĂNG LƯỢNG!",
+      "AN TOÀN RỒI!"
+    ],
+    "shield_block": [
+      "CHẶN THÀNH CÔNG!",
+      "MIỄN SÁT THƯƠNG!",
+      "KHIÊN ĐỠ ĐÒN!",
+      "KHÔNG SAO HẾT!"
+    ],
+    "heal": [
+      "HỒI MÁU!",
+      "KHỎE LẠI RỒI!",
+      "TĂNG SINH LỰC!"
+    ],
+    "missile_hit": [
+      "TRÚNG MỤC TIÊU!",
+      "BẮN TỐT LẮM!",
+      "BÙM!",
+      "HẠ GỤC!"
+    ],
+    "speed_up": [
+      "TĂNG TỐC!",
+      "LƯỚT NHANH!"
+    ]
+  }
+}
+

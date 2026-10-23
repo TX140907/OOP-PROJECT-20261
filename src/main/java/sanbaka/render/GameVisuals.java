@@ -15,6 +15,21 @@ import sanbaka.model.Confetti;
 
 /** Lớp hỗ trợ vẽ các chi tiết đồ họa thủ công bằng Java 2D Graphics. */
 public class GameVisuals extends GameLogic {
+    private static final Color GINGER_C1 = new Color(255, 105, 90, 48);
+    private static final Color GINGER_C2 = new Color(255, 90, 75, 92);
+    private static final Color GINGER_C3 = new Color(245, 75, 55, 160);
+    private static final Color GINGER_C4 = new Color(220, 45, 35, 230);
+    private static final Color GINGER_C5 = new Color(255, 225, 120, 245);
+    private static final Color GINGER_STEAM_C = new Color(255, 240, 225, 175);
+    private static final BasicStroke GINGER_STEAM_STROKE = new BasicStroke(1.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+    private static final BasicStroke STROKE_RESET_1F = new BasicStroke(1f);
+
+    private static final Color SHIELD_AURA_FILL = new Color(60, 215, 255, 45);
+    private static final Color SHIELD_AURA_BORDER = new Color(110, 235, 255, 180);
+    private static final Color SHIELD_AURA_ARC = new Color(200, 250, 255, 210);
+    private static final BasicStroke SHIELD_BORDER_STROKE = new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+    private static final BasicStroke SHIELD_ARC_STROKE = new BasicStroke(2.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+
     private static final Map<String, Optional<BufferedImage>> AVATAR_IMAGES = new HashMap<>();
 
     private BufferedImage loadAvatarImage(String name) {
@@ -171,6 +186,113 @@ public class GameVisuals extends GameLogic {
         g.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g.draw(bolt);
         g.setStroke(new BasicStroke(1f));
+        g.setTransform(old);
+    }
+
+    public void drawGingerTea(Graphics2D g, double x, double y, double sc) {
+        AffineTransform old = g.getTransform();
+        g.translate(x, y);
+        g.scale(sc, sc);
+        long now = System.currentTimeMillis();
+
+        // Hình tròn đồng tâm đỏ nhạt dần từ lõi ra viền ngoài
+        // Vòng 1 (ngoài cùng, đỏ rất nhạt): r=22
+        g.setColor(GINGER_C1);
+        g.fill(new Ellipse2D.Double(-22, -22, 44, 44));
+
+        // Vòng 2 (giữa ngoài, đỏ nhạt): r=17
+        g.setColor(GINGER_C2);
+        g.fill(new Ellipse2D.Double(-17, -17, 34, 34));
+
+        // Vòng 3 (giữa trong, đỏ cam ấm): r=12
+        g.setColor(GINGER_C3);
+        g.fill(new Ellipse2D.Double(-12, -12, 24, 24));
+
+        // Vòng 4 (lõi trà gừng ấm nóng, đỏ đậm): r=7
+        g.setColor(GINGER_C4);
+        g.fill(new Ellipse2D.Double(-7, -7, 14, 14));
+
+        // Điểm nhấn vàng gừng ở tâm
+        g.setColor(GINGER_C5);
+        g.fill(new Ellipse2D.Double(-3, -3, 6, 6));
+
+        // Hơi nước bốc lên ấm áp
+        g.setColor(GINGER_STEAM_C);
+        g.setStroke(GINGER_STEAM_STROKE);
+        double steamOffset = (now % 1000) / 1000.0;
+        Path2D.Double steam1 = new Path2D.Double();
+        steam1.moveTo(-4, -10 - steamOffset * 8);
+        steam1.curveTo(-8, -16 - steamOffset * 8, 0, -22 - steamOffset * 8, -4, -28 - steamOffset * 8);
+        g.draw(steam1);
+
+        Path2D.Double steam2 = new Path2D.Double();
+        steam2.moveTo(4, -12 - steamOffset * 8);
+        steam2.curveTo(0, -18 - steamOffset * 8, 8, -24 - steamOffset * 8, 4, -30 - steamOffset * 8);
+        g.draw(steam2);
+
+        g.setStroke(STROKE_RESET_1F);
+        g.setTransform(old);
+    }
+
+    public void drawShieldItem(Graphics2D g, double x, double y, double sc) {
+        AffineTransform old = g.getTransform();
+        g.translate(x, y);
+        g.scale(sc, sc);
+
+        // Vầng hào quang bảo hộ xanh lam
+        g.setColor(new Color(50, 200, 255, 55));
+        g.fill(new Ellipse2D.Double(-24, -24, 48, 48));
+        g.setColor(new Color(80, 225, 255, 95));
+        g.fill(new Ellipse2D.Double(-17, -17, 34, 34));
+
+        // Hình chiếc khiên hộ mệnh
+        Path2D.Double shield = new Path2D.Double();
+        shield.moveTo(0, -14);
+        shield.lineTo(13, -8);
+        shield.lineTo(11, 4);
+        shield.quadTo(8, 14, 0, 18);
+        shield.quadTo(-8, 14, -11, 4);
+        shield.lineTo(-13, -8);
+        shield.closePath();
+
+        g.setColor(new Color(40, 170, 240, 220));
+        g.fill(shield);
+        g.setColor(new Color(200, 245, 255, 250));
+        g.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.draw(shield);
+
+        // Biểu tượng chữ thập năng lượng ở giữa khiên
+        g.setColor(new Color(255, 255, 255, 240));
+        g.fill(new Rectangle2D.Double(-1.5, -7, 3, 14));
+        g.fill(new Rectangle2D.Double(-6, -2.5, 12, 3));
+
+        g.setStroke(new BasicStroke(1f));
+        g.setTransform(old);
+    }
+
+    public void drawShieldAura(Graphics2D g, double px, double py, long now) {
+        AffineTransform old = g.getTransform();
+        g.translate(px, py);
+        double pulse = 1.0 + 0.05 * Math.sin(now / 150.0);
+        g.scale(pulse, pulse);
+
+        // Bong bóng năng lượng bảo hộ bao quanh xe
+        g.setColor(SHIELD_AURA_FILL);
+        g.fill(new Ellipse2D.Double(-34, -42, 68, 84));
+
+        // Viền khiên năng lượng phát sáng
+        g.setColor(SHIELD_AURA_BORDER);
+        g.setStroke(SHIELD_BORDER_STROKE);
+        g.draw(new Ellipse2D.Double(-34, -42, 68, 84));
+
+        // Các cung năng lượng xoay quanh khiên
+        double rot = (now / 220.0) % (2 * Math.PI);
+        g.setColor(SHIELD_AURA_ARC);
+        g.setStroke(SHIELD_ARC_STROKE);
+        g.draw(new Arc2D.Double(-36, -44, 72, 88, Math.toDegrees(rot), 55, Arc2D.OPEN));
+        g.draw(new Arc2D.Double(-36, -44, 72, 88, Math.toDegrees(rot + Math.PI), 55, Arc2D.OPEN));
+
+        g.setStroke(STROKE_RESET_1F);
         g.setTransform(old);
     }
 
@@ -610,9 +732,10 @@ public class GameVisuals extends GameLogic {
 
     public double finishY() {
         if (day == 4) return -9999;
-        double r = Math.max(0, (ROAD_DURATION_MS - stageProgressMs) / 1000.0);
+        double r = Math.max(0, (getStageDurationMs() - stageProgressMs) / 1000.0);
         if (r >= SCHOOL_APPROACH) return -9999;
         double base = (3.6 + day * 0.32) * 60;
+        if (day == HOT_DAY) base *= 1.25;
         return FINISH_Y - base * (0.2 * r + 0.4 * r * r / SCHOOL_APPROACH);
     }
 
