@@ -1,11 +1,25 @@
 package sanbaka.state;
 
-import java.awt.*;
-import java.awt.event.*;
-import java.awt.geom.*;
-import java.util.*;
-import javax.swing.*;
-import sanbaka.model.*;
+import java.awt.Color;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyListener;
+import java.util.ArrayList;
+import java.util.Random;
+
+import javax.swing.JPanel;
+
+import sanbaka.model.Bird;
+import sanbaka.model.BombExplosion;
+import sanbaka.model.BossBullet;
+import sanbaka.model.BossEnemy;
+import sanbaka.model.Confetti;
+import sanbaka.model.EnemyBomb;
+import sanbaka.model.EnemyPlane;
+import sanbaka.model.Line;
+import sanbaka.model.PlayerBike;
+import sanbaka.model.PlayerMissile;
+import sanbaka.model.PlayerVehicle;
+import sanbaka.model.Thing;
 
 /** Quản lý trạng thái chung, thông số game và vòng lặp. */
 public abstract class GameState extends JPanel implements ActionListener, KeyListener {
@@ -128,11 +142,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public long lastHitAt = 0;
     public boolean jamBuilt = false;
     public int retryDialogIndex = 0;
-<<<<<<< HEAD
     public int flightRetryDialogIndex = 0;
-=======
     public boolean retryAtTrafficCheckpoint = false;
->>>>>>> 5f1108bd83d3f0b8b2c8ef925329c55992b07434
     public String beCause = "";
     // ---- Màn 3 (Trời rét, đường trơn: quán tính, vũng băng, gió mùa & đóng băng 70% tốc độ tiến, trà gừng) ----
     public static final int COLD_DAY = 2;
@@ -247,6 +258,3 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         typedDialogStartedAt = 0;
     }
 }
-
-
-
