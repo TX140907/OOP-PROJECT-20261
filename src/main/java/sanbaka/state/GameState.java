@@ -72,7 +72,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public static final double PLAYER_SPEED = 260.0;
     public static final double VERTICAL_SPEED = 240.0;
     public static final Color INK = new Color(35, 42, 60), CREAM = new Color(250, 247, 239), PINK = new Color(237, 119, 155), MINT = new Color(94, 181, 154);
-    public final javax.swing.Timer timer = new javax.swing.Timer(15, this);
+    public final javax.swing.Timer timer = new javax.swing.Timer(12, this);
     public final java.util.List<Line> lines = new ArrayList<>();
     public final Random rng = new Random();
     public static final int TITLE = 0;
@@ -128,6 +128,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public long lastHitAt = 0;
     public boolean jamBuilt = false;
     public int retryDialogIndex = 0;
+    public int flightRetryDialogIndex = 0;
     public String beCause = "";
     // ---- Màn 3 (Trời rét, đường trơn: quán tính, vũng băng, gió mùa & đóng băng 70% tốc độ tiến, trà gừng) ----
     public static final int COLD_DAY = 2;

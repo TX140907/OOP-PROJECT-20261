@@ -41,7 +41,7 @@ public class RoadMotorcycle extends Thing {
         int padY = (int) Math.ceil(this.h / 2.0 + 10);
         BufferedImage sprite = SPRITE_CACHE.get(key);
         if (sprite == null) {
-            sprite = new BufferedImage(padX * 2, padY * 2, BufferedImage.TYPE_INT_ARGB);
+            sprite = ArtAssets.createCompatibleImage(padX * 2, padY * 2);
             Graphics2D sg = sprite.createGraphics();
             sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             sg.translate(padX, padY);

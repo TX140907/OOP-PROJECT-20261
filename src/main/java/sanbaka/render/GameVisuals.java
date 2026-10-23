@@ -31,20 +31,12 @@ public class GameVisuals extends GameLogic {
     private static final BasicStroke SHIELD_ARC_STROKE = new BasicStroke(2.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 
     private static final Map<String, Optional<BufferedImage>> AVATAR_IMAGES = new HashMap<>();
+    private static final Map<Integer, BufferedImage> AVATAR_CIRCLE_CACHE = new java.util.concurrent.ConcurrentHashMap<>();
 
     private BufferedImage loadAvatarImage(String name) {
         synchronized (AVATAR_IMAGES) {
             return AVATAR_IMAGES.computeIfAbsent(name, key -> {
-                // 1. Thử nạp qua ClassLoader resource
-                for (String extension : new String[]{".png", ".jpg", ".jpeg"}) {
-                    try (InputStream in = GameVisuals.class.getResourceAsStream("/assets/avatars/" + key + extension)) {
-                        if (in != null) {
-                            BufferedImage img = ImageIO.read(in);
-                            if (img != null) return Optional.of(img);
-                        }
-                    } catch (Exception ignored) {}
-                }
-                // 2. Thử nạp từ file hệ thống
+                // 1. Nạp trực tiếp từ thư mục assets/avatars ngoài cùng của dự án
                 Path cwd = Paths.get("").toAbsolutePath();
                 for (Path dir = cwd; dir != null; dir = dir.getParent()) {
                     Path imageDir = dir.resolve("assets/avatars");
@@ -57,6 +49,17 @@ public class GameVisuals extends GameLogic {
                         } catch (IOException | RuntimeException ignored) {
                             // Ảnh thiếu hoặc không đọc được thì tiếp tục dùng avatar vẽ bằng Java.
                         }
+                    }
+                }
+                // 2. Fallback qua ClassLoader resource
+                for (String prefix : new String[]{"/avatars/", "/assets/avatars/"}) {
+                    for (String extension : new String[]{".png", ".jpg", ".jpeg"}) {
+                        try (InputStream in = GameVisuals.class.getResourceAsStream(prefix + key + extension)) {
+                            if (in != null) {
+                                BufferedImage img = ImageIO.read(in);
+                                if (img != null) return Optional.of(img);
+                            }
+                        } catch (Exception ignored) {}
                     }
                 }
                 return Optional.empty();
@@ -333,6 +336,22 @@ public class GameVisuals extends GameLogic {
                 : who.startsWith("Thắng") ? 1
                 : who.startsWith("Nam") ? 2
                 : who.startsWith("Chủ trọ") ? 3 : 4;
+        int cacheKey = (kind << 16) | (r & 0xFFFF);
+        BufferedImage cached = AVATAR_CIRCLE_CACHE.get(cacheKey);
+        int pad = 4;
+        if (cached == null) {
+            int size = (r + pad) * 2;
+            cached = ArtAssets.createCompatibleImage(size, size);
+            Graphics2D sg = cached.createGraphics();
+            sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            renderAvatarCircle(sg, kind, r + pad, r + pad, r);
+            sg.dispose();
+            AVATAR_CIRCLE_CACHE.put(cacheKey, cached);
+        }
+        g.drawImage(cached, cx - r - pad, cy - r - pad, null);
+    }
+
+    private void renderAvatarCircle(Graphics2D g, int kind, int cx, int cy, int r) {
         Color[] bgs = {
             new Color(255, 214, 226), new Color(200, 226, 246), new Color(255, 226, 190),
             new Color(214, 236, 216), new Color(226, 230, 238)

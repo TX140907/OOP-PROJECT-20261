@@ -31,7 +31,7 @@ if ($BuildOnly) {
 }
 
 Write-Host "Launching Sanbaka Game..." -ForegroundColor Cyan
-$cp = "$outputDir;$(Join-Path $projectRoot 'src\main\resources');$(Join-Path $projectRoot 'assets');$projectRoot"
+$cp = "$outputDir;$(Join-Path $projectRoot 'assets');$projectRoot"
 $javaArgs = @(
     '-Dsun.awt.noerasebackground=true',
     '-Dsun.java2d.d3d=true',

@@ -49,18 +49,10 @@ public class SanbakaGame extends GameScreenRenderer {
     }
 
     private java.awt.Font loadTitleFont() {
-        // 1. Thử nạp từ classpath (JAR hoặc target/classes hoặc resources)
-        try (java.io.InputStream in = SanbakaGame.class.getResourceAsStream("/assets/fonts/1FTV-VIP-Starborn.ttf")) {
-            if (in != null) {
-                return java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, in)
-                        .deriveFont(java.awt.Font.BOLD, 42f);
-            }
-        } catch (Exception ignored) {}
-
-        // 2. Thử nạp từ file hệ thống theo các đường dẫn tương đối
+        // 1. Nạp trực tiếp từ thư mục assets ngoài cùng của dự án
         String[] fontPaths = {
             "assets/fonts/1FTV-VIP-Starborn.ttf",
-            "src/main/resources/assets/fonts/1FTV-VIP-Starborn.ttf"
+            "OOP-PROJECT-20261/assets/fonts/1FTV-VIP-Starborn.ttf"
         };
         for (String path : fontPaths) {
             java.io.File fontFile = new java.io.File(path);
@@ -71,21 +63,23 @@ public class SanbakaGame extends GameScreenRenderer {
                 } catch (java.awt.FontFormatException | java.io.IOException ignored) {}
             }
         }
+        // 2. Fallback qua classpath (khi thư mục assets được đưa vào -cp)
+        for (String res : new String[]{"/fonts/1FTV-VIP-Starborn.ttf", "/assets/fonts/1FTV-VIP-Starborn.ttf"}) {
+            try (java.io.InputStream in = SanbakaGame.class.getResourceAsStream(res)) {
+                if (in != null) {
+                    return java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, in)
+                            .deriveFont(java.awt.Font.BOLD, 42f);
+                }
+            } catch (Exception ignored) {}
+        }
         return new java.awt.Font("SansSerif", java.awt.Font.BOLD, 42);
     }
 
     private java.awt.image.BufferedImage loadDialogBackground() {
-        // 1. Thử nạp từ classpath
-        try (java.io.InputStream in = SanbakaGame.class.getResourceAsStream("/assets/background/sanbaka2.jpg")) {
-            if (in != null) {
-                return javax.imageio.ImageIO.read(in);
-            }
-        } catch (Exception ignored) {}
-
-        // 2. Thử nạp từ file hệ thống
+        // 1. Nạp trực tiếp từ thư mục assets ngoài cùng của dự án
         String[] paths = {
             "assets/background/sanbaka2.jpg",
-            "src/main/resources/assets/background/sanbaka2.jpg"
+            "OOP-PROJECT-20261/assets/background/sanbaka2.jpg"
         };
         for (String path : paths) {
             java.io.File imageFile = new java.io.File(path);
@@ -96,6 +90,14 @@ public class SanbakaGame extends GameScreenRenderer {
                 System.err.println("Không đọc được ảnh nền: " + imageFile.getAbsolutePath());
                 return null;
             }
+        }
+        // 2. Fallback qua classpath
+        for (String res : new String[]{"/background/sanbaka2.jpg", "/assets/background/sanbaka2.jpg"}) {
+            try (java.io.InputStream in = SanbakaGame.class.getResourceAsStream(res)) {
+                if (in != null) {
+                    return javax.imageio.ImageIO.read(in);
+                }
+            } catch (Exception ignored) {}
         }
         System.err.println("Không tìm thấy sanbaka2.jpg; game sẽ dùng nền mặc định.");
         return null;

@@ -2,23 +2,56 @@ package sanbaka.model;
 
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
 import sanbaka.assets.ArtAssets;
 import sanbaka.render.GameVisuals;
 
-/** Mặt tiền trường học, tách khỏi renderer của đường và khuôn viên. */
+/** Mặt tiền trường học, tách khỏi renderer của đường và khuôn viên (tích hợp bộ đệm sprite GPU). */
 public class SchoolBuilding {
+    private static BufferedImage cachedFacade;
+
     public static void draw(Graphics2D g, double cx, double baseY, double sc, GameVisuals scene) {
-        java.awt.image.BufferedImage art = ArtAssets.load("SchoolBuilding", "SchoolBuilding.png");
+        BufferedImage art = ArtAssets.load("SchoolBuilding", "SchoolBuilding.png");
         if (art != null) {
             int w = (int) Math.round(672 * sc), h = (int) Math.round(294 * sc);
             g.drawImage(art, (int) Math.round(cx - 336 * sc),
                     (int) Math.round(baseY - 294 * sc), w, h, null);
             return;
         }
+        if (cachedFacade == null) {
+            cachedFacade = buildFacadeSprite();
+        }
         AffineTransform old = g.getTransform();
+        Stroke oldStroke = g.getStroke();
         long now = System.currentTimeMillis();
         g.translate(cx, baseY);
         g.scale(sc, sc);
+        g.drawImage(cachedFacade, -346, -336, null);
+
+        // Lá cờ bay phấp phới trên đỉnh cột cờ
+        Path2D.Double flag = new Path2D.Double();
+        flag.moveTo(-34, -328);
+        double w1 = Math.sin(now / 180.0) * 4;
+        double w2 = Math.sin(now / 180.0 + 1.2) * 5;
+        flag.quadTo(-16 + w1, -331, 2, -326);
+        flag.lineTo(2, -308);
+        flag.quadTo(-16 + w2, -313, -34, -310);
+        flag.closePath();
+        g.setColor(new Color(220, 50, 50));
+        g.fill(flag);
+        g.setColor(new Color(255, 215, 60));
+        scene.drawStar(g, -16 + (w1 + w2) / 2.0, -318, 5, 5, 2.2);
+
+        g.setTransform(old);
+        g.setStroke(oldStroke);
+    }
+
+    private static BufferedImage buildFacadeSprite() {
+        BufferedImage img = ArtAssets.createCompatibleImage(692, 352);
+        Graphics2D g = img.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.translate(346, 336);
+
         Color wall = new Color(250, 240, 222), wallD = new Color(232, 218, 196);
         Color roofC = new Color(200, 96, 84), roofD = new Color(166, 70, 66);
         Color glass = new Color(186, 222, 240), frame = new Color(150, 120, 96);
@@ -97,18 +130,6 @@ public class SchoolBuilding {
         g.setColor(new Color(140, 110, 80));
         g.setStroke(new BasicStroke(2.2f));
         g.drawLine(-34, -288, -34, -328);
-        Path2D.Double flag = new Path2D.Double();
-        flag.moveTo(-34, -328);
-        double w1 = Math.sin(now / 180.0) * 4;
-        double w2 = Math.sin(now / 180.0 + 1.2) * 5;
-        flag.quadTo(-16 + w1, -331, 2, -326);
-        flag.lineTo(2, -308);
-        flag.quadTo(-16 + w2, -313, -34, -310);
-        flag.closePath();
-        g.setColor(new Color(220, 50, 50));
-        g.fill(flag);
-        g.setColor(new Color(255, 215, 60));
-        scene.drawStar(g, -16 + (w1 + w2) / 2.0, -318, 5, 5, 2.2);
         g.setColor(new Color(248, 230, 180));
         g.fill(new Rectangle2D.Double(-125, -120, 250, 26));
         g.setColor(new Color(180, 50, 50));
@@ -116,7 +137,7 @@ public class SchoolBuilding {
         String banner = "HỘI ĐỒNG THI HỌC KỲ · ĐH BÁCH KHOA";
         int bw = g.getFontMetrics().stringWidth(banner);
         g.drawString(banner, (int) (-bw / 2.0), -103);
-        g.setTransform(old);
+        g.dispose();
+        return img;
     }
 }
-

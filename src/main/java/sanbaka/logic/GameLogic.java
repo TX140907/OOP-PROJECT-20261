@@ -1163,6 +1163,7 @@ public class GameLogic extends GameStory {
 
     public void startFlight(long now) {
         flightMode = true;
+        flightRetryDialogIndex = dialogIndex;
         keyE = false;
         things.clear();
         birds.clear();
@@ -1178,10 +1179,11 @@ public class GameLogic extends GameStory {
         heliX = 170;
         heliY = 300;
         heliTilt = 0;
+        skyScroll = 0;
         lastBird = now;
         player.invulnerable = 0;
         hp = FLIGHT_START_HP;
-        stageProgressMs = Math.max(stageProgressMs, ROAD_DURATION_MS / 3.0);
+        stageProgressMs = ROAD_DURATION_MS / 3.0;
         elapsed = (long) stageProgressMs;
         currentProgressFactor = 1.0;
         curbEdgeTime = 0.0;
@@ -1192,6 +1194,20 @@ public class GameLogic extends GameStory {
         hitSlowFactor = 1.0;
         knockbackVy = 0.0;
         knockbackVx = 0.0;
+    }
+
+    public void retryFlight() {
+        long now = System.currentTimeMillis();
+        resetDialogTyping();
+        dialogIndex = flightRetryDialogIndex;
+        screen = ROAD;
+        lastFrameAt = now;
+        left = right = up = down = keyE = false;
+        floatingTextManager.clear();
+        beCause = "";
+        fadeInStart = now;
+        startFlight(now);
+        requestFocusInWindow();
     }
 
     public void firePlayerMissile(long now) {
@@ -1529,8 +1545,12 @@ public class GameLogic extends GameStory {
             if (System.currentTimeMillis() - cardStart > 700) endCard(System.currentTimeMillis());
         }
         else if (screen == ENDING_BE) {
-            dialogIndex = retryDialogIndex;   // chơi lại đúng ngày vừa thua
-            beginDay();
+            if (day == 4 && flightMode) {
+                retryFlight();            // màn 5 chết ở lượt 2 (trực thăng) thì chơi lại ngay từ lượt 2
+            } else {
+                dialogIndex = retryDialogIndex;   // chơi lại đúng ngày vừa thua
+                beginDay();
+            }
         }
         else if (screen == ENDING_HE) {
             screen = TITLE;

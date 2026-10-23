@@ -8,6 +8,7 @@ import sanbaka.render.GameVisuals;
 
 /** Vũng băng trơn thực thể trên mặt đường Màn 3 (cán qua sẽ bị trượt bánh mất ma sát ngang). */
 public class IcePatch extends Thing {
+    private static BufferedImage cachedSprite;
 
     @Override
     public void draw(Graphics2D g, GameVisuals scene) {
@@ -25,6 +26,23 @@ public class IcePatch extends Thing {
             return;
         }
 
+        int padX = (int) Math.ceil(hw + 10);
+        int padY = (int) Math.ceil(hh + 10);
+        if (cachedSprite == null) {
+            cachedSprite = ArtAssets.createCompatibleImage(padX * 2, padY * 2);
+            Graphics2D sg = cachedSprite.createGraphics();
+            sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            sg.translate(padX, padY);
+            renderIcePatchArt(sg, w, h, hw, hh);
+            sg.dispose();
+        }
+        g.drawImage(cachedSprite, -padX, -padY, null);
+
+        g.setTransform(old);
+        g.setStroke(oldStroke);
+    }
+
+    private static void renderIcePatchArt(Graphics2D g, double w, double h, double hw, double hh) {
         // Viền băng mờ lan ra mặt đường nhựa
         g.setColor(new Color(195, 228, 250, 115));
         g.fill(new Ellipse2D.Double(-hw - 5, -hh - 3, w + 10, h + 6));
@@ -49,16 +67,8 @@ public class IcePatch extends Thing {
         g.draw(new Line2D.Double(-hw * 0.20, hh * 0.20, hw * 0.35, -hh * 0.30));
         g.draw(new Line2D.Double(hw * 0.15, hh * 0.38, hw * 0.48, hh * 0.05));
 
-        // Hoa tuyết / tinh thể lấp lánh trên mặt băng
-        long now = System.currentTimeMillis();
-        double twinkle = 0.5 + 0.5 * Math.sin(now / 240.0 + this.color);
-        g.setColor(new Color(255, 255, 255, (int) (150 + 100 * twinkle)));
-        double sx = -hw * 0.3, sy = -hh * 0.1, sr = 3.5 + 2.5 * twinkle;
+        double sx = -hw * 0.3, sy = -hh * 0.1, sr = 5.0;
         g.draw(new Line2D.Double(sx - sr, sy, sx + sr, sy));
         g.draw(new Line2D.Double(sx, sy - sr, sx, sy + sr));
-
-        g.setTransform(old);
-        g.setStroke(oldStroke);
     }
 }
-

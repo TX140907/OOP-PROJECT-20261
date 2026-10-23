@@ -1215,6 +1215,30 @@ public class SanbakaSmokeTest {
             throw new AssertionError("trySpawnStudent should succeed on empty Day 0 road!");
         }
 
+        // Kiểm tra chết ở Màn 5 Lượt 2 (flightMode) -> bấm Enter ở ENDING_BE phải chơi lại ngay Lượt 2
+        logic.day = 4;
+        logic.dialogIndex = 88;
+        logic.startFlight(System.currentTimeMillis());
+        logic.stageProgressMs = 31000.0;
+        logic.hp = 0;
+        logic.screen = GameState.ENDING_BE;
+        java.awt.event.KeyEvent enterKey = new java.awt.event.KeyEvent(
+                logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
+                java.awt.event.KeyEvent.VK_ENTER, '\n');
+        logic.keyPressed(enterKey);
+        if (logic.screen != GameState.ROAD || !logic.flightMode) {
+            throw new AssertionError("Dying in Day 5 Turn 2 (flightMode) must retry directly in Turn 2 (flightMode)!");
+        }
+        if (logic.hp != GameState.FLIGHT_START_HP) {
+            throw new AssertionError("Retrying Day 5 Turn 2 must restore HP to " + GameState.FLIGHT_START_HP + ", got: " + logic.hp);
+        }
+        if (Math.abs(logic.stageProgressMs - GameState.ROAD_DURATION_MS / 3.0) > 1.0) {
+            throw new AssertionError("Retrying Day 5 Turn 2 must reset progress to 1/3 road duration, got: " + logic.stageProgressMs);
+        }
+        if (logic.dialogIndex != 88) {
+            throw new AssertionError("Retrying Day 5 Turn 2 must preserve post-jam dialogIndex, got: " + logic.dialogIndex);
+        }
+
         System.out.println("  ✓ testStudentCrossingMechanics passed (Yields to cars/wobble, no clipping, continues after player collision, no text)");
     }
 }

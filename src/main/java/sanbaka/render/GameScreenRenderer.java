@@ -10,6 +10,8 @@ import java.util.*;
 import javax.swing.*;
 
 public class GameScreenRenderer extends GameMenuRenderer {
+    private static final boolean IS_WINDOWS = System.getProperty("os.name", "").toLowerCase().contains("win");
+
     void drawFade(Graphics2D g) {
         if (fadeKind == FADE_ROOM) {
             int saved = dialogIndex;
@@ -224,7 +226,10 @@ public class GameScreenRenderer extends GameMenuRenderer {
         }
         g.setColor(MINT);
         g.setFont(new Font("Dialog", Font.BOLD, 17));
-        g.drawString(happy ? "ENTER / SPACE · CHƠI LẠI" : "ENTER / SPACE · CHƠI LẠI NGÀY " + (day + 1), 145, 455);
+        String retryText = happy ? "ENTER / SPACE · CHƠI LẠI"
+                : (day == 4 && flightMode) ? "ENTER / SPACE · CHƠI LẠI LƯỢT 2 (NGÀY 5)"
+                : "ENTER / SPACE · CHƠI LẠI NGÀY " + (day + 1);
+        g.drawString(retryText, 145, 455);
         if (happy) drawConfetti(g, now);
     }
 
@@ -313,7 +318,9 @@ public class GameScreenRenderer extends GameMenuRenderer {
             g.setColor(new Color(0, 0, 0, (int) (255 * (1 - fadeIn / 700.0))));
             g.fillRect(0, 0, W, H);
         }
-        Toolkit.getDefaultToolkit().sync();
+        if (!IS_WINDOWS) {
+            Toolkit.getDefaultToolkit().sync();
+        }
         if (PERF_LOG_ENABLED) recordPerformance(true, System.nanoTime() - perfStart);
     }
 

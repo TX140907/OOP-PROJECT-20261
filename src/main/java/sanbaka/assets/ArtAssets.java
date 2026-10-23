@@ -21,24 +21,24 @@ public final class ArtAssets {
         return CACHE.computeIfAbsent(relative, ArtAssets::read).orElse(null);
     }
 
-    private static Optional<BufferedImage> read(String relative) {
-        // 1. Thử nạp từ ClassLoader / resource classpath
-        String[] resourcePrefixes = {
-            "/assets/objects/" + relative,
-            "/assets/" + relative,
-            "/image/" + relative,
-            "/" + relative
-        };
-        for (String res : resourcePrefixes) {
-            try (InputStream in = ArtAssets.class.getResourceAsStream(res)) {
-                if (in != null) {
-                    BufferedImage img = ImageIO.read(in);
-                    if (img != null) return Optional.of(img);
+    /** Tạo BufferedImage tương thích trực tiếp với phần cứng GPU (VRAM) để vẽ nhanh nhất. */
+    public static BufferedImage createCompatibleImage(int width, int height) {
+        try {
+            if (!java.awt.GraphicsEnvironment.isHeadless()) {
+                java.awt.GraphicsConfiguration gc = java.awt.GraphicsEnvironment
+                        .getLocalGraphicsEnvironment()
+                        .getDefaultScreenDevice()
+                        .getDefaultConfiguration();
+                if (gc != null) {
+                    return gc.createCompatibleImage(width, height, java.awt.Transparency.TRANSLUCENT);
                 }
-            } catch (Exception ignored) {}
-        }
+            }
+        } catch (Exception ignored) {}
+        return new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+    }
 
-        // 2. Thử tìm trên file system từ working directory
+    private static Optional<BufferedImage> read(String relative) {
+        // 1. Thử tìm trực tiếp từ thư mục assets nằm ngoài cùng của dự án
         Path cwd = Paths.get("").toAbsolutePath();
         Optional<BufferedImage> image = searchFrom(cwd, relative);
         if (image.isPresent()) return image;
@@ -51,6 +51,22 @@ public final class ArtAssets {
             if (image.isPresent()) return image;
         } catch (Exception ignored) {}
 
+        // 2. Fallback qua ClassLoader nếu thư mục assets được gắn vào classpath
+        String[] resourcePrefixes = {
+            "/objects/" + relative,
+            "/assets/objects/" + relative,
+            "/assets/" + relative,
+            "/" + relative
+        };
+        for (String res : resourcePrefixes) {
+            try (InputStream in = ArtAssets.class.getResourceAsStream(res)) {
+                if (in != null) {
+                    BufferedImage img = ImageIO.read(in);
+                    if (img != null) return Optional.of(img);
+                }
+            } catch (Exception ignored) {}
+        }
+
         return Optional.empty();
     }
 
@@ -58,10 +74,7 @@ public final class ArtAssets {
         for (Path dir = start; dir != null; dir = dir.getParent()) {
             Path[] candidatePaths = {
                 dir.resolve("assets/objects").resolve(relative),
-                dir.resolve("assets").resolve(relative),
-                dir.resolve("src/main/resources/assets/objects").resolve(relative),
-                dir.resolve("src/main/resources/assets").resolve(relative),
-                dir.resolve("src/main/java/sanbaka/objects").resolve(relative)
+                dir.resolve("assets").resolve(relative)
             };
             for (Path candidate : candidatePaths) {
                 Optional<BufferedImage> image = readFile(candidate);

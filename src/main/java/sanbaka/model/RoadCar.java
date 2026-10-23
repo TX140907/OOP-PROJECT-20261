@@ -185,7 +185,7 @@ public class RoadCar extends Thing {
     }
 
     private BufferedImage createSprite(int padX, int padY, GameVisuals scene, boolean brake) {
-        BufferedImage sprite = new BufferedImage(padX * 2, padY * 2, BufferedImage.TYPE_INT_ARGB);
+        BufferedImage sprite = ArtAssets.createCompatibleImage(padX * 2, padY * 2);
         Graphics2D sg = sprite.createGraphics();
         sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         sg.translate(padX, padY);

@@ -8,6 +8,7 @@ import sanbaka.render.GameVisuals;
 
 /** Ổ gà mặt đường cỡ lớn (vật cản tĩnh nằm dưới mặt đường gây xóc nảy và trừ máu xe). */
 public class Pothole extends Thing {
+    private static BufferedImage cachedSprite;
 
     @Override
     public void draw(Graphics2D g, GameVisuals scene) {
@@ -25,6 +26,23 @@ public class Pothole extends Thing {
             return;
         }
 
+        int padX = (int) Math.ceil(hw + 16);
+        int padY = (int) Math.ceil(hh + 12);
+        if (cachedSprite == null) {
+            cachedSprite = ArtAssets.createCompatibleImage(padX * 2, padY * 2);
+            Graphics2D sg = cachedSprite.createGraphics();
+            sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            sg.translate(padX, padY);
+            renderPotholeArt(sg, w, h, hw, hh);
+            sg.dispose();
+        }
+        g.drawImage(cachedSprite, -padX, -padY, null);
+
+        g.setTransform(old);
+        g.setStroke(oldStroke);
+    }
+
+    private static void renderPotholeArt(Graphics2D g, double w, double h, double hw, double hh) {
         // Viền nhựa đường nứt vỡ lan rộng xung quanh ổ gà
         g.setColor(new Color(56, 60, 70, 195));
         g.fill(new Ellipse2D.Double(-hw - 5, -hh - 4, w + 10, h + 8));
@@ -56,14 +74,9 @@ public class Pothole extends Thing {
         g.fill(new Ellipse2D.Double(hw + 1, -4, 4, 3));
         g.fill(new Ellipse2D.Double(-6, hh + 1, 5, 3));
 
-        // Vệt sáng lấp lánh phản chiếu trên mặt nước đọng
-        long now = System.currentTimeMillis();
-        double shimmer = 0.5 + 0.5 * Math.sin(now / 340.0);
-        g.setColor(new Color(235, 245, 255, (int) (115 + 85 * shimmer)));
+        // Vệt sáng phản chiếu trên mặt nước đọng
+        g.setColor(new Color(235, 245, 255, 165));
         g.fill(new Ellipse2D.Double(-hw * 0.45, -hh * 0.25, w * 0.22, h * 0.14));
         g.fill(new Ellipse2D.Double(hw * 0.15, hh * 0.10, w * 0.12, h * 0.10));
-
-        g.setTransform(old);
-        g.setStroke(oldStroke);
     }
 }

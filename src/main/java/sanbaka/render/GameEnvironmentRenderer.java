@@ -1,5 +1,6 @@
 package sanbaka.render;
 
+import sanbaka.assets.ArtAssets;
 import sanbaka.model.*;
 import sanbaka.state.GameState;
 
@@ -11,8 +12,9 @@ import java.util.*;
 import javax.swing.*;
 
 public class GameEnvironmentRenderer extends GameVisuals {
-    private static final int LOT_CACHE_LIMIT = 96;
-    private static final int TREE_CACHE_LIMIT = 64;
+    private static final int LOT_VARIANTS_PER_DAY = 28;
+    private static final int LOT_CACHE_LIMIT = 320;
+    private static final int TREE_CACHE_LIMIT = 128;
     private static final int WATER_RIPPLE_ALPHA_BUCKETS = 16;
     private static final long FLOOD_LAYER_REFRESH_MS = 40;
     private final Path2D.Double waterStreakPath = new Path2D.Double();
@@ -39,7 +41,7 @@ public class GameEnvironmentRenderer extends GameVisuals {
     }
 
     void drawFlood(Graphics2D g, int rx0, int rx1, double s, long now) {
-        if (floodLayerCache == null) floodLayerCache = new BufferedImage(W, H, BufferedImage.TYPE_INT_ARGB);
+        if (floodLayerCache == null) floodLayerCache = ArtAssets.createCompatibleImage(W, H);
         if (floodLayerUpdatedAt == Long.MIN_VALUE || now - floodLayerUpdatedAt >= FLOOD_LAYER_REFRESH_MS) {
             Graphics2D layerGraphics = floodLayerCache.createGraphics();
             clearAndRenderFloodLayer(layerGraphics, rx0, rx1, s, now);
@@ -200,17 +202,14 @@ public class GameEnvironmentRenderer extends GameVisuals {
         int cacheIndex = dir < 0 ? 0 : 1;
         BufferedImage sprite = lampImageCache[cacheIndex];
         if (sprite == null) {
-            sprite = new BufferedImage(96, 48, BufferedImage.TYPE_INT_ARGB);
+            sprite = ArtAssets.createCompatibleImage(96, 48);
             Graphics2D spriteGraphics = sprite.createGraphics();
             spriteGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             drawLampArt(spriteGraphics, 48, 24, cacheIndex == 0 ? -1 : 1);
             spriteGraphics.dispose();
             lampImageCache[cacheIndex] = sprite;
         }
-        AffineTransform old = g.getTransform();
-        g.translate(x - 48, y - 24);
-        g.drawImage(sprite, 0, 0, null);
-        g.setTransform(old);
+        g.drawImage(sprite, (int) (x - 48), (int) (y - 24), null);
     }
 
     private void drawLampArt(Graphics2D g, double x, double y, int dir) {
@@ -232,7 +231,7 @@ public class GameEnvironmentRenderer extends GameVisuals {
         BufferedImage sprite = treeImageCache.get(key);
         if (sprite == null) {
             int padding = 8, size = radius * 2 + padding * 2;
-            sprite = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
+            sprite = ArtAssets.createCompatibleImage(size, size);
             Graphics2D spriteGraphics = sprite.createGraphics();
             spriteGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             drawTreeArt(spriteGraphics, radius + padding, radius + padding, radius, visualVariant);
@@ -240,10 +239,7 @@ public class GameEnvironmentRenderer extends GameVisuals {
             treeImageCache.put(key, sprite);
         }
         int center = radius + 8;
-        AffineTransform old = g.getTransform();
-        g.translate(x - center, y - center);
-        g.drawImage(sprite, 0, 0, null);
-        g.setTransform(old);
+        g.drawImage(sprite, (int) (x - center), (int) (y - center), null);
     }
 
     private void drawTreeArt(Graphics2D g, double x, double y, double r, int variant) {
@@ -319,22 +315,23 @@ public class GameEnvironmentRenderer extends GameVisuals {
     }
 
     void drawLot(Graphics2D g, int side, int n, double y0) {
-        long key = ((long) day << 33) | (((long) n & 0xFFFFFFFFL) << 1) | (side & 1);
+        int rawHash = hash(n, side + 1);
+        int variant = Math.floorMod(rawHash, LOT_VARIANTS_PER_DAY);
+        long key = ((long) day << 16) | ((long) (side & 1) << 8) | variant;
         BufferedImage tile = lotImageCache.get(key);
         if (tile == null) {
-            tile = new BufferedImage(210, 160, BufferedImage.TYPE_INT_ARGB);
+            tile = ArtAssets.createCompatibleImage(210, 160);
             Graphics2D tileGraphics = tile.createGraphics();
             tileGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            drawLotContents(tileGraphics, side, n, 0);
+            if (side == 1) {
+                tileGraphics.translate(210, 0);
+                tileGraphics.scale(-1, 1);
+            }
+            drawLotContents(tileGraphics, side, variant, 0);
             tileGraphics.dispose();
             lotImageCache.put(key, tile);
         }
-
-        AffineTransform old = g.getTransform();
-        g.translate(side == 1 ? W : 0, y0);
-        if (side == 1) g.scale(-1, 1);
-        g.drawImage(tile, 0, 0, null);
-        g.setTransform(old);
+        g.drawImage(tile, side == 1 ? W - 210 : 0, (int) y0, null);
     }
 
     private void drawLotContents(Graphics2D g, int side, int n, double y0) {
@@ -546,4 +543,3 @@ public class GameEnvironmentRenderer extends GameVisuals {
         if (now < hitSlowUntil) drawCollisionSlowEffect(g, heliX, heliY, now);
     }
 }
-

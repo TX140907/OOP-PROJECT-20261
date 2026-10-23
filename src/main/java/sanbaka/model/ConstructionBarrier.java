@@ -8,6 +8,7 @@ import sanbaka.render.GameVisuals;
 
 /** Rào chắn công trình thi công đường bộ (vật cản tĩnh, đứng yên trên đường). */
 public class ConstructionBarrier extends Thing {
+    private static final BufferedImage[] SPRITE_CACHE = new BufferedImage[2];
 
     @Override
     public void draw(Graphics2D g, GameVisuals scene) {
@@ -27,6 +28,27 @@ public class ConstructionBarrier extends Thing {
             return;
         }
 
+        boolean blink = (System.currentTimeMillis() / 220) % 2 == 0;
+        int idx = blink ? 1 : 0;
+        int padX = (int) Math.ceil(hw + 16);
+        int padY = (int) Math.ceil(hh + 16);
+        BufferedImage sprite = SPRITE_CACHE[idx];
+        if (sprite == null) {
+            sprite = ArtAssets.createCompatibleImage(padX * 2, padY * 2);
+            Graphics2D sg = sprite.createGraphics();
+            sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            sg.translate(padX, padY);
+            renderBarrierArt(sg, w, h, hw, hh, blink);
+            sg.dispose();
+            SPRITE_CACHE[idx] = sprite;
+        }
+        g.drawImage(sprite, -padX, -padY, null);
+
+        g.setTransform(old);
+        g.setStroke(oldStroke);
+    }
+
+    private static void renderBarrierArt(Graphics2D g, double w, double h, double hw, double hh, boolean blink) {
         // Bóng đổ rào chắn
         g.setColor(new Color(0, 0, 0, 55));
         g.fill(new RoundRectangle2D.Double(-hw + 3, hh - 6, w - 6, 8, 6, 6));
@@ -34,10 +56,8 @@ public class ConstructionBarrier extends Thing {
         // Chân đế chữ A hai bên bằng thép sơn đen
         g.setColor(new Color(55, 60, 70));
         g.setStroke(new BasicStroke(2.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        // Chân trái
         g.draw(new Line2D.Double(-hw + 8, hh - 1, -hw + 14, -hh + 6));
         g.draw(new Line2D.Double(-hw + 20, hh - 1, -hw + 14, -hh + 6));
-        // Chân phải
         g.draw(new Line2D.Double(hw - 20, hh - 1, hw - 14, -hh + 6));
         g.draw(new Line2D.Double(hw - 8, hh - 1, hw - 14, -hh + 6));
         g.setStroke(new BasicStroke(1f));
@@ -74,23 +94,14 @@ public class ConstructionBarrier extends Thing {
         g.fill(new Ellipse2D.Double(hw - 16, barY + 7, 4, 4));
 
         // Đèn chớp cảnh báo công trình màu vàng cam trên đỉnh
-        long now = System.currentTimeMillis();
-        boolean blink = (now / 220) % 2 == 0;
         double lampX = 0, lampY = -hh + 3;
-        // Đế đèn
         g.setColor(new Color(40, 44, 52));
         g.fill(new Rectangle2D.Double(lampX - 4, lampY + 2, 8, 4));
-        // Chao đèn
         g.setColor(blink ? new Color(255, 200, 30) : new Color(180, 110, 10));
         g.fill(new RoundRectangle2D.Double(lampX - 5, lampY - 4, 10, 8, 3, 3));
         if (blink) {
-            // Hào quang chớp sáng
             g.setColor(new Color(255, 220, 50, 85));
             g.fill(new Ellipse2D.Double(lampX - 12, lampY - 11, 24, 22));
         }
-
-        g.setTransform(old);
-        g.setStroke(oldStroke);
     }
 }
-
