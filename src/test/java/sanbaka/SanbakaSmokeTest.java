@@ -1239,6 +1239,16 @@ public class SanbakaSmokeTest {
             throw new AssertionError("Retrying Day 5 Turn 2 must preserve post-jam dialogIndex, got: " + logic.dialogIndex);
         }
 
+        java.io.File videoFile = new java.io.File("assets/background/opening_video.mp4");
+        if (videoFile.isFile() && System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            java.awt.image.BufferedImage[] decoded = {null};
+            boolean ok = sanbaka.assets.VideoBackgroundPlayer.startLoopingVideo(
+                    videoFile, GameState.W, GameState.H, () -> true, img -> decoded[0] = img);
+            if (!ok || decoded[0] == null || decoded[0].getWidth() != GameState.W || decoded[0].getHeight() != GameState.H) {
+                throw new AssertionError("VideoBackgroundPlayer must decode opening_video.mp4 into 960x640 BufferedImage!");
+            }
+        }
+
         System.out.println("  ✓ testStudentCrossingMechanics passed (Yields to cars/wobble, no clipping, continues after player collision, no text)");
     }
 }

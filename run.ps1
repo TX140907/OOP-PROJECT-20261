@@ -33,6 +33,7 @@ if ($BuildOnly) {
 Write-Host "Launching Sanbaka Game..." -ForegroundColor Cyan
 $cp = "$outputDir;$(Join-Path $projectRoot 'assets');$projectRoot"
 $javaArgs = @(
+    '--enable-native-access=ALL-UNNAMED',
     '-Dsun.awt.noerasebackground=true',
     '-Dsun.java2d.d3d=false',
     '-Dsun.java2d.transaccel=true',
@@ -46,4 +47,3 @@ $javaArgs = @(
 
 & java @javaArgs
 exit $LASTEXITCODE
-

@@ -56,7 +56,6 @@ public class SanbakaGame extends GameScreenRenderer {
         sanbakaExpressionImages.put("xau_ho", loadSanbakaExpression("xau_ho.png"));
     }
 
-
     private java.awt.image.BufferedImage loadSanbakaExpression(String fileName) {
         String[] resources = {
             "/assets/expression/" + fileName,
@@ -64,18 +63,39 @@ public class SanbakaGame extends GameScreenRenderer {
         };
         for (String resource : resources) {
             try (java.io.InputStream in = SanbakaGame.class.getResourceAsStream(resource)) {
-                if (in != null) return javax.imageio.ImageIO.read(in);
+                if (in != null) return scaleExpressionImage(javax.imageio.ImageIO.read(in));
             } catch (Exception ignored) {}
         }
 
         java.io.File imageFile = new java.io.File("assets/expression", fileName);
         if (!imageFile.isFile()) return null;
         try {
-            return javax.imageio.ImageIO.read(imageFile);
+            return scaleExpressionImage(javax.imageio.ImageIO.read(imageFile));
         } catch (java.io.IOException ignored) {
             return null;
         }
     }
+
+    private java.awt.image.BufferedImage scaleExpressionImage(java.awt.image.BufferedImage source) {
+        if (source == null) return null;
+        int targetH = (int) Math.round(H * 1.25);
+        int targetW = (int) Math.round(source.getWidth() * (targetH / (double) source.getHeight()));
+        if (source.getWidth() == targetW && source.getHeight() == targetH) return source;
+        java.awt.image.BufferedImage scaled = new java.awt.image.BufferedImage(
+                targetW, targetH, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        java.awt.Graphics2D g = scaled.createGraphics();
+        g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
+                java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+                java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+        g.drawImage(source, 0, 0, targetW, targetH, null);
+        g.dispose();
+        source.flush();
+        return scaled;
+    }
+
     private java.awt.image.BufferedImage loadAfterExamBackground(String fileName) {
         String[] resources = {
             "/assets/background/" + fileName,
@@ -95,6 +115,7 @@ public class SanbakaGame extends GameScreenRenderer {
             return null;
         }
     }
+
     private java.awt.image.BufferedImage scaleAfterExamBackground(java.awt.image.BufferedImage source) {
         if (source == null || (source.getWidth() == W && source.getHeight() == H)) return source;
 
@@ -104,12 +125,15 @@ public class SanbakaGame extends GameScreenRenderer {
         java.awt.image.BufferedImage scaled = new java.awt.image.BufferedImage(W, H, imageType);
         java.awt.Graphics2D graphics = scaled.createGraphics();
         graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
-                java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        graphics.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING,
+                java.awt.RenderingHints.VALUE_RENDER_QUALITY);
         graphics.drawImage(source, 0, 0, W, H, null);
         graphics.dispose();
         source.flush();
         return scaled;
     }
+
     private java.awt.Font loadTitleFont() {
         // 1. Nạp trực tiếp từ thư mục assets ngoài cùng của dự án
         String[] fontPaths = {
@@ -138,7 +162,27 @@ public class SanbakaGame extends GameScreenRenderer {
     }
 
     private java.awt.image.BufferedImage loadDialogBackground() {
-        // 1. Nạp trực tiếp từ thư mục assets ngoài cùng của dự án
+        // 0. Ưu tiên phát video lặp lại (loop) opening_video.mp4 thay cho ảnh nền sanbaka2
+        String[] videoPaths = {
+            "assets/background/opening_video.mp4",
+            "OOP-PROJECT-20261/assets/background/opening_video.mp4"
+        };
+        for (String vPath : videoPaths) {
+            java.io.File videoFile = new java.io.File(vPath);
+            if (videoFile.isFile()) {
+                boolean started = sanbaka.assets.VideoBackgroundPlayer.startLoopingVideo(
+                        videoFile,
+                        W,
+                        H,
+                        () -> screen != ROAD && screen != AIR && screen != EXAM && screen != ENDING_BE && screen != ENDING_HE,
+                        frame -> dialogBackground = frame
+                );
+                if (started && dialogBackground != null) {
+                    return dialogBackground;
+                }
+            }
+        }
+        // 1. Nạp trực tiếp từ thư mục assets ngoài cùng của dự án (fallback nếu không có video)
         String[] paths = {
             "assets/background/sanbaka2.jpg",
             "OOP-PROJECT-20261/assets/background/sanbaka2.jpg"
@@ -210,10 +254,3 @@ public class SanbakaGame extends GameScreenRenderer {
         });
     }
 }
-
-
-
-
-
-
-
