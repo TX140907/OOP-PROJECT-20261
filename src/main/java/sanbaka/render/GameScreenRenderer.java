@@ -663,11 +663,10 @@ public class GameScreenRenderer extends GameMenuRenderer {
             java.awt.image.BufferedImage expression = expressionName == null
                     ? null : sanbakaExpressionImages.get(expressionName);
             if (expression != null) {
-                double scale = 1.19;
-                int width = (int) Math.round(expression.getWidth() * scale);
-                int height = (int) Math.round(expression.getHeight() * scale);
+                int height = (int) Math.round(H * 1.25);
+                int width = (int) Math.round(expression.getWidth() * (height / (double) expression.getHeight()));
                 int x = W - width;
-                int y = H - height + 15;
+                int y = -(int) Math.round(height * 0.08);
                 g.drawImage(expression, x, y, width, height, null);
             }
         }
@@ -878,7 +877,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
 
     void drawDialogueBox(Graphics2D g, Line line) {
         // Giữ mép dưới ở y=596, nâng mép trên để khung gọn hơn.
-        panel(g, 48, 438, 864, 158, new Color(255, 255, 255, 245));
+        panel(g, 48, 438, 864, 158, new Color(255, 255, 255, 190));
         drawAvatar(g, line.who, 122, 518, 40);
 
         g.setColor(PINK);
