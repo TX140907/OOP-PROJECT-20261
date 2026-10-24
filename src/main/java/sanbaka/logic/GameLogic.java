@@ -489,7 +489,7 @@ public class GameLogic extends GameStory {
                         shark.hit = true;
                         if (player.invulnerable <= now) {
                             double pushDir = player.x < shark.x ? -1 : 1;
-                            applyCollisionHit(34, pushDir, 16, 22, 200, 0.38, 1400, 780, now, "shark");
+                            applyCollisionHit(26, pushDir, 16, 22, 200, 0.38, 1400, 780, now, "shark");
                         }
                     }
                 }
@@ -502,7 +502,7 @@ public class GameLogic extends GameStory {
                         && Math.abs(dog.y - player.y) < dog.h / 2 + 12) {
                     dog.hit = true;
                     if (player.invulnerable <= now) {
-                        applyCollisionHit(28, dog.dir, 14, 18, 165, 0.42, 1200, 750, now, "dog_bark");
+                        applyCollisionHit(20, dog.dir, 14, 18, 165, 0.42, 1200, 750, now, "dog_bark");
                     }
                 }
                 if (dog.done || dog.y - dog.h / 2 > H + 30) iterator.remove();
@@ -514,7 +514,7 @@ public class GameLogic extends GameStory {
                         && Math.abs(student.y - player.y) < student.h / 2 + 12) {
                     student.onPlayerHit(now);
                     if (player.invulnerable <= now) {
-                        applyCollisionHit(16, student.dir, 10, 14, 130, 0.50, 800, 750, now, null);
+                        applyCollisionHit(8, student.dir, 10, 14, 130, 0.50, 800, 750, now, null);
                     }
                 }
                 if (student.done || student.y - student.h / 2 > H + 40 || student.y + student.h / 2 < -120) {
@@ -568,19 +568,19 @@ public class GameLogic extends GameStory {
                         if (player.invulnerable <= now) {
                             double pushDir = player.x < o.x ? -1 : 1;
                             if (o.kind == 11) {
-                                // Ổ gà: nâng sát thương lên 16 HP, giật lùi nhẹ + làm chậm ngắn 850ms
-                                applyCollisionHit(16, pushDir, 8, 10, 105, 0.55, 850, 550, now, "pothole");
+                                // Ổ gà: 8 HP, giật lùi nhẹ + làm chậm ngắn 850ms
+                                applyCollisionHit(8, pushDir, 8, 10, 105, 0.55, 850, 550, now, "pothole");
                             } else if (o.kind == 9) {
-                                // Xe tải hạng nặng: 38 HP, đẩy lùi mạnh + làm chậm ngắn 1500ms (tốc độ còn 35%)
-                                applyCollisionHit(38, pushDir, 18, 26, 230, 0.35, 1500, 800, now, "collision");
+                                // Xe tải hạng nặng: 30 HP, đẩy lùi mạnh + làm chậm ngắn 1500ms (tốc độ còn 35%)
+                                applyCollisionHit(30, pushDir, 18, 26, 230, 0.35, 1500, 800, now, "collision");
                                 o.y -= 14;
                             } else if (o.kind == 6 || o.kind == 12) {
-                                // Xe máy NPC / Ninja Lead: 28 HP, đẩy lùi + làm chậm ngắn 1200ms
-                                applyCollisionHit(28, pushDir, 14, 18, 165, 0.42, 1200, 750, now, "collision");
+                                // Xe máy NPC / Ninja Lead: 20 HP, đẩy lùi + làm chậm ngắn 1200ms
+                                applyCollisionHit(20, pushDir, 14, 18, 165, 0.42, 1200, 750, now, "collision");
                                 o.y -= 12;
                             } else {
-                                // Ô tô, xe buýt, thuyền, rào chắn: 32 HP, đẩy lùi + làm chậm ngắn 1350ms (tốc độ còn 38%)
-                                applyCollisionHit(32, pushDir, 15, 22, 195, 0.38, 1350, 780, now, "collision");
+                                // Ô tô, xe buýt, thuyền, rào chắn: 24 HP, đẩy lùi + làm chậm ngắn 1350ms (tốc độ còn 38%)
+                                applyCollisionHit(24, pushDir, 15, 22, 195, 0.38, 1350, 780, now, "collision");
                                 if (o.kind != 10) o.y -= 14;
                             }
                         }
@@ -1583,6 +1583,7 @@ public class GameLogic extends GameStory {
         return ROAD_X + 45 + (ROAD_W - 90) * i / 3.0;
     }
 }
+
 
 
 

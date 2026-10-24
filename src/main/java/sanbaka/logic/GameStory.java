@@ -128,6 +128,66 @@ public abstract class GameStory extends GameMenuState {
         if (callStart >= 0 && callEnd < 0) callEnd = lines.size();
     }
 
+    public int afterExamDay(int idx) {
+        for (int i = Math.min(idx, lines.size() - 1); i >= 0; i--) {
+            String marker = lines.get(i).who;
+            if (marker.startsWith("@Một lúc sau")) continue;
+            if (marker.startsWith("@")) {
+                if (!marker.startsWith("@NGÀY ") || !marker.contains("SAU KHI THI")) return -1;
+                int dayStart = marker.indexOf("NGÀY ") + "NGÀY ".length();
+                return Character.digit(marker.charAt(dayStart), 10);
+            }
+        }
+        return -1;
+    }
+    public String sanbakaExpressionForDialog(int idx) {
+        int targetDay = afterExamDay(idx);
+        if (targetDay < 1) return null;
+
+        int sectionStart = -1;
+        for (int i = Math.min(idx, lines.size() - 1); i >= 0; i--) {
+            String marker = lines.get(i).who;
+            if (marker.startsWith("@")) {
+                if (targetDay == 5 && marker.startsWith("@Một lúc sau")) {
+                    sectionStart = i;
+                    break;
+                }
+                if (marker.startsWith("@NGÀY ") && marker.contains("SAU KHI THI")
+                        && Character.digit(marker.charAt(marker.indexOf("NGÀY ") + 5), 10) == targetDay) {
+                    sectionStart = i;
+                }
+                break;
+            }
+        }
+        if (sectionStart < 0) return null;
+
+        int sectionEnd = lines.size();
+        for (int i = sectionStart + 1; i < lines.size(); i++) {
+            String marker = lines.get(i).who;
+            if (!marker.startsWith("@")) continue;
+            sectionEnd = i;
+            break;
+        }
+
+        boolean hasDirectSanbaka = false;
+        String currentExpression = "binh_thuong";
+        for (int i = sectionStart + 1; i < sectionEnd; i++) {
+            Line line = lines.get(i);
+            if (!line.who.startsWith("Sanbaka") || line.who.endsWith("(tin nhắn)")) continue;
+            hasDirectSanbaka = true;
+            if (i <= idx) currentExpression = classifySanbakaExpression(line.text);
+        }
+        return hasDirectSanbaka ? currentExpression : null;
+    }
+
+    private String classifySanbakaExpression(String text) {
+        if (text.contains("Anh đây rồi!") || text.contains("Em đã bảo anh đi cẩn thận")
+                || text.contains("em chỉ sợ anh")) return "lo_lang";
+        if (text.contains("Anh cứ nói ngọt đi!") || text.contains("Miệng ngọt ghê")
+                || text.contains("Đồ ngốc! Đi thôi!")) return "xau_ho";
+        if (text.contains("Anh đến rồi!") || text.contains("Tuần này anh vất vả rồi.")) return "vui_cuoi";
+        return "binh_thuong";
+    }
     public boolean isCallLine(int idx) {
         if (idx < 0 || idx >= lines.size()) return false;
         if (lines.get(idx).who.contains("(loa ngoài)")) return true;
@@ -168,4 +228,10 @@ public abstract class GameStory extends GameMenuState {
         return "09:00";
     }
 }
+
+
+
+
+
+
 

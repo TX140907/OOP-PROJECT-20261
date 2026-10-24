@@ -79,10 +79,14 @@ public class GameMenuRenderer extends GameRoadRenderer {
     }
 
     void drawPauseButton(Graphics2D g) {
-        double x = 648, y = 22, s = 42;
+        drawPauseButton(g, 648);
+    }
+
+    void drawPauseButton(Graphics2D g, double x) {
+        double y = 22, s = 42;
         addBtn("pause", x, y, s, s, -1);
         boolean hv = isHover(x, y, s, s);
-        g.setColor(new Color(27, 36, 53, 60));
+        g.setColor(new Color(27, 36, 53, 70));
         g.fill(new Ellipse2D.Double(x + 2, y + 4, s, s));
         g.setColor(hv ? PINK : new Color(255, 255, 255, 238));
         g.fill(new Ellipse2D.Double(x, y, s, s));
@@ -162,8 +166,12 @@ public class GameMenuRenderer extends GameRoadRenderer {
     }
 
     // ---------- tạm dừng ----------
-    void drawPause(Graphics2D g) {
+    void drawPauseBackground(Graphics2D g) {
         drawRoad(g);
+    }
+
+    void drawPause(Graphics2D g) {
+        drawPauseBackground(g);
         g.setColor(new Color(20, 24, 38, 170));
         g.fillRect(0, 0, W, H);
         panel(g, 250, 96, 460, 448, new Color(255, 255, 255, 246));
@@ -339,5 +347,7 @@ public class GameMenuRenderer extends GameRoadRenderer {
     }
 
 }
+
+
 
 

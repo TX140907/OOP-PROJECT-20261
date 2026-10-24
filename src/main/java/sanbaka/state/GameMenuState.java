@@ -29,6 +29,7 @@ public abstract class GameMenuState extends GameState {
     public long menuTransitionStart = 0;
     public static final long MENU_TRANSITION_MS = 520;
     public long pauseStart = 0;
+    public int pausedScreen = ROAD;
 
     public int indexOfMarker(String marker) {
         for (int i = 0; i < lines.size(); i++) {
@@ -113,7 +114,7 @@ public abstract class GameMenuState extends GameState {
     }
 
     public String playSubtitle() {
-        if (won) return "Đã thắng · chơi lại từ đầu";
+        if (won) return "Đã thắng · Chơi lại từ đầu";
         if (maxScene < 0) return "Bắt đầu cuộc hành trình";
         return "Tiếp tục: " + sceneLabel(maxScene);
     }
@@ -198,7 +199,8 @@ public abstract class GameMenuState extends GameState {
     }
 
     public void pauseGame() {
-        if (screen != ROAD) return;
+        if (screen != ROAD && screen != DIALOG && screen != ROOM) return;
+        pausedScreen = screen;
         pauseStart = System.currentTimeMillis();
         screen = PAUSE;
         menuSel = 0;
@@ -208,6 +210,7 @@ public abstract class GameMenuState extends GameState {
     public void resumeFromPause() {
         long now = System.currentTimeMillis();
         long d = now - pauseStart;
+        if (pausedScreen == ROAD) {
         stageStarted += d;
         lastSpawn += d;
         lastBolt += d;
@@ -223,12 +226,17 @@ public abstract class GameMenuState extends GameState {
         if (lastDogSpawn > 0) lastDogSpawn += d;
         if (lastStudentSpawn > 0) lastStudentSpawn += d;
         lastFrameAt = now;
-        screen = ROAD;
+        } else {
+            pauseDialogTyping(d);
+            if (chatAnimStart > 0) chatAnimStart += d;
+            if (callStartedAt > 0) callStartedAt += d;
+        }
+        screen = pausedScreen;
         requestFocusInWindow();
     }
 
     public void handleEscape() {
-        if (screen == ROAD) pauseGame();
+        if (screen == ROAD || screen == DIALOG || screen == ROOM) pauseGame();
         else if (screen == PAUSE) resumeFromPause();
         else if (screen == SCENES || screen == HOWTO || screen == INTRO) {
             returnFromMenuPage();
@@ -333,4 +341,6 @@ public abstract class GameMenuState extends GameState {
         return !menuForegroundOnly && mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
     }
 }
+
+
 

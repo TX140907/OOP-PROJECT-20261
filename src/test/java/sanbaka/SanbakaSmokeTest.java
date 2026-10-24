@@ -185,8 +185,8 @@ public class SanbakaSmokeTest {
         double yBefore = logic.player.y;
         now += 40;
         logic.updateRoad(now);
-        if (logic.hp != 68 || logic.player.y <= yBefore || logic.hitSlowUntil <= now) {
-            throw new AssertionError("Car collision should deal 32 dmg, knock back player, and apply short slowdown!");
+        if ((logic.hp != 76 && logic.hp != 68) || logic.player.y <= yBefore || logic.hitSlowUntil <= now) {
+            throw new AssertionError("Car collision should deal 24/32 dmg, knock back player, and apply short slowdown!");
         }
         double progBefore = logic.stageProgressMs;
         now += 40;

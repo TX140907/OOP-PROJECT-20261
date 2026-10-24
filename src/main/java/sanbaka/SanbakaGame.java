@@ -46,8 +46,70 @@ public class SanbakaGame extends GameScreenRenderer {
 
         timer.start();
         dialogBackground = loadDialogBackground();
+        afterExamBackground = loadAfterExamBackground("Toa_C1.png");
+        afterExamRainBackground = loadAfterExamBackground("Toa_C1_mua.png");
+        afterExamSnowBackground = loadAfterExamBackground("Toa_C1_tuyet.png");
+        afterExamSunBackground = loadAfterExamBackground("Toa_C1_nang.png");
+        sanbakaExpressionImages.put("binh_thuong", loadSanbakaExpression("binh_thuong.png"));
+        sanbakaExpressionImages.put("lo_lang", loadSanbakaExpression("lo_lang.png"));
+        sanbakaExpressionImages.put("vui_cuoi", loadSanbakaExpression("vui_cuoi.png"));
+        sanbakaExpressionImages.put("xau_ho", loadSanbakaExpression("xau_ho.png"));
     }
 
+
+    private java.awt.image.BufferedImage loadSanbakaExpression(String fileName) {
+        String[] resources = {
+            "/assets/expression/" + fileName,
+            "/expression/" + fileName
+        };
+        for (String resource : resources) {
+            try (java.io.InputStream in = SanbakaGame.class.getResourceAsStream(resource)) {
+                if (in != null) return javax.imageio.ImageIO.read(in);
+            } catch (Exception ignored) {}
+        }
+
+        java.io.File imageFile = new java.io.File("assets/expression", fileName);
+        if (!imageFile.isFile()) return null;
+        try {
+            return javax.imageio.ImageIO.read(imageFile);
+        } catch (java.io.IOException ignored) {
+            return null;
+        }
+    }
+    private java.awt.image.BufferedImage loadAfterExamBackground(String fileName) {
+        String[] resources = {
+            "/assets/background/" + fileName,
+            "/background/" + fileName
+        };
+        for (String resource : resources) {
+            try (java.io.InputStream in = SanbakaGame.class.getResourceAsStream(resource)) {
+                if (in != null) return scaleAfterExamBackground(javax.imageio.ImageIO.read(in));
+            } catch (Exception ignored) {}
+        }
+
+        java.io.File imageFile = new java.io.File("assets/background", fileName);
+        if (!imageFile.isFile()) return null;
+        try {
+            return scaleAfterExamBackground(javax.imageio.ImageIO.read(imageFile));
+        } catch (java.io.IOException ignored) {
+            return null;
+        }
+    }
+    private java.awt.image.BufferedImage scaleAfterExamBackground(java.awt.image.BufferedImage source) {
+        if (source == null || (source.getWidth() == W && source.getHeight() == H)) return source;
+
+        int imageType = source.getColorModel().hasAlpha()
+                ? java.awt.image.BufferedImage.TYPE_INT_ARGB
+                : java.awt.image.BufferedImage.TYPE_INT_RGB;
+        java.awt.image.BufferedImage scaled = new java.awt.image.BufferedImage(W, H, imageType);
+        java.awt.Graphics2D graphics = scaled.createGraphics();
+        graphics.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+                java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        graphics.drawImage(source, 0, 0, W, H, null);
+        graphics.dispose();
+        source.flush();
+        return scaled;
+    }
     private java.awt.Font loadTitleFont() {
         // 1. Nạp trực tiếp từ thư mục assets ngoài cùng của dự án
         String[] fontPaths = {
@@ -85,7 +147,7 @@ public class SanbakaGame extends GameScreenRenderer {
             java.io.File imageFile = new java.io.File(path);
             if (!imageFile.isFile()) continue;
             try {
-                return javax.imageio.ImageIO.read(imageFile);
+                return scaleAfterExamBackground(javax.imageio.ImageIO.read(imageFile));
             } catch (java.io.IOException e) {
                 System.err.println("Không đọc được ảnh nền: " + imageFile.getAbsolutePath());
                 return null;
@@ -148,5 +210,10 @@ public class SanbakaGame extends GameScreenRenderer {
         });
     }
 }
+
+
+
+
+
 
 

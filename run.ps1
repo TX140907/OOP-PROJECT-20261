@@ -34,11 +34,11 @@ Write-Host "Launching Sanbaka Game..." -ForegroundColor Cyan
 $cp = "$outputDir;$(Join-Path $projectRoot 'assets');$projectRoot"
 $javaArgs = @(
     '-Dsun.awt.noerasebackground=true',
-    '-Dsun.java2d.d3d=true',
+    '-Dsun.java2d.d3d=false',
     '-Dsun.java2d.transaccel=true',
     '-Dsun.java2d.ddforcevram=true',
     '-Dsun.java2d.noddraw=false',
-    '-Dsun.java2d.opengl=false',
+    '-Dsun.java2d.opengl=true',
     '-Dsanbaka.perfLog=false',
     '-cp', $cp,
     'sanbaka.SanbakaGame'

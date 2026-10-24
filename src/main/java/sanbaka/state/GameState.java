@@ -98,6 +98,11 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public static final int ENDING_BE = 6;
     public static final int AIR = 7;
     public java.awt.image.BufferedImage dialogBackground;
+    public java.awt.image.BufferedImage afterExamBackground;
+    public java.awt.image.BufferedImage afterExamRainBackground;
+    public java.awt.image.BufferedImage afterExamSnowBackground;
+    public java.awt.image.BufferedImage afterExamSunBackground;
+    public final java.util.Map<String, java.awt.image.BufferedImage> sanbakaExpressionImages = new java.util.HashMap<>();
     public int screen = TITLE;
     public int dialogIndex = 0;
     private static final int TYPEWRITER_CHARS_PER_SECOND = 42;
@@ -229,6 +234,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
 
     public String visibleDialogText(String fullText) {
         if (dialogIndex < 0 || dialogIndex >= lines.size()) return fullText;
+        sanbaka.model.Line current = lines.get(dialogIndex);
+        if (current.who.endsWith("(tin nhắn)") && !current.who.startsWith("Sanbaka")) return fullText;
         if (typedDialogIndex != dialogIndex) {
             typedDialogIndex = dialogIndex;
             typedDialogStartedAt = System.currentTimeMillis();
@@ -240,6 +247,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
 
     public boolean revealDialogImmediatelyIfTyping() {
         if (dialogIndex < 0 || dialogIndex >= lines.size()) return false;
+        sanbaka.model.Line current = lines.get(dialogIndex);
+        if (current.who.endsWith("(tin nhắn)") && !current.who.startsWith("Sanbaka")) return false;
         String fullText = lines.get(dialogIndex).text;
         if (typedDialogIndex != dialogIndex) {
             typedDialogIndex = dialogIndex;
@@ -251,6 +260,10 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         typedDialogStartedAt = System.currentTimeMillis() - revealDuration;
         repaint();
         return true;
+    }
+
+    public void pauseDialogTyping(long duration) {
+        if (typedDialogIndex == dialogIndex) typedDialogStartedAt += duration;
     }
 
     public void resetDialogTyping() {

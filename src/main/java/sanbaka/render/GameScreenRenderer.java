@@ -12,6 +12,14 @@ import javax.swing.*;
 public class GameScreenRenderer extends GameMenuRenderer {
     private static final boolean IS_WINDOWS = System.getProperty("os.name", "").toLowerCase().contains("win");
 
+    @Override
+    void drawPauseBackground(Graphics2D g) {
+        if (pausedScreen == DIALOG) drawDialog(g);
+        else if (pausedScreen == ROOM) {
+            drawRoom(g);
+            drawCurrentDialog(g);
+        } else drawRoad(g);
+    }
     void drawFade(Graphics2D g) {
         if (fadeKind == FADE_ROOM) {
             int saved = dialogIndex;
@@ -307,6 +315,11 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (screen == ROOM) {
             drawRoom(g);
             drawCurrentDialog(g);
+            drawPauseButton(g, W - 58);
+        }
+        else if (screen == DIALOG) {
+            drawDialog(g);
+            drawPauseButton(g, W - 58);
         }
         else if (screen == EXAM) drawExam(g);
         else if (screen == ENDING_HE) drawEnding(g, true);
@@ -627,13 +640,36 @@ public class GameScreenRenderer extends GameMenuRenderer {
     }
 
     void drawDialog(Graphics2D g) {
-        if (dialogBackground != null) {
-            g.drawImage(dialogBackground, 0, 0, W, H, null);
+        int afterExamDay = afterExamDay(dialogIndex);
+        java.awt.image.BufferedImage background = switch (afterExamDay) {
+            case 2 -> afterExamRainBackground;
+            case 3 -> afterExamSnowBackground;
+            case 4 -> afterExamSunBackground;
+            case 1, 5 -> afterExamBackground;
+            default -> dialogBackground;
+        };
+        if (background == null) background = dialogBackground;
+        if (background != null) {
+            g.drawImage(background, 0, 0, W, H, null);
         }
         if (dialogIndex >= lines.size()) {
             screen = ENDING_HE;
             drawEnding(g, true);
             return;
+        }
+        Line currentLine = lines.get(dialogIndex);
+        if (!isMessage(currentLine)) {
+            String expressionName = sanbakaExpressionForDialog(dialogIndex);
+            java.awt.image.BufferedImage expression = expressionName == null
+                    ? null : sanbakaExpressionImages.get(expressionName);
+            if (expression != null) {
+                double scale = 1.19;
+                int width = (int) Math.round(expression.getWidth() * scale);
+                int height = (int) Math.round(expression.getHeight() * scale);
+                int x = W - width;
+                int y = H - height + 15;
+                g.drawImage(expression, x, y, width, height, null);
+            }
         }
         g.setColor(INK);
         g.setFont(new Font("Dialog",Font.BOLD,18));
@@ -841,19 +877,30 @@ public class GameScreenRenderer extends GameMenuRenderer {
     }
 
     void drawDialogueBox(Graphics2D g, Line line) {
-        panel(g, 48, 398, 864, 198, new Color(255, 255, 255, 245));
-        drawAvatar(g, line.who, 122, 497, 48);
+        // Giữ mép dưới ở y=596, nâng mép trên để khung gọn hơn.
+        panel(g, 48, 438, 864, 158, new Color(255, 255, 255, 245));
+        drawAvatar(g, line.who, 122, 518, 40);
+
         g.setColor(PINK);
         g.setFont(new Font("Dialog", Font.BOLD, 20));
-        g.drawString(line.who, 196, 440);
+        g.drawString(line.who, 184, 474);
+
         g.setColor(INK);
-        g.setFont(new Font("Dialog", Font.PLAIN, 21));
-        drawWrapped(g, visibleDialogText(line.text), 196, 480, 690, 31);
+        g.setFont(new Font("Dialog", Font.PLAIN, 20));
+        drawWrapped(g, visibleDialogText(line.text), 184, 510, 690, 27);
+
         g.setColor(MINT);
         g.setFont(new Font("Dialog", Font.BOLD, 15));
         String hint = "ENTER / SPACE  ·  TIẾP TỤC";
-        g.drawString(hint, 888 - g.getFontMetrics().stringWidth(hint), 570);
+        g.drawString(hint, 888 - g.getFontMetrics().stringWidth(hint), 574);
     }
 }
+
+
+
+
+
+
+
 
 
