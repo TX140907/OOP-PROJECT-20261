@@ -6,6 +6,8 @@ if errorlevel 1 exit /b 1
 if not exist "build\classes" mkdir "build\classes"
 if errorlevel 1 goto failed
 
+for /r "src\main\java" %%f in (tempCodeRunnerFile*.java) do del /f /q "%%f" >nul 2>&1
+
 (for /r "src\main\java" %%f in (*.java) do (
     set "source=%%f"
     @echo "!source:\=/!"
@@ -26,4 +28,3 @@ exit /b 0
 :failed
 popd
 exit /b 1
-

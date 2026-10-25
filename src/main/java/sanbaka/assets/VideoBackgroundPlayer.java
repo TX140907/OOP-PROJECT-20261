@@ -15,8 +15,8 @@ import java.util.function.Consumer;
 
 /**
  * Bộ phát video nền MP4 lặp vô hạn (loop) sử dụng Windows Media Foundation thông qua Java FFM API.
- * Tích hợp nội suy song tuyến tính (Bilinear Luma & Chroma Upsampling), chuẩn màu HD BT.709
- * và bộ lọc làm nét thích ứng (Contrast-Adaptive Sharpening) để khử răng cưa/pixel và tăng độ sắc nét.
+ * Thu phóng đồng nhất (Uniform Scale / Cover) để lấy khung hình rộng nhất có thể trong giới hạn video
+ * mà giữ nguyên 100% tỉ lệ dài/rộng gốc (không méo hình), kết hợp nội suy Bilinear & làm nét cạnh.
  */
 public final class VideoBackgroundPlayer {
     private static final int FIRST_VIDEO_STREAM = 0xFFFFFFFC;
@@ -142,7 +142,14 @@ public final class VideoBackgroundPlayer {
                 if (fps < 5.0 || fps > 120.0) fps = 24.0;
                 long frameIntervalNanos = Math.round(1_000_000_000.0 / fps);
 
-                // Bảng nội suy Bilinear 8-bit fixed-point (0..256) cho Luma (Y) và Chroma (UV)
+                // Tính vùng nhìn lớn nhất trong giới hạn video mà giữ nguyên 100% tỉ lệ dài/rộng (Uniform Scale + Center Crop)
+                // Với video 1280x720 và cửa sổ 960x640: scale = min(1280/960, 720/640) = 1.125 -> vùng lấy là 1080x720 (lấy trọn 100% chiều cao 720, crop đều 100px mỗi bên trái/phải)
+                double uniformScale = Math.min(srcW / (double) targetW, srcH / (double) targetH);
+                double viewW = targetW * uniformScale;
+                double viewH = targetH * uniformScale;
+                double startX = (srcW - viewW) * 0.5;
+                double startY = (srcH - viewH) * 0.5;
+
                 int[] lumaX0 = new int[targetW];
                 int[] lumaX1 = new int[targetW];
                 int[] lumaWx = new int[targetW];
@@ -152,21 +159,23 @@ public final class VideoBackgroundPlayer {
                 int uvPairsW = (srcW >> 1) - 1;
 
                 for (int x = 0; x < targetW; x++) {
-                    double fx = ((x + 0.5) * srcW / (double) targetW) - 0.5;
+                    double fx = startX + (x + 0.5) * uniformScale - 0.5;
                     if (fx < 0) fx = 0;
+                    else if (fx > srcW - 1) fx = srcW - 1;
                     int ix0 = (int) fx;
                     int ix1 = Math.min(ix0 + 1, srcW - 1);
                     lumaX0[x] = ix0;
                     lumaX1[x] = ix1;
                     lumaWx[x] = (int) Math.round((fx - ix0) * 256.0);
 
-                    double cfx = ((x + 0.5) * (srcW >> 1) / (double) targetW) - 0.5;
+                    double cfx = (startX + (x + 0.5) * uniformScale) * 0.5 - 0.5;
                     if (cfx < 0) cfx = 0;
+                    else if (cfx > uvPairsW) cfx = uvPairsW;
                     int cx0 = Math.min((int) cfx, uvPairsW);
                     int cx1 = Math.min(cx0 + 1, uvPairsW);
                     chromaX0[x] = cx0 << 1;
                     chromaX1[x] = cx1 << 1;
-                    chromaWx[x] = (int) Math.round((cfx - (int) cfx) * 256.0);
+                    chromaWx[x] = (int) Math.round((cfx - cx0) * 256.0);
                 }
 
                 int[] lumaY0 = new int[targetH];
@@ -178,21 +187,23 @@ public final class VideoBackgroundPlayer {
                 int uvRowsH = (srcH >> 1) - 1;
 
                 for (int y = 0; y < targetH; y++) {
-                    double fy = ((y + 0.5) * srcH / (double) targetH) - 0.5;
+                    double fy = startY + (y + 0.5) * uniformScale - 0.5;
                     if (fy < 0) fy = 0;
+                    else if (fy > srcH - 1) fy = srcH - 1;
                     int iy0 = (int) fy;
                     int iy1 = Math.min(iy0 + 1, srcH - 1);
                     lumaY0[y] = iy0 * stride;
                     lumaY1[y] = iy1 * stride;
                     lumaWy[y] = (int) Math.round((fy - iy0) * 256.0);
 
-                    double cfy = ((y + 0.5) * (srcH >> 1) / (double) targetH) - 0.5;
+                    double cfy = (startY + (y + 0.5) * uniformScale) * 0.5 - 0.5;
                     if (cfy < 0) cfy = 0;
+                    else if (cfy > uvRowsH) cfy = uvRowsH;
                     int cy0 = Math.min((int) cfy, uvRowsH);
                     int cy1 = Math.min(cy0 + 1, uvRowsH);
                     chromaY0[y] = (srcH + cy0) * stride;
                     chromaY1[y] = (srcH + cy1) * stride;
-                    chromaWy[y] = (int) Math.round((cfy - (int) cfy) * 256.0);
+                    chromaWy[y] = (int) Math.round((cfy - cy0) * 256.0);
                 }
 
                 int[] lumaPlane = new int[targetW * targetH];
@@ -271,7 +282,7 @@ public final class VideoBackgroundPlayer {
                                     MemorySegment.copy(raw, ValueLayout.JAVA_BYTE, 0, rawBytes, 0, minBytes);
 
                                     int[] dstPixels = ((DataBufferInt) currentWrite.getRaster().getDataBuffer()).getData();
-                                    decodeBilinearAndSharpen(
+                                    decodeUniformCoverAndSharpen(
                                             rawBytes,
                                             dstPixels,
                                             lumaPlane,
@@ -335,11 +346,7 @@ public final class VideoBackgroundPlayer {
         return firstFrameDecoded[0];
     }
 
-    /**
-     * Bước 1: Nội suy Bilinear cho cả kênh sáng (Y) và kênh màu (UV) từ khung 1280x720 sang 960x640 để khử hoàn toàn răng cưa.
-     * Bước 2: Tăng độ sắc nét (Unsharp Mask / Sharpening) trên kênh Luma (Y) và chuyển sang RGB theo chuẩn HD BT.709.
-     */
-    private static void decodeBilinearAndSharpen(
+    private static void decodeUniformCoverAndSharpen(
             byte[] raw,
             int[] dstPixels,
             int[] lumaPlane,
@@ -402,7 +409,6 @@ public final class VideoBackgroundPlayer {
             }
         }
 
-        // Bước 2: Làm nét cạnh (Luma Unsharp Mask) + Chuyển đổi chuẩn màu HD BT.709 sang RGB
         for (int y = 0; y < targetH; y++) {
             int rowOffset = y * targetW;
             boolean innerY = y > 0 && y < targetH - 1;
@@ -412,9 +418,8 @@ public final class VideoBackgroundPlayer {
                 if (innerY && x > 0 && x < targetW - 1) {
                     int neighbors = lumaPlane[i - 1] + lumaPlane[i + 1]
                             + lumaPlane[i - targetW] + lumaPlane[i + targetW];
-                    // Hệ số làm nét cạnh (Unsharp Mask): y + 0.45 * (4*y - neighbors) / 4
                     int detail = (yVal << 2) - neighbors;
-                    yVal += (detail * 46) >> 8;
+                    yVal += (detail * 38) >> 8;
                 }
 
                 int c = yVal - 16;
@@ -422,7 +427,6 @@ public final class VideoBackgroundPlayer {
                 int u = uPlane[i];
                 int v = vPlane[i];
 
-                // Ma trận màu HD BT.709 chuẩn cho video 720p/1080p
                 int c298 = 298 * c;
                 int r = (c298 + 459 * v + 128) >> 8;
                 int g = (c298 - 55 * u - 136 * v + 128) >> 8;

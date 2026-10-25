@@ -11,6 +11,7 @@ if (-not (Test-Path $outputDir)) {
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
 }
 
+Get-ChildItem -Path "$projectRoot\src\main\java" -Recurse -Filter "tempCodeRunnerFile*.java" | Remove-Item -Force -ErrorAction SilentlyContinue
 $sourceFiles = @(Get-ChildItem -Path "$projectRoot\src\main\java" -Recurse -Filter "*.java" | ForEach-Object FullName)
 
 if ($sourceFiles.Count -eq 0) {
