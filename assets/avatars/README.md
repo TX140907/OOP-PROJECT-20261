@@ -3,7 +3,7 @@
 Đặt ảnh vào thư mục này với tên một trong các tên sau:
 - Sanbaka.png / Sanbaka.jpg / Sanbaka.jpeg
 - Thắng.png / Thắng.jpg / Thắng.jpeg
-- Nam.png / Nam.jpg / Nam.jpeg
+- Komori.png / Komori.jpg / Komori.jpeg
 - Chủ trọ.png / Chủ trọ.jpg / Chủ trọ.jpeg
 - Other.png / Other.jpg / Other.jpeg (nhân vật khác)
 

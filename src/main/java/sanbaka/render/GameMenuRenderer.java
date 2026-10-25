@@ -158,7 +158,7 @@ public class GameMenuRenderer extends GameRoadRenderer {
         String[] ids = {"play", "scenes", "chars", "howto"};
         String[] labels = {"Vào chơi", "Menu", "Giới thiệu nhân vật", "Hướng dẫn chơi game"};
         String[] subs = {playSubtitle(), "Chọn cảnh đã mở khóa để chơi lại",
-                "Sanbaka, Thắng, Nam và chủ trọ", "Phím điều khiển và mẹo chơi"};
+                "Sanbaka, Thắng, Komori và chủ trọ", "Phím điều khiển và mẹo chơi"};
         for (int i = 0; i < 4; i++) menuButton(g, ids[i], labels[i], subs[i], i, 60, 226 + i * 84, 410, 68);
         g.setFont(new Font("Dialog", Font.PLAIN, 13));
         g.setColor(hasBg ? new Color(255, 255, 255, 210) : new Color(110, 116, 130));

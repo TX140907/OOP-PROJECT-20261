@@ -170,16 +170,17 @@ public class SanbakaGame extends GameScreenRenderer {
         for (String vPath : videoPaths) {
             java.io.File videoFile = new java.io.File(vPath);
             if (videoFile.isFile()) {
-                boolean started = sanbaka.assets.VideoBackgroundPlayer.startLoopingVideo(
-                        videoFile,
-                        W,
-                        H,
-                        () -> screen != ROAD && screen != AIR && screen != EXAM && screen != ENDING_BE && screen != ENDING_HE,
-                        frame -> dialogBackground = frame
-                );
-                if (started && dialogBackground != null) {
-                    return dialogBackground;
-                }
+                Thread videoStartupThread = new Thread(() ->
+                        sanbaka.assets.VideoBackgroundPlayer.startLoopingVideo(
+                                videoFile,
+                                W,
+                                H,
+                                () -> screen != ROAD && screen != AIR && screen != EXAM && screen != ENDING_BE && screen != ENDING_HE,
+                                frame -> dialogBackground = frame
+                        ), "OpeningVideoStartupThread");
+                videoStartupThread.setDaemon(true);
+                videoStartupThread.start();
+                break;
             }
         }
         // 1. Nạp trực tiếp từ thư mục assets ngoài cùng của dự án (fallback nếu không có video)

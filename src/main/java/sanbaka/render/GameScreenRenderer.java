@@ -72,7 +72,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
         if (callStartedAt == 0) callStartedAt = now;
         Line cur = lines.get(dialogIndex);
         boolean speaker = cur.who.contains("(loa ngoài)");
-        boolean contactSpeaking = cur.who.startsWith("Nam");
+        boolean contactSpeaking = cur.who.startsWith("Komori");
         boolean ringing = dialogIndex <= callStart;
         int pw = 330, ph = 566;
         double sc = 0.66;
@@ -107,13 +107,13 @@ public class GameScreenRenderer extends GameMenuRenderer {
         g.fillRoundRect(pw - 57, 29, 14, 5, 2, 2);
         // tên người gọi + trạng thái cuộc gọi
         g.setFont(new Font("Dialog", Font.BOLD, 38));
-        g.drawString("Nam", pw / 2 - g.getFontMetrics().stringWidth("Nam") / 2, 118);
+        g.drawString("Komori", pw / 2 - g.getFontMetrics().stringWidth("Komori") / 2, 118);
         g.setFont(new Font("Dialog", Font.PLAIN, 18));
         g.setColor(new Color(255, 255, 255, 185));
         long sec = Math.max(0, (now - callStartedAt) / 1000);
         String status = ringing ? "đang gọi…" : String.format("%02d:%02d", sec / 60, sec % 60);
         g.drawString(status, pw / 2 - g.getFontMetrics().stringWidth(status) / 2, 146);
-        // ảnh đại diện (sóng âm khi Nam đang nói)
+        // ảnh đại diện (sóng âm khi Komori đang nói)
         if (contactSpeaking) {
             g.setStroke(new BasicStroke(3f));
             for (int k = 0; k < 2; k++) {
@@ -123,7 +123,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
                 g.draw(new Ellipse2D.Double(pw / 2.0 - rr, 238 - rr, 2 * rr, 2 * rr));
             }
         }
-        drawAvatar(g, "Nam", pw / 2, 238, 58);
+        drawAvatar(g, "Komori", pw / 2, 238, 58);
         // lưới nút điều khiển
         String[] labels = {"Tắt tiếng", "Bàn phím", "Loa", "Thêm", "FaceTime", "Danh bạ"};
         g.setStroke(new BasicStroke(1f));
@@ -162,7 +162,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
         g.drawString("GIỚI THIỆU NHÂN VẬT", 84, 50);
         g.setColor(PINK);
         g.fillRoundRect(84, 62, 150, 4, 4, 4);
-        String[] names = {"Sanbaka", "Thắng", "Nam", "Chủ trọ"};
+        String[] names = {"Sanbaka", "Thắng", "Komori", "Chủ trọ"};
         String[] tags = {"Nữ chính", "Nam chính", "Bạn cùng phòng", ""};
         String[] desc = {
             "Nữ chính của trò chơi, một tân sinh viên ngành Toán tin tại HUST. Cô có tính cách dịu dàng, chu đáo, thông minh và đôi khi tinh nghịch.",
@@ -460,7 +460,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
         g.draw(new Line2D.Double(clockX, clockY, clockX + 19 * Math.sin(minAng), clockY - 19 * Math.cos(minAng)));
         g.setStroke(oldStroke);
 
-        // giường + Thắng
+        // giường trong phòng trọ
         int bx = 70, by = 232;
         g.setColor(new Color(150, 104, 76));
         g.fill(new RoundRectangle2D.Double(bx, by, 26, 114, 14, 14));
@@ -476,29 +476,6 @@ public class GameScreenRenderer extends GameMenuRenderer {
         g.draw(new RoundRectangle2D.Double(bx + 30, by + 38, 80, 38, 26, 26));
         g.setStroke(oldStroke);
         boolean awake = roomAwake();
-        g.setColor(new Color(255, 224, 196));
-        g.fill(new Ellipse2D.Double(bx + 50, by + 22, 38, 38));
-        g.setColor(new Color(52, 40, 44));
-        g.fill(new Arc2D.Double(bx + 48, by + 19, 42, 34, 0, 180, Arc2D.CHORD));
-        g.setColor(new Color(255, 140, 150, 120));
-        g.fill(new Ellipse2D.Double(bx + 52, by + 42, 8, 5));
-        g.fill(new Ellipse2D.Double(bx + 78, by + 42, 8, 5));
-        if (awake) {
-            g.setColor(INK);
-            g.fill(new Ellipse2D.Double(bx + 59, by + 36, 5, 6));
-            g.fill(new Ellipse2D.Double(bx + 74, by + 36, 5, 6));
-            g.setColor(new Color(160, 80, 80));
-            g.setStroke(new BasicStroke(1.8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g.draw(new Arc2D.Double(bx + 63, by + 42, 12, 8, 205, 130, Arc2D.OPEN));
-        } else {
-            g.setColor(INK);
-            g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g.draw(new Arc2D.Double(bx + 57, by + 37, 9, 6, 200, 140, Arc2D.OPEN));
-            g.draw(new Arc2D.Double(bx + 72, by + 37, 9, 6, 200, 140, Arc2D.OPEN));
-            g.setColor(new Color(160, 80, 80));
-            g.fill(new Ellipse2D.Double(bx + 66, by + 47, 6, 5));
-        }
-        g.setStroke(oldStroke);
         g.setColor(new Color(244, 160, 186));
         g.fill(new RoundRectangle2D.Double(bx + 96, by + 40, 288, 58, 30, 30));
         g.setColor(new Color(250, 196, 212));

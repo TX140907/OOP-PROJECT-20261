@@ -334,7 +334,7 @@ public class GameVisuals extends GameLogic {
     public void drawAvatar(Graphics2D g, String who, int cx, int cy, int r) {
         int kind = who.startsWith("Sanbaka") ? 0
                 : who.startsWith("Thắng") ? 1
-                : who.startsWith("Nam") ? 2
+                : who.startsWith("Komori") ? 2
                 : who.startsWith("Chủ trọ") ? 3 : 4;
         int cacheKey = (kind << 16) | (r & 0xFFFF);
         BufferedImage cached = AVATAR_CIRCLE_CACHE.get(cacheKey);
@@ -364,7 +364,7 @@ public class GameVisuals extends GameLogic {
         g.fill(circle);
         g.clip(circle);
         String avatarName = kind == 0 ? "Sanbaka" : kind == 1 ? "Thắng"
-                : kind == 2 ? "Nam" : kind == 3 ? "Chủ trọ" : "Other";
+                : kind == 2 ? "Komori" : kind == 3 ? "Chủ trọ" : "Other";
         BufferedImage avatarImage = loadAvatarImage(avatarName);
         if (avatarImage != null) {
             g.drawImage(avatarImage, cx - r, cy - r, 2 * r, 2 * r, null);
@@ -716,7 +716,7 @@ public class GameVisuals extends GameLogic {
         g.fill(new RoundRectangle2D.Double(6, -25, 48, 38, 30, 30));
         g.fill(new RoundRectangle2D.Double(-34, -21, 30, 24, 12, 12));
         if (showThang) drawAvatar(g, "Thắng", -19, -8, 9);
-        drawAvatar(g, "Nam", 30, -6, 11);
+        drawAvatar(g, "Komori", 30, -6, 11);
         g.setColor(new Color(255, 255, 255, 110));
         g.fill(new Ellipse2D.Double(36, -22, 13, 7));
         // cánh quạt chính
