@@ -80,10 +80,17 @@
       "TĂNG SINH LỰC!"
     ],
     "missile_hit": [
+      "-"
     ],
     "speed_up": [
       "TĂNG TỐC!",
       "LƯỚT NHANH!"
+    ],
+    "mystery_box": [
+      "???",
+      "MYSTERY BOX!",
+      "HỘP BÍ ẨN!",
+      "EASTER EGG!"
     ]
   }
 }

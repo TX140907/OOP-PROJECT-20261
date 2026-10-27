@@ -30,8 +30,8 @@ public class SanbakaGame extends GameScreenRenderer {
             }
         });
         addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
-            @Override public void mouseMoved(java.awt.event.MouseEvent e) { onMouse(e.getX(), e.getY()); }
-            @Override public void mouseDragged(java.awt.event.MouseEvent e) { onMouse(e.getX(), e.getY()); }
+            @Override public void mouseMoved(java.awt.event.MouseEvent e) { onMouse(e.getX(), e.getY()); repaint(); }
+            @Override public void mouseDragged(java.awt.event.MouseEvent e) { onMouse(e.getX(), e.getY()); repaint(); }
         });
         timer.setCoalesce(true);
         // Khởi động thread giữ độ phân giải timer 1ms cho Windows OS (tránh trễ 15.6ms)
@@ -175,8 +175,11 @@ public class SanbakaGame extends GameScreenRenderer {
                                 videoFile,
                                 W,
                                 H,
-                                () -> screen != ROAD && screen != AIR && screen != EXAM && screen != ENDING_BE && screen != ENDING_HE,
-                                frame -> dialogBackground = frame
+                                () -> screen != ROAD && screen != AIR && screen != EXAM && screen != ENDING_BE && screen != ENDING_HE && screen != MARIO,
+                                frame -> {
+                                    dialogBackground = frame;
+                                    videoFrameDirty = true;
+                                }
                         ), "OpeningVideoStartupThread");
                 videoStartupThread.setDaemon(true);
                 videoStartupThread.start();

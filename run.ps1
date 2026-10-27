@@ -36,11 +36,11 @@ $cp = "$outputDir;$(Join-Path $projectRoot 'assets');$projectRoot"
 $javaArgs = @(
     '--enable-native-access=ALL-UNNAMED',
     '-Dsun.awt.noerasebackground=true',
-    '-Dsun.java2d.d3d=false',
+    '-Dsun.java2d.d3d=true',
     '-Dsun.java2d.transaccel=true',
     '-Dsun.java2d.ddforcevram=true',
     '-Dsun.java2d.noddraw=false',
-    '-Dsun.java2d.opengl=true',
+    '-Dsun.java2d.opengl=false',
     '-Dsanbaka.perfLog=false',
     '-cp', $cp,
     'sanbaka.SanbakaGame'

@@ -63,6 +63,10 @@ public class GameLogic extends GameStory {
         teaSpawnCount = 0;
         lastTeaSpawn = stageStarted;
         warmUntil = 0;
+        mysteryBoxSpawnedThisStage = false;
+        if (day == 1) {
+            map2MysteryBoxRolled = !mysteryBoxSpawned && (rng.nextInt(100) < 30);
+        }
         floatingTextManager.clear();
         beCause = "";
         retryDialogIndex = dialogIndex;
@@ -167,7 +171,19 @@ public class GameLogic extends GameStory {
         else if (screen == ENDING_HE) {
             updateConfetti(now);
         }
-        repaint();
+        boolean needsRepaint = false;
+        if (screen == ROAD || screen == AIR || screen == FADE || screen == CARD || screen == ENDING_HE || screen == ENDING_BE) {
+            needsRepaint = true;
+        } else {
+            long fadeIn = now - fadeInStart;
+            if (videoFrameDirty || menuTransitionTo >= 0 || isDialogTyping() || (fadeIn >= 0 && fadeIn < 700)) {
+                needsRepaint = true;
+                videoFrameDirty = false;
+            }
+        }
+        if (needsRepaint) {
+            repaint();
+        }
         if (PERF_LOG_ENABLED) recordPerformance(false, System.nanoTime() - perfStart);
     }
 
@@ -422,6 +438,18 @@ public class GameLogic extends GameStory {
                 lastStudentSpawn = now - 1000;
             }
         }
+        // Spawn Hộp bí ẩn (Mystery Box) Easter Egg:
+        // - Xuất hiện ở Màn 4 đúng 1 lần và xuất hiện ở Màn 2 1 lần (xác suất Màn 2 là 30%).
+        // - Nếu Màn 2 đã xuất hiện rồi thì không cho xuất hiện lại nữa.
+        if (canSpawn && !mysteryBoxSpawned && !mysteryBoxSpawnedThisStage && t >= 7.5 && dur - t > 7.0) {
+            boolean shouldSpawn = (day == 1 && map2MysteryBoxRolled) || (day == HOT_DAY);
+            if (shouldSpawn) {
+                if (trySpawnMysteryBox()) {
+                    mysteryBoxSpawned = true;
+                    mysteryBoxSpawnedThisStage = true;
+                }
+            }
+        }
         if (jamDay && !jamBuilt && t >= jamT0) buildJam(base);
         if (day == HOT_DAY) {
             energy = Math.max(0, energy - ENERGY_DRAIN * 1.25 * dt);
@@ -529,8 +557,8 @@ public class GameLogic extends GameStory {
                 continue;
             }
             if (!o.jam) {
-                double hw = o.snack ? 22 : ((o.kind == 11 || o.kind == 14) ? o.w / 2 : o.w / 2 + 9);
-                double hh = o.snack ? 28 : ((o.kind == 11 || o.kind == 14) ? o.h / 2 : o.h / 2 + 6);
+                double hw = (o.kind == 19) ? 36.0 : (o.snack ? 22 : ((o.kind == 11 || o.kind == 14) ? o.w / 2 : o.w / 2 + 9));
+                double hh = (o.kind == 19) ? 36.0 : (o.snack ? 28 : ((o.kind == 11 || o.kind == 14) ? o.h / 2 : o.h / 2 + 6));
                 if (Math.abs(o.x - player.x) < hw && Math.abs(o.y - player.y) < hh) {
                     if (o.snack) {
                         if (o.kind == 16) {
@@ -547,6 +575,13 @@ public class GameLogic extends GameStory {
                             shieldActive = true;
                             score += 60;
                             floatingTextManager.spawn(player.x + 28, player.y - 12, "shield_pickup", true);
+                            iterator.remove();
+                            continue;
+                        } else if (o.kind == 19) {
+                            // Hộp bí ẩn (Mystery Box) - Easter Egg kích hoạt Happy Ending ẩn
+                            mysteryBoxCollected = true;
+                            score += 150;
+                            floatingTextManager.spawn(player.x + 28, player.y - 12, "mystery_box", true);
                             iterator.remove();
                             continue;
                         } else {
@@ -995,6 +1030,30 @@ public class GameLogic extends GameStory {
             if (clearToSpawn(t)) {
                 things.add(t);
                 shieldSpawnCount++;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean trySpawnMysteryBox() {
+        for (int attempt = 0; attempt < 12; attempt++) {
+            Thing t = Thing.create(19);
+            t.kind = 19;
+            t.snack = true;
+            t.w = VEH_W[19];
+            t.h = VEH_H[19];
+            t.y = -35;
+
+            // Đặt vị trí chính xác ở mép lề đường (curb):
+            // Một nửa (50%) nằm ở lòng đường, một nửa (50%) lồi lên vỉa hè
+            // (50% cơ hội ở mép lề trái, 50% cơ hội ở mép lề phải)
+            boolean leftSide = rng.nextBoolean();
+            double curbX = leftSide ? (ROAD_X + 45.0) : (ROAD_X + ROAD_W - 45.0);
+            t.baseX = t.x = curbX;
+
+            if (clearToSpawn(t)) {
+                things.add(t);
                 return true;
             }
         }
@@ -1572,11 +1631,17 @@ public class GameLogic extends GameStory {
             }
         }
         else if (screen == ENDING_HE) {
+            if (mysteryBoxCollected) {
+                mysteryBoxCollected = false; // Kích hoạt Easter Egg ending ẩn
+                startMarioMinigame();
+                return;
+            }
             screen = TITLE;
             menuSel = 0;
             dialogIndex = 0;
             day = 0;
         }
+        repaint();
     }
 
     @Override

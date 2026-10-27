@@ -142,11 +142,11 @@ public class GameCharacterRenderer extends GameEnvironmentRenderer {
             g.setColor(new Color(20, 60, 110));
             g.drawString(curbMsg, W / 2 - cw / 2, bannerY + 18);
             bannerY += 34;
-        } else if (!flightMode && day != 1 && (curbOnFire || curbEdgeTime >= 0.35)) {
+        } else if (!flightMode && day != 1 && (curbOnFire || curbEdgeTime >= 0.20)) {
             double ratio = Math.max(0.0, Math.min(1.0, curbEdgeTime / CURB_FIRE_THRESHOLD_SEC));
             String curbMsg = curbOnFire
                     ? "XE BỐC LỬA (-10 HP/s) · RỜI KHỎI LỀ ĐƯỜNG ĐỂ LỬA TẮT DẦN!"
-                    : String.format("MA SÁT LỀ ĐƯỜNG: %.1fs / 3.0s SẼ BỐC LỬA!", curbEdgeTime);
+                    : String.format("MA SÁT LỀ ĐƯỜNG: %.1fs / %.1fs SẼ BỐC LỬA!", curbEdgeTime, CURB_FIRE_THRESHOLD_SEC);
             g.setFont(new Font("Dialog", Font.BOLD, 12));
             int cw = Math.max(240, g.getFontMetrics().stringWidth(curbMsg));
             int boxX = W / 2 - cw / 2 - 16;

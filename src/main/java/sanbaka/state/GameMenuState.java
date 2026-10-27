@@ -158,6 +158,8 @@ public abstract class GameMenuState extends GameState {
 
     public void newGame() {
         resetRunState();
+        mysteryBoxSpawned = false;
+        mysteryBoxCollected = false;
         day = 0;
         dialogIndex = 0;
         screen = DIALOG;

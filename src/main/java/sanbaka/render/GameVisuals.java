@@ -509,7 +509,7 @@ public class GameVisuals extends GameLogic {
     }
 
     /**
-     * Vẽ hiệu ứng xe bốc lửa khi đi sát lề đường quá 3 giây (hoặc tia lửa ma sát trước khi bốc cháy).
+     * Vẽ hiệu ứng xe bốc lửa khi đi sát lề đường quá 1.5 giây (hoặc tia lửa ma sát trước khi bốc cháy).
      * Hỗ trợ đội hình ảnh thay thế bằng file PNG riêng tại: assets/objects/VehicleFire/VehicleFire.png
      */
     public void drawVehicleFireEffect(Graphics2D g, double cx, double cy, double curbTime, boolean onFire, long now) {

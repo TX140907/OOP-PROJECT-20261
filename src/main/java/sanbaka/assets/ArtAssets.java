@@ -62,12 +62,22 @@ public final class ArtAssets {
             try (InputStream in = ArtAssets.class.getResourceAsStream(res)) {
                 if (in != null) {
                     BufferedImage img = ImageIO.read(in);
-                    if (img != null) return Optional.of(img);
+                    if (img != null) return toCompatible(img);
                 }
             } catch (Exception ignored) {}
         }
 
         return Optional.empty();
+    }
+
+    private static Optional<BufferedImage> toCompatible(BufferedImage src) {
+        if (src == null) return Optional.empty();
+        BufferedImage comp = createCompatibleImage(src.getWidth(), src.getHeight());
+        java.awt.Graphics2D g = comp.createGraphics();
+        g.drawImage(src, 0, 0, null);
+        g.dispose();
+        src.flush();
+        return Optional.of(comp);
     }
 
     private static Optional<BufferedImage> searchFrom(Path start, String relative) {
@@ -87,7 +97,7 @@ public final class ArtAssets {
     private static Optional<BufferedImage> readFile(Path path) {
         if (!path.toFile().isFile()) return Optional.empty();
         try {
-            return Optional.ofNullable(ImageIO.read(path.toFile()));
+            return toCompatible(ImageIO.read(path.toFile()));
         } catch (IOException ignored) {
             return Optional.empty();
         }

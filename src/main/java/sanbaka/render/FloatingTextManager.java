@@ -69,6 +69,7 @@ public class FloatingTextManager {
         beneficialTexts.put("heal", new ArrayList<>(List.of("HỒI MÁU!", "KHỎE LẠI RỒI!", "TĂNG SINH LỰC!")));
         beneficialTexts.put("missile_hit", new ArrayList<>(List.of("TRÚNG MỤC TIÊU!", "BẮN TỐT LẮM!", "BÙM!", "HẠ GỤC!")));
         beneficialTexts.put("speed_up", new ArrayList<>(List.of("TĂNG TỐC!", "LƯỚT NHANH!")));
+        beneficialTexts.put("mystery_box", new ArrayList<>(List.of("???", "MYSTERY BOX!", "HỘP BÍ ẨN!", "EASTER EGG!")));
     }
 
     public synchronized void reload() {

@@ -86,7 +86,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public static final double PLAYER_SPEED = 260.0;
     public static final double VERTICAL_SPEED = 240.0;
     public static final Color INK = new Color(35, 42, 60), CREAM = new Color(250, 247, 239), PINK = new Color(237, 119, 155), MINT = new Color(94, 181, 154);
-    public final javax.swing.Timer timer = new javax.swing.Timer(12, this);
+    public final javax.swing.Timer timer = new javax.swing.Timer(16, this);
     public final java.util.List<Line> lines = new ArrayList<>();
     public final Random rng = new Random();
     public static final int TITLE = 0;
@@ -100,6 +100,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public static final int MARIO = 14;
     public sanbaka.mario.MarioMinigame marioGame = null;
     public volatile java.awt.image.BufferedImage dialogBackground;
+    public volatile boolean videoFrameDirty = false;
     public java.awt.image.BufferedImage afterExamBackground;
     public java.awt.image.BufferedImage afterExamRainBackground;
     public java.awt.image.BufferedImage afterExamSnowBackground;
@@ -179,7 +180,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public double stageProgressMs = 0.0;
     public double currentProgressFactor = 1.0;
     public static final double CURB_ZONE_MARGIN = 26.0;
-    public static final double CURB_FIRE_THRESHOLD_SEC = 3.0;
+    public static final double CURB_FIRE_THRESHOLD_SEC = 1.5;
     public static final double CURB_BURN_DPS = 10.0;
     public double curbEdgeTime = 0.0;
     public double curbBurnFraction = 0.0;
@@ -189,6 +190,11 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public double hitSlowFactor = 1.0;
     public double knockbackVy = 0.0;
     public double knockbackVx = 0.0;
+    // ---- Hộp bí ẩn (Mystery Box) - Easter Egg mở khóa Happy Ending ẩn ----
+    public boolean mysteryBoxSpawned = false;
+    public boolean mysteryBoxCollected = false;
+    public boolean map2MysteryBoxRolled = false;
+    public boolean mysteryBoxSpawnedThisStage = false;
     // ---- Màn 5: Boss Trận Không Chiến & Tên Lửa Trực Thăng (phím E) ----
     public BossEnemy boss = null;
     public java.util.List<PlayerMissile> missiles = new ArrayList<>();
@@ -224,8 +230,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         new Color(148, 205, 240), new Color(94, 119, 151), new Color(186, 202, 218), new Color(255, 194, 117), new Color(175, 202, 226)
     };
 
-    public static final double[] VEH_W = {50, 48, 50, 54, 58, 60, 26, 30, 40, 136, 68, 76, 28, 68, 88, 48, 34, 36, 32};
-    public static final double[] VEH_H = {86, 76, 86, 100, 132, 168, 60, 40, 84, 172, 36, 48, 62, 68, 54, 30, 34, 36, 38};
+    public static final double[] VEH_W = {50, 48, 50, 54, 58, 60, 26, 30, 40, 136, 68, 76, 28, 68, 88, 48, 34, 36, 32, 36};
+    public static final double[] VEH_H = {86, 76, 86, 100, 132, 168, 60, 40, 84, 172, 36, 48, 62, 68, 54, 30, 34, 36, 38, 36};
     public static final Color[] CAR_COLORS = {
         new Color(219, 93, 96), new Color(81, 146, 185), new Color(240, 242, 246), new Color(176, 184, 196),
         new Color(240, 200, 90), new Color(94, 170, 128), new Color(150, 110, 180), new Color(58, 62, 76)
@@ -266,6 +272,14 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
 
     public void pauseDialogTyping(long duration) {
         if (typedDialogIndex == dialogIndex) typedDialogStartedAt += duration;
+    }
+
+    public boolean isDialogTyping() {
+        if (typedDialogStartedAt == 0 || dialogIndex < 0 || dialogIndex >= lines.size()) return false;
+        sanbaka.model.Line current = lines.get(dialogIndex);
+        if (current.who.endsWith("(tin nhắn)") && !current.who.startsWith("Sanbaka")) return false;
+        long revealDuration = (current.text.length() * 1000L + TYPEWRITER_CHARS_PER_SECOND - 1) / TYPEWRITER_CHARS_PER_SECOND;
+        return System.currentTimeMillis() - typedDialogStartedAt < revealDuration;
     }
 
     public void resetDialogTyping() {

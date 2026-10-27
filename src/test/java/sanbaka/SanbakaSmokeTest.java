@@ -37,6 +37,7 @@ public class SanbakaSmokeTest {
         testGpuHardwareAccelerationFlags();
         testStudentCrossingMechanics();
         testMarioMinigame();
+        testMysteryBoxEasterEggAndCurb1_5s();
 
         System.out.println("[PASS] All SanbakaSmokeTest checks passed successfully!");
     }
@@ -1382,5 +1383,94 @@ public class SanbakaSmokeTest {
         }
 
         System.out.println("  ✓ testMarioMinigame passed (NES 8-bit World 1-1, Handheld Console, Physics, Custom Skins, M trigger & ESC)");
+    }
+
+    private static void testMysteryBoxEasterEggAndCurb1_5s() {
+        // 1. Kiểm tra hằng số thời gian tối đa cọ lề bốc lửa giảm xuống 1.5s
+        if (sanbaka.state.GameState.CURB_FIRE_THRESHOLD_SEC != 1.5) {
+            throw new AssertionError("CURB_FIRE_THRESHOLD_SEC must be 1.5 seconds, got: " + sanbaka.state.GameState.CURB_FIRE_THRESHOLD_SEC);
+        }
+
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.beginDay(); // Day 0
+        long now = logic.lastFrameAt;
+        // Đi sát lề 1.3s (26 lần 50ms) -> chưa bốc lửa
+        for (int i = 0; i < 26; i++) {
+            now += 50;
+            logic.things.clear();
+            logic.player.x = sanbaka.state.GameState.PLAYER_MIN_X;
+            logic.updateRoad(now);
+        }
+        if (logic.curbOnFire) {
+            throw new AssertionError("Player should NOT be on fire before reaching 1.5s!");
+        }
+        // Đi tiếp thêm 5 lần 50ms (tổng 1.55s) -> bắt đầu bốc lửa
+        for (int i = 0; i < 5; i++) {
+            now += 50;
+            logic.things.clear();
+            logic.player.x = sanbaka.state.GameState.PLAYER_MIN_X;
+            logic.updateRoad(now);
+        }
+        if (!logic.curbOnFire) {
+            throw new AssertionError("Player MUST catch fire after >= 1.5s on curb!");
+        }
+
+        // 2. Kiểm tra khởi tạo thực thể MysteryBox (kind = 19, snack = true)
+        Thing box = Thing.create(19);
+        if (!(box instanceof sanbaka.model.MysteryBox) || box.kind != 19 || !box.snack) {
+            throw new AssertionError("Thing.create(19) must return MysteryBox with kind=19 and snack=true!");
+        }
+
+        // 3. Kiểm tra vị trí xuất hiện: Nằm chính giữa mép lề đường (50% lòng đường, 50% nhô lên vỉa hè)
+        int leftCurbCount = 0;
+        int rightCurbCount = 0;
+        int trials = 500;
+        double leftCurbExpected = sanbaka.state.GameState.ROAD_X + 45.0; // 250.0
+        double rightCurbExpected = sanbaka.state.GameState.ROAD_X + sanbaka.state.GameState.ROAD_W - 45.0; // 710.0
+        for (int i = 0; i < trials; i++) {
+            logic.things.clear();
+            if (logic.trySpawnMysteryBox()) {
+                Thing t = logic.things.get(0);
+                boolean onLeftCurb = Math.abs(t.x - leftCurbExpected) < 1e-4;
+                boolean onRightCurb = Math.abs(t.x - rightCurbExpected) < 1e-4;
+                if (!onLeftCurb && !onRightCurb) {
+                    throw new AssertionError("MysteryBox must spawn on curb boundary! Expected "
+                            + leftCurbExpected + " or " + rightCurbExpected + ", got: " + t.x);
+                }
+                // Chiều rộng là t.w (36px). Với tâm đặt tại curbX:
+                // Một nửa (18px) nằm ở lòng đường, nửa còn lại (18px) lồi lên vỉa hè
+                double halfW = t.w / 2.0;
+                if (Math.abs(halfW - 18.0) > 1e-4) {
+                    throw new AssertionError("MysteryBox half width should be 18px (50%), got: " + halfW);
+                }
+                if (onLeftCurb) leftCurbCount++;
+                else rightCurbCount++;
+            }
+        }
+        if (leftCurbCount == 0 || rightCurbCount == 0) {
+            throw new AssertionError("MysteryBox should spawn on both left and right curbs! Left: "
+                    + leftCurbCount + ", Right: " + rightCurbCount);
+        }
+
+        // 4. Kiểm tra nhặt Mystery Box mở khóa Ending ẩn (Mario minigame khi bấm SPACE/ENTER tại Happy Ending)
+        logic.mysteryBoxCollected = true;
+        logic.screen = GameState.ENDING_HE;
+        java.awt.event.KeyEvent keyEnter = new java.awt.event.KeyEvent(
+                logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
+                java.awt.event.KeyEvent.VK_ENTER, '\n');
+        logic.keyPressed(keyEnter);
+        if (logic.screen != GameState.MARIO) {
+            throw new AssertionError("Pressing ENTER on ENDING_HE with MysteryBox collected must trigger MARIO hidden ending!");
+        }
+
+        // 5. Kiểm tra nếu chưa nhặt Mystery Box thì bấm ENTER về TITLE bình thường
+        logic.mysteryBoxCollected = false;
+        logic.screen = GameState.ENDING_HE;
+        logic.keyPressed(keyEnter);
+        if (logic.screen != GameState.TITLE) {
+            throw new AssertionError("Pressing ENTER on ENDING_HE without MysteryBox must return to TITLE screen!");
+        }
+
+        System.out.println("  ✓ testMysteryBoxEasterEggAndCurb1_5s passed (50% road/50% sidewalk curb positioning, 1.5s curb fire, Hidden Mario Ending trigger)");
     }
 }

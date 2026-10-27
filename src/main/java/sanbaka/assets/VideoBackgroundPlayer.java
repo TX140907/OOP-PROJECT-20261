@@ -154,8 +154,6 @@ public final class VideoBackgroundPlayer {
                 int[] lumaX1 = new int[targetW];
                 int[] lumaWx = new int[targetW];
                 int[] chromaX0 = new int[targetW];
-                int[] chromaX1 = new int[targetW];
-                int[] chromaWx = new int[targetW];
                 int uvPairsW = (srcW >> 1) - 1;
 
                 for (int x = 0; x < targetW; x++) {
@@ -172,18 +170,13 @@ public final class VideoBackgroundPlayer {
                     if (cfx < 0) cfx = 0;
                     else if (cfx > uvPairsW) cfx = uvPairsW;
                     int cx0 = Math.min((int) cfx, uvPairsW);
-                    int cx1 = Math.min(cx0 + 1, uvPairsW);
                     chromaX0[x] = cx0 << 1;
-                    chromaX1[x] = cx1 << 1;
-                    chromaWx[x] = (int) Math.round((cfx - cx0) * 256.0);
                 }
 
                 int[] lumaY0 = new int[targetH];
                 int[] lumaY1 = new int[targetH];
                 int[] lumaWy = new int[targetH];
                 int[] chromaY0 = new int[targetH];
-                int[] chromaY1 = new int[targetH];
-                int[] chromaWy = new int[targetH];
                 int uvRowsH = (srcH >> 1) - 1;
 
                 for (int y = 0; y < targetH; y++) {
@@ -200,15 +193,9 @@ public final class VideoBackgroundPlayer {
                     if (cfy < 0) cfy = 0;
                     else if (cfy > uvRowsH) cfy = uvRowsH;
                     int cy0 = Math.min((int) cfy, uvRowsH);
-                    int cy1 = Math.min(cy0 + 1, uvRowsH);
                     chromaY0[y] = (srcH + cy0) * stride;
-                    chromaY1[y] = (srcH + cy1) * stride;
-                    chromaWy[y] = (int) Math.round((cfy - cy0) * 256.0);
                 }
 
-                int[] lumaPlane = new int[targetW * targetH];
-                int[] uPlane = new int[targetW * targetH];
-                int[] vPlane = new int[targetW * targetH];
                 byte[] rawBytes = new byte[stride * srcH * 3 / 2];
 
                 MemorySegment pStreamIdx = arena.allocate(ValueLayout.JAVA_INT);
@@ -282,18 +269,15 @@ public final class VideoBackgroundPlayer {
                                     MemorySegment.copy(raw, ValueLayout.JAVA_BYTE, 0, rawBytes, 0, minBytes);
 
                                     int[] dstPixels = ((DataBufferInt) currentWrite.getRaster().getDataBuffer()).getData();
-                                    decodeUniformCoverAndSharpen(
+                                    decodeUniformCover(
                                             rawBytes,
                                             dstPixels,
-                                            lumaPlane,
-                                            uPlane,
-                                            vPlane,
                                             targetW,
                                             targetH,
                                             lumaX0, lumaX1, lumaWx,
                                             lumaY0, lumaY1, lumaWy,
-                                            chromaX0, chromaX1, chromaWx,
-                                            chromaY0, chromaY1, chromaWy
+                                            chromaX0,
+                                            chromaY0
                                     );
 
                                     onFrameReady.accept(currentWrite);
@@ -346,29 +330,22 @@ public final class VideoBackgroundPlayer {
         return firstFrameDecoded[0];
     }
 
-    private static void decodeUniformCoverAndSharpen(
+    private static void decodeUniformCover(
             byte[] raw,
             int[] dstPixels,
-            int[] lumaPlane,
-            int[] uPlane,
-            int[] vPlane,
             int targetW,
             int targetH,
             int[] lumaX0, int[] lumaX1, int[] lumaWx,
             int[] lumaY0, int[] lumaY1, int[] lumaWy,
-            int[] chromaX0, int[] chromaX1, int[] chromaWx,
-            int[] chromaY0, int[] chromaY1, int[] chromaWy) {
+            int[] chromaX0,
+            int[] chromaY0) {
         int idx = 0;
         for (int y = 0; y < targetH; y++) {
             int ly0 = lumaY0[y];
             int ly1 = lumaY1[y];
             int lwy = lumaWy[y];
             int lwyInv = 256 - lwy;
-
-            int cy0 = chromaY0[y];
-            int cy1 = chromaY1[y];
-            int cwy = chromaWy[y];
-            int cwyInv = 256 - cwy;
+            int cy = chromaY0[y];
 
             for (int x = 0; x < targetW; x++) {
                 int lx0 = lumaX0[x];
@@ -382,61 +359,24 @@ public final class VideoBackgroundPlayer {
                 int y11 = raw[ly1 + lx1] & 0xFF;
                 int yTop = y00 * lwxInv + y01 * lwx;
                 int yBot = y10 * lwxInv + y11 * lwx;
-                lumaPlane[idx] = (yTop * lwyInv + yBot * lwy + 32768) >> 16;
+                int yVal = (yTop * lwyInv + yBot * lwy + 32768) >> 16;
 
-                int cx0 = chromaX0[x];
-                int cx1 = chromaX1[x];
-                int cwx = chromaWx[x];
-                int cwxInv = 256 - cwx;
-
-                int u00 = raw[cy0 + cx0] & 0xFF;
-                int u01 = raw[cy0 + cx1] & 0xFF;
-                int u10 = raw[cy1 + cx0] & 0xFF;
-                int u11 = raw[cy1 + cx1] & 0xFF;
-                int uTop = u00 * cwxInv + u01 * cwx;
-                int uBot = u10 * cwxInv + u11 * cwx;
-                uPlane[idx] = ((uTop * cwyInv + uBot * cwy + 32768) >> 16) - 128;
-
-                int v00 = raw[cy0 + cx0 + 1] & 0xFF;
-                int v01 = raw[cy0 + cx1 + 1] & 0xFF;
-                int v10 = raw[cy1 + cx0 + 1] & 0xFF;
-                int v11 = raw[cy1 + cx1 + 1] & 0xFF;
-                int vTop = v00 * cwxInv + v01 * cwx;
-                int vBot = v10 * cwxInv + v11 * cwx;
-                vPlane[idx] = ((vTop * cwyInv + vBot * cwy + 32768) >> 16) - 128;
-
-                idx++;
-            }
-        }
-
-        for (int y = 0; y < targetH; y++) {
-            int rowOffset = y * targetW;
-            boolean innerY = y > 0 && y < targetH - 1;
-            for (int x = 0; x < targetW; x++) {
-                int i = rowOffset + x;
-                int yVal = lumaPlane[i];
-                if (innerY && x > 0 && x < targetW - 1) {
-                    int neighbors = lumaPlane[i - 1] + lumaPlane[i + 1]
-                            + lumaPlane[i - targetW] + lumaPlane[i + targetW];
-                    int detail = (yVal << 2) - neighbors;
-                    yVal += (detail * 38) >> 8;
-                }
+                int cx = chromaX0[x];
+                int u = (raw[cy + cx] & 0xFF) - 128;
+                int v = (raw[cy + cx + 1] & 0xFF) - 128;
 
                 int c = yVal - 16;
                 if (c < 0) c = 0;
-                int u = uPlane[i];
-                int v = vPlane[i];
-
-                int c298 = 298 * c;
-                int r = (c298 + 459 * v + 128) >> 8;
-                int g = (c298 - 55 * u - 136 * v + 128) >> 8;
-                int b = (c298 + 541 * u + 128) >> 8;
+                int c298 = 298 * c + 128;
+                int r = (c298 + 459 * v) >> 8;
+                int g = (c298 - 55 * u - 136 * v) >> 8;
+                int b = (c298 + 541 * u) >> 8;
 
                 if (r < 0) r = 0; else if (r > 255) r = 255;
                 if (g < 0) g = 0; else if (g > 255) g = 255;
                 if (b < 0) b = 0; else if (b > 255) b = 255;
 
-                dstPixels[i] = 0xFF000000 | (r << 16) | (g << 8) | b;
+                dstPixels[idx++] = 0xFF000000 | (r << 16) | (g << 8) | b;
             }
         }
     }
