@@ -36,6 +36,7 @@ public class SanbakaSmokeTest {
         testMap3MotorcycleDensityAndVelocity();
         testGpuHardwareAccelerationFlags();
         testStudentCrossingMechanics();
+        testMarioMinigame();
 
         System.out.println("[PASS] All SanbakaSmokeTest checks passed successfully!");
     }
@@ -1250,5 +1251,136 @@ public class SanbakaSmokeTest {
         }
 
         System.out.println("  ✓ testStudentCrossingMechanics passed (Yields to cars/wobble, no clipping, continues after player collision, no text)");
+    }
+
+    private static void testMarioMinigame() {
+        // 1. Kiểm tra nạp tài nguyên MarioAssets không null
+        String[] requiredSprites = {
+            "mario_idle", "mario_walk_1", "mario_walk_2", "mario_walk_3",
+            "mario_jump", "mario_skid", "mario_die", "mario_flag",
+            "mario_big_idle", "mario_big_walk_1", "mario_big_walk_2", "mario_big_walk_3",
+            "mario_big_jump", "mario_big_skid", "mario_big_flag",
+            "goomba_1", "goomba_2", "goomba_dead",
+            "tile_ground", "tile_brick", "tile_question_1", "tile_question_used",
+            "tile_pipe_top_l", "tile_pipe_top_r", "tile_pipe_body_l", "tile_pipe_body_r",
+            "tile_flag", "item_coin", "item_mushroom"
+        };
+        for (String key : requiredSprites) {
+            java.awt.image.BufferedImage img = sanbaka.mario.MarioAssets.get(key);
+            if (img == null) {
+                throw new AssertionError("MarioAssets missing required sprite: " + key);
+            }
+        }
+
+        // 2. Khởi tạo MarioMinigame và kiểm tra vị trí ban đầu
+        sanbaka.mario.MarioMinigame minigame = new sanbaka.mario.MarioMinigame();
+        minigame.start();
+        if (minigame.player.x <= 0 || minigame.player.y <= 0) {
+            throw new AssertionError("Mario player must start at positive coordinates!");
+        }
+
+        // 3. Kiểm tra gia tốc chạy sang phải và phanh trượt
+        minigame.player.keyRight = true;
+        minigame.player.update(0.1, minigame.world);
+        if (minigame.player.vx <= 0) {
+            throw new AssertionError("Holding right must increase positive horizontal velocity vx!");
+        }
+        minigame.player.keyRight = false;
+        minigame.player.keyLeft = true;
+        minigame.player.update(0.016, minigame.world);
+        if (!minigame.player.skidding) {
+            throw new AssertionError("Pressing left while moving right must trigger skidding!");
+        }
+
+        // 4. Kiểm tra nhảy biến thiên (Variable Jump)
+        minigame.player.onGround = true;
+        minigame.player.keyJump = true;
+        minigame.player.update(0.016, minigame.world);
+        if (minigame.player.vy >= 0) {
+            throw new AssertionError("Pressing jump when on ground must produce negative vertical velocity vy!");
+        }
+
+        // 5. Kiểm tra dẫm Goomba từ trên xuống
+        sanbaka.mario.Goomba goomba = new sanbaka.mario.Goomba(100, 200);
+        minigame.player.x = 100;
+        minigame.player.y = 180;
+        minigame.player.vy = 200; // Đang rơi xuống
+        goomba.update(0.016, minigame.world, minigame.player);
+        if (!goomba.isStomped) {
+            throw new AssertionError("Falling onto Goomba must stomp it!");
+        }
+        if (minigame.player.vy >= 0) {
+            throw new AssertionError("Stomping Goomba must bounce player upwards!");
+        }
+
+        // 6. Kiểm tra húc khối hỏi chấm ? từ dưới lên (khối thường nhặt xu, khối đặc biệt sinh Nấm thần kỳ)
+        minigame.world.map[16][9] = sanbaka.mario.MarioWorld.QUESTION;
+        minigame.world.bumpBlock(16, 9);
+        if (minigame.world.map[16][9] != sanbaka.mario.MarioWorld.QUESTION_USED) {
+            throw new AssertionError("Bumping question block must turn it into USED block!");
+        }
+
+        // 6b. Kiểm tra sinh Nấm thần kỳ (Super Mushroom), Mario ăn nấm hóa to và chịu thêm 1 đòn đánh
+        minigame.world.map[21][9] = sanbaka.mario.MarioWorld.QUESTION;
+        minigame.world.bumpBlock(21, 9);
+        if (minigame.world.mushrooms.isEmpty()) {
+            throw new AssertionError("Hitting block (21, 9) must spawn a Super Mushroom!");
+        }
+        sanbaka.mario.Mushroom shroom = minigame.world.mushrooms.get(0);
+        shroom.emerged = true; // Giả lập nấm đã trồi lên xong
+        shroom.x = minigame.player.x;
+        shroom.y = minigame.player.y;
+        shroom.update(0.016, minigame.world, minigame.player);
+        if (!minigame.player.isBig || minigame.player.getWidth() != sanbaka.mario.MarioPlayer.BIG_WIDTH || minigame.player.getHeight() != sanbaka.mario.MarioPlayer.BIG_HEIGHT) {
+            throw new AssertionError("Collecting mushroom must transform Mario into Super Mario (isBig=true, width=" + sanbaka.mario.MarioPlayer.BIG_WIDTH + ", height=" + sanbaka.mario.MarioPlayer.BIG_HEIGHT + ")!");
+        }
+        // Khi bị kẻ địch tấn công lúc đang to: teo nhỏ và không chết
+        minigame.player.hitByEnemy();
+        if (minigame.player.isDead || minigame.player.isBig || minigame.player.getHeight() != sanbaka.mario.MarioPlayer.SMALL_HEIGHT) {
+            throw new AssertionError("Taking damage while Big Mario must shrink player to Small Mario instead of dying!");
+        }
+
+        // 6c. Kiểm tra cơ chế cờ tụt liên tục tới đáy và Mario biến mất khi vào sâu lâu đài
+        minigame.world.flagSlidingDown = true;
+        double startFlagY = minigame.world.flagY;
+        minigame.player.isFlagSliding = false; // Giả lập Mario đã rời khỏi cột cờ
+        minigame.player.isCompleted = true;
+        minigame.world.update(0.2, minigame.player);
+        if (minigame.world.flagY <= startFlagY) {
+            throw new AssertionError("Flag must continuously slide down even after Mario has left the flagpole!");
+        }
+
+        minigame.player.x = minigame.world.castleDoorX + 16.0;
+        minigame.player.update(0.016, minigame.world);
+        if (!minigame.player.enteredCastle) {
+            throw new AssertionError("Mario must enter castle doorway and disappear completely!");
+        }
+
+        // 7. Kiểm tra hàm render vẽ không văng lỗi
+        java.awt.image.BufferedImage testImg = new java.awt.image.BufferedImage(960, 640, java.awt.image.BufferedImage.TYPE_INT_RGB);
+        java.awt.Graphics2D g = testImg.createGraphics();
+        minigame.render(g);
+        g.dispose();
+
+        // 8. Kiểm tra phím M từ màn hình chính TITLE mở Minigame và ESC quay lại
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.screen = GameState.TITLE;
+        java.awt.event.KeyEvent keyM = new java.awt.event.KeyEvent(
+                logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
+                java.awt.event.KeyEvent.VK_M, 'm');
+        logic.keyPressed(keyM);
+        if (logic.screen != GameState.MARIO || logic.marioGame == null) {
+            throw new AssertionError("Pressing M on TITLE screen must transition to MARIO screen!");
+        }
+
+        java.awt.event.KeyEvent keyEsc = new java.awt.event.KeyEvent(
+                logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
+                java.awt.event.KeyEvent.VK_ESCAPE, (char) 27);
+        logic.keyPressed(keyEsc);
+        if (logic.screen != GameState.TITLE) {
+            throw new AssertionError("Pressing ESC on MARIO screen must return to TITLE screen!");
+        }
+
+        System.out.println("  ✓ testMarioMinigame passed (NES 8-bit World 1-1, Handheld Console, Physics, Custom Skins, M trigger & ESC)");
     }
 }

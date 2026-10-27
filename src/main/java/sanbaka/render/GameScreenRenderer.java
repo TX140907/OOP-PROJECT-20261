@@ -326,6 +326,9 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (screen == ENDING_HE) drawEnding(g, true);
         else if (screen == ENDING_BE) drawEnding(g, false);
         else if (screen == AIR) drawAir(g);
+        else if (screen == MARIO) {
+            if (marioGame != null) marioGame.render(g);
+        }
         else drawDialog(g);
         long fadeIn = System.currentTimeMillis() - fadeInStart;
         if (fadeIn >= 0 && fadeIn < 700) {

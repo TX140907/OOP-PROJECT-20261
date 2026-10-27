@@ -115,6 +115,12 @@ public class GameLogic extends GameStory {
         if (screen == AIR && now - airSceneStarted >= 3500) {
             screen = DIALOG;
         }
+        if (screen == MARIO) {
+            if (marioGame != null) marioGame.update(now);
+            repaint();
+            if (PERF_LOG_ENABLED) recordPerformance(false, System.nanoTime() - perfStart);
+            return;
+        }
         if (screen == ROAD) {
             if (flightMode) updateFlight(now);
             else updateRoad(now);
@@ -1500,6 +1506,14 @@ public class GameLogic extends GameStory {
     public void keyPressed(KeyEvent e) {
         if (menuTransitionTo >= 0) return;
         int key = e.getKeyCode();
+        if (screen == MARIO) {
+            if (key == KeyEvent.VK_ESCAPE) {
+                screen = TITLE;
+                return;
+            }
+            if (marioGame != null) marioGame.keyPressed(key);
+            return;
+        }
         if (key == KeyEvent.VK_ESCAPE) {
             handleEscape();
             return;
@@ -1517,6 +1531,10 @@ public class GameLogic extends GameStory {
             }
         }
         if (screen == TITLE || screen == PAUSE) {
+            if (screen == TITLE && key == KeyEvent.VK_M) {
+                startMarioMinigame();
+                return;
+            }
             if (key == KeyEvent.VK_ENTER) activateHoveredMenuButton();
             return;
         }
@@ -1564,6 +1582,10 @@ public class GameLogic extends GameStory {
     @Override
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();
+        if (screen == MARIO) {
+            if (marioGame != null) marioGame.keyReleased(key);
+            return;
+        }
         if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) left = false;
         if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) right = false;
         if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) up = false;
@@ -1573,6 +1595,15 @@ public class GameLogic extends GameStory {
 
     @Override
     public void keyTyped(KeyEvent e) {
+    }
+
+    public void startMarioMinigame() {
+        if (marioGame == null) {
+            marioGame = new sanbaka.mario.MarioMinigame();
+        }
+        marioGame.start();
+        screen = MARIO;
+        requestFocusInWindow();
     }
 
     public double laneX(int lane) {

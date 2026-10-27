@@ -97,6 +97,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public static final int ENDING_HE = 5;
     public static final int ENDING_BE = 6;
     public static final int AIR = 7;
+    public static final int MARIO = 14;
+    public sanbaka.mario.MarioMinigame marioGame = null;
     public volatile java.awt.image.BufferedImage dialogBackground;
     public java.awt.image.BufferedImage afterExamBackground;
     public java.awt.image.BufferedImage afterExamRainBackground;

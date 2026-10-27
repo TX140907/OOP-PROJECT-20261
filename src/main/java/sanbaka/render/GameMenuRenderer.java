@@ -163,6 +163,7 @@ public class GameMenuRenderer extends GameRoadRenderer {
         g.setFont(new Font("Dialog", Font.PLAIN, 13));
         g.setColor(hasBg ? new Color(255, 255, 255, 210) : new Color(110, 116, 130));
         g.drawString("Đã mở khóa " + unlockedCount() + " / " + scenes.size() + " cảnh", 62, 604);
+        g.drawString("[M] Máy chơi game Mario 8-bit", 710, 604);
     }
 
     // ---------- tạm dừng ----------
