@@ -107,6 +107,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public java.awt.image.BufferedImage afterExamSnowBackground;
     public java.awt.image.BufferedImage afterExamSunBackground;
     public java.awt.image.BufferedImage secretEndingBackground;
+    public java.awt.image.BufferedImage afterDateBackground;
+    public java.awt.image.BufferedImage weddingBackground;
     public final java.util.Map<String, java.awt.image.BufferedImage> sanbakaExpressionImages = new java.util.HashMap<>();
     public int screen = TITLE;
     public int dialogIndex = 0;

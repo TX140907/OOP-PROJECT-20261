@@ -335,7 +335,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (screen == AIR) drawAir(g);
         else if (screen == MARIO) {
             drawMarioGame(g);
-            drawPauseButton(g, 22);
+            drawPauseButton(g, W - 58);
         }
         else drawDialog(g);
         long fadeIn = System.currentTimeMillis() - fadeInStart;
@@ -615,8 +615,8 @@ public class GameScreenRenderer extends GameMenuRenderer {
     }
 
     void drawMarioGame(Graphics2D g) {
-        java.awt.image.BufferedImage backdrop = secretEndingBackground != null
-                ? secretEndingBackground : dialogBackground;
+        java.awt.image.BufferedImage backdrop = afterDateBackground != null
+                ? afterDateBackground : secretEndingBackground != null ? secretEndingBackground : dialogBackground;
         if (backdrop != null) g.drawImage(backdrop, 0, 0, W, H, null);
         else {
             g.setColor(Color.BLACK);
@@ -645,7 +645,9 @@ public class GameScreenRenderer extends GameMenuRenderer {
         int afterExamDay = afterExamDay(dialogIndex);
         boolean secretEnding = dialogIndex < lines.size() && afterExamDay == 5
                 && isSecretEndingDialog(dialogIndex);
-        java.awt.image.BufferedImage background = secretEnding ? secretEndingBackground : switch (afterExamDay) {
+        boolean weddingEnding = dialogIndex < lines.size() && isWeddingEndingDialog(dialogIndex);
+        java.awt.image.BufferedImage background = weddingEnding ? weddingBackground
+                : secretEnding ? afterDateBackground : switch (afterExamDay) {
             case 2 -> afterExamRainBackground;
             case 3 -> afterExamSnowBackground;
             case 4 -> afterExamSunBackground;
