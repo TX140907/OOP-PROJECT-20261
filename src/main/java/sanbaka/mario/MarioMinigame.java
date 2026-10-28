@@ -59,16 +59,20 @@ public class MarioMinigame {
         player.update(dt, world);
         world.update(dt, player);
 
-        // Tự động hồi sinh sau khi chết 2.6 giây hoặc sau khi về đích đã đi vào lâu đài 4.0 giây
+        // Tự động hồi sinh khi chết; sau khi vào lâu đài giữ màn hình chiến thắng để story tiếp tục.
         if (player.isDead && (now - player.deadTimer > 2600)) {
             start();
-        } else if (player.enteredCastle) {
-            if (victoryTimer == 0) {
-                victoryTimer = now;
-            } else if (now - victoryTimer > 4000) {
-                start();
-            }
+        } else if (player.enteredCastle && victoryTimer == 0) {
+            victoryTimer = now;
         }
+    }
+
+    public boolean isVictoryReady(long now) {
+        return player.enteredCastle && victoryTimer > 0 && now - victoryTimer > 4000;
+    }
+
+    public void resumeFromPause(long now) {
+        lastTime = now;
     }
 
     public void keyPressed(int key) {
@@ -98,14 +102,10 @@ public class MarioMinigame {
     }
 
     // ==========================================
-    // VẼ TOÀN BỘ KHUNG MÁY CHƠI GAME VÀ NỀN ĐEN
+    // VẼ KHUNG MÁY CHƠI GAME; nền phía sau do màn hình game cung cấp.
     // ==========================================
     public void render(Graphics2D g) {
-        // 1. Xung quanh máy chơi game là nền đen hoàn toàn
-        g.setColor(Color.BLACK);
-        g.fillRect(0, 0, 960, 640);
-
-        // 2. Vẽ màn hình game Mario vào buffer riêng
+        // Vẽ màn hình game Mario vào buffer riêng
         Graphics2D sg = screenBuffer.createGraphics();
         sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
         world.render(sg, player);
@@ -309,12 +309,12 @@ public class MarioMinigame {
     private void drawOverlayHints(Graphics2D g) {
         g.setFont(new Font("Dialog", Font.BOLD, 13));
         g.setColor(new Color(200, 205, 215));
-        String hint = "[ESC] Quay lại Menu  ·  [A / D / Mũi tên] Di chuyển  ·  [Space / W] Nhảy  ·  [Shift] Chạy  ·  [R] Chơi lại";
+        String hint = "[ESC] Tạm dừng  ·  [M] Bỏ qua  ·  [A / D / Mũi tên] Di chuyển  ·  [Space / W] Nhảy  ·  [Shift] Chạy  ·  [R] Chơi lại";
         int tw = g.getFontMetrics().stringWidth(hint);
         g.drawString(hint, (960 - tw) / 2, 630);
 
         if (player.isCompleted) {
-            String winMsg = "★ CHÚC MỪNG BẠN ĐÃ VỀ ĐÍCH CỘT CỜ WORLD 1-1! (Nhấn R để chơi lại) ★";
+            String winMsg = "★ CHÚC MỪNG BẠN ĐÃ VỀ ĐÍCH! (Nhấn Enter / Space để tiếp tục) ★";
             g.setFont(new Font("Dialog", Font.BOLD, 14));
             g.setColor(new Color(0xFF, 0xD7, 0x00));
             int ww = g.getFontMetrics().stringWidth(winMsg);

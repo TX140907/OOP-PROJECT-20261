@@ -18,7 +18,8 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (pausedScreen == ROOM) {
             drawRoom(g);
             drawCurrentDialog(g);
-        } else drawRoad(g);
+        } else if (pausedScreen == MARIO) drawMarioGame(g);
+        else drawRoad(g);
     }
     void drawFade(Graphics2D g) {
         if (fadeKind == FADE_ROOM) {
@@ -216,12 +217,17 @@ public class GameScreenRenderer extends GameMenuRenderer {
         panel(g, 90, 120, 780, 390, Color.WHITE);
         g.setColor(happy ? PINK : new Color(91, 110, 139));
         g.setFont(new Font("Dialog", Font.BOLD, 15));
-        g.drawString(happy ? "HAPPY ENDING" : "BAD ENDING", 145, 168);
+        boolean secret = screen == ENDING_SE;
+        g.drawString(secret ? "SECRET ENDING" : happy ? "HAPPY ENDING" : "BAD ENDING", 145, 168);
         g.setFont(new Font("Dialog", Font.BOLD, 38));
-        g.drawString(happy ? "LỜI HẸN Ở C1" : "CỔ ĐÔNG CỦA TRƯỜNG", 145, 212);
+        g.drawString(secret ? "LỜI HỨA TRỌN ĐỜI" : happy ? "LỜI HẸN Ở C1" : "CỔ ĐÔNG CỦA TRƯỜNG", 145, 212);
         g.setColor(INK);
         g.setFont(new Font("Dialog", Font.PLAIN, 20));
-        if (!happy) {
+        if (secret) {
+            g.drawString("Một nhiệm vụ bí mật đã đưa hai người đến bên nhau.", 145, 275);
+            g.drawString("Và cuộc hành trình của họ sẽ còn tiếp tục.", 145, 315);
+            drawHeart(g, 780, 260, 90, PINK);
+        } else if (!happy) {
             drawWrapped(g, "Bạn đã tạch môn, chúc mừng bạn đã trở thành 1 cổ đông của trường, "
                     + "đóng góp cho sự phát triển của trường ta!", 145, 275, 660, 32);
             g.setColor(new Color(91, 110, 139));
@@ -234,7 +240,9 @@ public class GameScreenRenderer extends GameMenuRenderer {
         }
         g.setColor(MINT);
         g.setFont(new Font("Dialog", Font.BOLD, 17));
-        String retryText = happy ? "ENTER / SPACE · CHƠI LẠI"
+        String retryText = secret ? "ENTER / SPACE · VỀ MENU"
+                : happy && sceneUnlocked(sceneIndex(SC_SECRET, 4)) ? "ENTER / SPACE · TIẾP TỤC"
+                : happy ? "ENTER / SPACE · CHƠI LẠI"
                 : (day == 4 && flightMode) ? "ENTER / SPACE · CHƠI LẠI LƯỢT 2 (NGÀY 5)"
                 : "ENTER / SPACE · CHƠI LẠI NGÀY " + (day + 1);
         g.drawString(retryText, 145, 455);
@@ -322,11 +330,12 @@ public class GameScreenRenderer extends GameMenuRenderer {
             drawPauseButton(g, W - 58);
         }
         else if (screen == EXAM) drawExam(g);
-        else if (screen == ENDING_HE) drawEnding(g, true);
+        else if (screen == ENDING_HE || screen == ENDING_SE) drawEnding(g, true);
         else if (screen == ENDING_BE) drawEnding(g, false);
         else if (screen == AIR) drawAir(g);
         else if (screen == MARIO) {
-            if (marioGame != null) marioGame.render(g);
+            drawMarioGame(g);
+            drawPauseButton(g, 22);
         }
         else drawDialog(g);
         long fadeIn = System.currentTimeMillis() - fadeInStart;
@@ -605,6 +614,19 @@ public class GameScreenRenderer extends GameMenuRenderer {
         g.drawString(title, 58, 46);
     }
 
+    void drawMarioGame(Graphics2D g) {
+        java.awt.image.BufferedImage backdrop = secretEndingBackground != null
+                ? secretEndingBackground : dialogBackground;
+        if (backdrop != null) g.drawImage(backdrop, 0, 0, W, H, null);
+        else {
+            g.setColor(Color.BLACK);
+            g.fillRect(0, 0, W, H);
+        }
+        g.setColor(new Color(0, 0, 0, 160));
+        g.fillRect(0, 0, W, H);
+        if (marioGame != null) marioGame.render(g);
+    }
+
     void drawExam(Graphics2D g) {
         g.setColor(new Color(228,239,244));
         g.fillRect(0,0,W,H);
@@ -621,7 +643,9 @@ public class GameScreenRenderer extends GameMenuRenderer {
 
     void drawDialog(Graphics2D g) {
         int afterExamDay = afterExamDay(dialogIndex);
-        java.awt.image.BufferedImage background = switch (afterExamDay) {
+        boolean secretEnding = dialogIndex < lines.size() && afterExamDay == 5
+                && isSecretEndingDialog(dialogIndex);
+        java.awt.image.BufferedImage background = secretEnding ? secretEndingBackground : switch (afterExamDay) {
             case 2 -> afterExamRainBackground;
             case 3 -> afterExamSnowBackground;
             case 4 -> afterExamSunBackground;
@@ -633,7 +657,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
             g.drawImage(background, 0, 0, W, H, null);
         }
         if (dialogIndex >= lines.size()) {
-            screen = ENDING_HE;
+            screen = isSecretEndingDialog(dialogIndex - 1) ? ENDING_SE : ENDING_HE;
             drawEnding(g, true);
             return;
         }
@@ -874,12 +898,3 @@ public class GameScreenRenderer extends GameMenuRenderer {
         g.drawString(hint, 888 - g.getFontMetrics().stringWidth(hint), 574);
     }
 }
-
-
-
-
-
-
-
-
-

@@ -50,6 +50,7 @@ public class SanbakaGame extends GameScreenRenderer {
         afterExamRainBackground = loadAfterExamBackground("Toa_C1_mua.png");
         afterExamSnowBackground = loadAfterExamBackground("Toa_C1_tuyet.png");
         afterExamSunBackground = loadAfterExamBackground("Toa_C1_nang.png");
+        secretEndingBackground = loadAfterExamBackground("sanbaka2.jpg");
         sanbakaExpressionImages.put("binh_thuong", loadSanbakaExpression("binh_thuong.png"));
         sanbakaExpressionImages.put("lo_lang", loadSanbakaExpression("lo_lang.png"));
         sanbakaExpressionImages.put("vui_cuoi", loadSanbakaExpression("vui_cuoi.png"));
@@ -175,7 +176,7 @@ public class SanbakaGame extends GameScreenRenderer {
                                 videoFile,
                                 W,
                                 H,
-                                () -> screen != ROAD && screen != AIR && screen != EXAM && screen != ENDING_BE && screen != ENDING_HE && screen != MARIO,
+                                () -> screen != ROAD && screen != AIR && screen != EXAM && screen != ENDING_BE && screen != ENDING_HE && screen != ENDING_SE && screen != MARIO,
                                 frame -> {
                                     dialogBackground = frame;
                                     videoFrameDirty = true;
