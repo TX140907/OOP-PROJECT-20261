@@ -10,7 +10,7 @@ public abstract class GameMenuState extends GameState {
     public Font titleFont = new Font("SansSerif", Font.BOLD, 42);
     public static final boolean UNLOCK_ALL = true;      // true: mở khóa mọi cảnh và vào thẳng menu chọn cảnh để test
     public static final int SCENES = 11, HOWTO = 12, PAUSE = 13;
-    public static final int SC_ROOM = 0, SC_JAM = 1, SC_AFTER = 2;
+    public static final int SC_ROOM = 0, SC_JAM = 1, SC_AFTER = 2, SC_SECRET = 3;
     public static final int CARD_TO_DIALOG = 0, CARD_TO_ROOM = 1, CARD_TO_AIR = 2;
     public static final int FADE_ROOM = 2;
     public static final java.io.File SAVE_FILE = new java.io.File(System.getProperty("user.home"), ".sanbaka_svbk_progress.properties");
@@ -64,6 +64,14 @@ public abstract class GameMenuState extends GameState {
             a.name = "Sau khi thi";
             a.index = indexOfMarker("@NGÀY " + d + " · SAU KHI THI");
             scenes.add(a);
+            if (d == 5) {
+                Scene secret = new Scene();
+                secret.dayIdx = 4;
+                secret.type = SC_SECRET;
+                secret.name = "SE???";
+                secret.index = indexOfMarker("@SE · SECRET ENDING");
+                scenes.add(secret);
+            }
         }
     }
 
@@ -181,6 +189,10 @@ public abstract class GameMenuState extends GameState {
         } else if (s.type == SC_AFTER) {
             dialogIndex = s.index + 1;
             cardMain = "SAU KHI THI";
+        } else if (s.type == SC_SECRET) {
+            dialogIndex = s.index + 1;
+            cardTop = "NGÀY 5";
+            cardMain = "SAU BUỔI HẸN HÒ";
         } else {
             retryDialogIndex = s.marker;
             dialogIndex = s.index;
@@ -201,7 +213,7 @@ public abstract class GameMenuState extends GameState {
     }
 
     public void pauseGame() {
-        if (screen != ROAD && screen != DIALOG && screen != ROOM) return;
+        if (screen != ROAD && screen != DIALOG && screen != ROOM && screen != MARIO) return;
         pausedScreen = screen;
         pauseStart = System.currentTimeMillis();
         screen = PAUSE;
@@ -228,6 +240,8 @@ public abstract class GameMenuState extends GameState {
         if (lastDogSpawn > 0) lastDogSpawn += d;
         if (lastStudentSpawn > 0) lastStudentSpawn += d;
         lastFrameAt = now;
+        } else if (pausedScreen == MARIO) {
+            if (marioGame != null) marioGame.resumeFromPause(now);
         } else {
             pauseDialogTyping(d);
             if (chatAnimStart > 0) chatAnimStart += d;
@@ -238,7 +252,7 @@ public abstract class GameMenuState extends GameState {
     }
 
     public void handleEscape() {
-        if (screen == ROAD || screen == DIALOG || screen == ROOM) pauseGame();
+        if (screen == ROAD || screen == DIALOG || screen == ROOM || screen == MARIO) pauseGame();
         else if (screen == PAUSE) resumeFromPause();
         else if (screen == SCENES || screen == HOWTO || screen == INTRO) {
             returnFromMenuPage();

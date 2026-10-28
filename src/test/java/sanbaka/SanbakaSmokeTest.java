@@ -51,14 +51,15 @@ public class SanbakaSmokeTest {
             throw new AssertionError("Expected at least 50 story lines, got: " + lines.size());
         }
 
-        boolean foundDay1 = false, foundDay5 = false;
+        boolean foundDay1 = false, foundDay5 = false, foundSecretEnding = false;
         for (Line line : lines) {
             if (line.who.contains("NGÀY 1")) foundDay1 = true;
             if (line.who.contains("NGÀY 5")) foundDay5 = true;
+            if (line.who.equals("@SE · SECRET ENDING")) foundSecretEnding = true;
         }
 
-        if (!foundDay1 || !foundDay5) {
-            throw new AssertionError("Story must contain both Day 1 and Day 5!");
+        if (!foundDay1 || !foundDay5 || !foundSecretEnding) {
+            throw new AssertionError("Story must contain Day 1, Day 5, and the Secret Ending!");
         }
         System.out.println("  ✓ testStoryData passed (" + lines.size() + " lines)");
     }
@@ -76,8 +77,12 @@ public class SanbakaSmokeTest {
         menu.lines.addAll(StoryData.build());
         menu.buildScenes();
 
-        if (menu.scenes.size() != 11) {
-            throw new AssertionError("Expected 11 scenes (5 room + 1 jam + 5 after), got: " + menu.scenes.size());
+        if (menu.scenes.size() != 12) {
+            throw new AssertionError("Expected 12 scenes (5 room + 1 jam + 5 after + 1 secret ending), got: " + menu.scenes.size());
+        }
+        int secretEndingIndex = menu.sceneIndex(GameMenuState.SC_SECRET, 4);
+        if (secretEndingIndex < 0 || !"SE???".equals(menu.scenes.get(secretEndingIndex).name)) {
+            throw new AssertionError("Day 5 Secret Ending scene must be available as SE???");
         }
         if (!menu.sceneUnlocked(0)) {
             throw new AssertionError("Scene 0 should be unlocked by default or under UNLOCK_ALL!");
@@ -1378,11 +1383,19 @@ public class SanbakaSmokeTest {
                 logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
                 java.awt.event.KeyEvent.VK_ESCAPE, (char) 27);
         logic.keyPressed(keyEsc);
-        if (logic.screen != GameState.TITLE) {
-            throw new AssertionError("Pressing ESC on MARIO screen must return to TITLE screen!");
+        if (logic.screen != GameState.PAUSE || logic.pausedScreen != GameState.MARIO) {
+            throw new AssertionError("Pressing ESC on MARIO screen must open the standard pause menu!");
+        }
+        logic.keyPressed(keyEsc);
+        if (logic.screen != GameState.MARIO) {
+            throw new AssertionError("Pressing ESC on the pause menu must resume MARIO!");
+        }
+        logic.keyPressed(keyM);
+        if (logic.screen != GameState.DIALOG) {
+            throw new AssertionError("Pressing M while MARIO is running must skip to the story dialogue!");
         }
 
-        System.out.println("  ✓ testMarioMinigame passed (NES 8-bit World 1-1, Handheld Console, Physics, Custom Skins, M trigger & ESC)");
+        System.out.println("  ✓ testMarioMinigame passed (NES 8-bit World 1-1, Handheld Console, Physics, Story integration, pause & M skip)");
     }
 
     private static void testMysteryBoxEasterEggAndCurb1_5s() {
@@ -1452,25 +1465,19 @@ public class SanbakaSmokeTest {
                     + leftCurbCount + ", Right: " + rightCurbCount);
         }
 
-        // 4. Kiểm tra nhặt Mystery Box mở khóa Ending ẩn (Mario minigame khi bấm SPACE/ENTER tại Happy Ending)
+        // 4. Mario được mở qua mạch truyện SE; Mystery Box không tự kích hoạt minigame từ màn hình HE.
+        logic.lines.addAll(StoryData.build());
+        logic.buildScenes();
         logic.mysteryBoxCollected = true;
         logic.screen = GameState.ENDING_HE;
         java.awt.event.KeyEvent keyEnter = new java.awt.event.KeyEvent(
                 logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
                 java.awt.event.KeyEvent.VK_ENTER, '\n');
         logic.keyPressed(keyEnter);
-        if (logic.screen != GameState.MARIO) {
-            throw new AssertionError("Pressing ENTER on ENDING_HE with MysteryBox collected must trigger MARIO hidden ending!");
+        if (logic.screen != GameState.CARD || !"SAU BUỔI HẸN HÒ".equals(logic.cardMain)) {
+            throw new AssertionError("ENTER on HE must transition to the Day 5 Secret Ending card!");
         }
 
-        // 5. Kiểm tra nếu chưa nhặt Mystery Box thì bấm ENTER về TITLE bình thường
-        logic.mysteryBoxCollected = false;
-        logic.screen = GameState.ENDING_HE;
-        logic.keyPressed(keyEnter);
-        if (logic.screen != GameState.TITLE) {
-            throw new AssertionError("Pressing ENTER on ENDING_HE without MysteryBox must return to TITLE screen!");
-        }
-
-        System.out.println("  ✓ testMysteryBoxEasterEggAndCurb1_5s passed (50% road/50% sidewalk curb positioning, 1.5s curb fire, Hidden Mario Ending trigger)");
+        System.out.println("  ✓ testMysteryBoxEasterEggAndCurb1_5s passed (curb mechanics, Mystery Box, HE-to-SE card transition)");
     }
 }
