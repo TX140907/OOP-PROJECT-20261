@@ -12,7 +12,7 @@ import sanbaka.render.GameVisuals;
  * Hộp bí ẩn (Mystery Box) - Easter Egg của game:
  * - Khối vuông màu vàng với dấu hỏi chấm ? ở giữa.
  * - Xuất hiện ở mép lề đường (curb): một nửa nằm ở lòng đường và một nửa lồi lên vỉa hè (cần cọ lề để nhặt).
- * - Xuất hiện tối đa đúng 1 lần trong suốt hành trình (ở Màn 2 với xác suất 30%, hoặc Màn 4 nếu Màn 2 chưa xuất hiện).
+ * - Xuất hiện tối đa đúng 1 lần trong suốt hành trình (ở Màn 2 với tỉ lệ tuyệt đối 100%, hoặc Màn 4 nếu Màn 2 chưa xuất hiện).
  * - Nhặt hộp này sẽ mở khóa Secret Ending sau Happy Ending; minigame Mario nằm trong đoạn kết bí mật.
  */
 public class MysteryBox extends Thing {

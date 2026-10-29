@@ -65,7 +65,7 @@ public class GameLogic extends GameStory {
         warmUntil = 0;
         mysteryBoxSpawnedThisStage = false;
         if (day == 1) {
-            map2MysteryBoxRolled = !mysteryBoxSpawned && (rng.nextInt(100) < 30);
+            map2MysteryBoxRolled = !mysteryBoxSpawned; // Tỉ lệ xuất hiện tuyệt đối (100%) ở màn 2
         }
         floatingTextManager.clear();
         beCause = "";
@@ -447,7 +447,7 @@ public class GameLogic extends GameStory {
             }
         }
         // Spawn Hộp bí ẩn (Mystery Box) Easter Egg:
-        // - Xuất hiện ở Màn 4 đúng 1 lần và xuất hiện ở Màn 2 1 lần (xác suất Màn 2 là 30%).
+        // - Xuất hiện ở Màn 2 với tỉ lệ tuyệt đối (100%), hoặc Màn 4 nếu Màn 2 chưa xuất hiện (đúng 1 lần duy nhất).
         // - Nếu Màn 2 đã xuất hiện rồi thì không cho xuất hiện lại nữa.
         if (canSpawn && !mysteryBoxSpawned && !mysteryBoxSpawnedThisStage && t >= 7.5 && dur - t > 7.0) {
             boolean shouldSpawn = (day == 1 && map2MysteryBoxRolled) || (day == HOT_DAY);

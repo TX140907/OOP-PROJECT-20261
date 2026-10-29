@@ -1383,7 +1383,7 @@ public class SanbakaSmokeTest {
                 logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
                 java.awt.event.KeyEvent.VK_ESCAPE, (char) 27);
         logic.keyPressed(keyEsc);
-        if (logic.screen != GameState.PAUSE || logic.pausedScreen != GameState.MARIO) {
+        if (logic.screen != GameMenuState.PAUSE || logic.pausedScreen != GameState.MARIO) {
             throw new AssertionError("Pressing ESC on MARIO screen must open the standard pause menu!");
         }
         logic.keyPressed(keyEsc);
@@ -1478,6 +1478,16 @@ public class SanbakaSmokeTest {
             throw new AssertionError("ENTER on HE must transition to the Day 5 Secret Ending card!");
         }
 
-        System.out.println("  ✓ testMysteryBoxEasterEggAndCurb1_5s passed (curb mechanics, Mystery Box, HE-to-SE card transition)");
+        // 5. Kiểm tra tỉ lệ xuất hiện ở Màn 2 (day == 1) là tuyệt đối 100%
+        for (int i = 0; i < 50; i++) {
+            logic.mysteryBoxSpawned = false;
+            logic.day = 1;
+            logic.beginDay();
+            if (!logic.map2MysteryBoxRolled) {
+                throw new AssertionError("MysteryBox spawn rate in Map 2 must be absolute (100%), but rolled false at iteration " + i);
+            }
+        }
+
+        System.out.println("  ✓ testMysteryBoxEasterEggAndCurb1_5s passed (Map 2 100% absolute, 50% road/50% sidewalk curb positioning, 1.5s curb fire, HE-to-SE card transition)");
     }
 }
