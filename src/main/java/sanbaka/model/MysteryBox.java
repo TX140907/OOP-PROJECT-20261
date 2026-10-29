@@ -13,7 +13,7 @@ import sanbaka.render.GameVisuals;
  * - Khối vuông màu vàng với dấu hỏi chấm ? ở giữa.
  * - Xuất hiện ở mép lề đường (curb): một nửa nằm ở lòng đường và một nửa lồi lên vỉa hè (cần cọ lề để nhặt).
  * - Xuất hiện tối đa đúng 1 lần trong suốt hành trình (ở Màn 2 với tỉ lệ tuyệt đối 100%, hoặc Màn 4 nếu Màn 2 chưa xuất hiện).
- * - Nhặt hộp này sẽ mở khóa Happy Ending ẩn (Minigame Mario 8-bit sau khi vượt qua kì thi).
+ * - Nhặt hộp này sẽ mở khóa Secret Ending sau Happy Ending; minigame Mario nằm trong đoạn kết bí mật.
  */
 public class MysteryBox extends Thing {
     public MysteryBox() {

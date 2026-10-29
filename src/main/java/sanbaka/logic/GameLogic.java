@@ -113,6 +113,8 @@ public class GameLogic extends GameStory {
                 startConfetti(now);
                 won = true;
                 saveProgress();
+            } else if (screen == ENDING_SE) {
+                startConfetti(now);
             }
             prevScreen = screen;
         }
@@ -120,7 +122,13 @@ public class GameLogic extends GameStory {
             screen = DIALOG;
         }
         if (screen == MARIO) {
-            if (marioGame != null) marioGame.update(now);
+            if (marioGame != null) {
+                marioGame.update(now);
+                if (marioGame.isVictoryReady(now)) {
+                    screen = DIALOG;
+                    fadeInStart = now;
+                }
+            }
             repaint();
             if (PERF_LOG_ENABLED) recordPerformance(false, System.nanoTime() - perfStart);
             return;
@@ -168,11 +176,11 @@ public class GameLogic extends GameStory {
         else if (screen == CARD && now - cardStart >= CARD_MS) {
             endCard(now);
         }
-        else if (screen == ENDING_HE) {
+        else if (screen == ENDING_HE || screen == ENDING_SE) {
             updateConfetti(now);
         }
         boolean needsRepaint = false;
-        if (screen == ROAD || screen == AIR || screen == FADE || screen == CARD || screen == ENDING_HE || screen == ENDING_BE) {
+        if (screen == ROAD || screen == AIR || screen == FADE || screen == CARD || screen == ENDING_HE || screen == ENDING_SE || screen == ENDING_BE) {
             needsRepaint = true;
         } else {
             long fadeIn = now - fadeInStart;
@@ -1566,8 +1574,22 @@ public class GameLogic extends GameStory {
         if (menuTransitionTo >= 0) return;
         int key = e.getKeyCode();
         if (screen == MARIO) {
+            if (key == KeyEvent.VK_M) {
+                screen = DIALOG;
+                fadeInStart = System.currentTimeMillis();
+                repaint();
+                return;
+            }
             if (key == KeyEvent.VK_ESCAPE) {
-                screen = TITLE;
+                pauseGame();
+                repaint();
+                return;
+            }
+            if (marioGame != null && marioGame.player.isCompleted
+                    && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE)) {
+                screen = DIALOG;
+                fadeInStart = System.currentTimeMillis();
+                repaint();
                 return;
             }
             if (marioGame != null) marioGame.keyPressed(key);
@@ -1631,11 +1653,24 @@ public class GameLogic extends GameStory {
             }
         }
         else if (screen == ENDING_HE) {
-            if (mysteryBoxCollected) {
-                mysteryBoxCollected = false; // Kích hoạt Easter Egg ending ẩn
-                startMarioMinigame();
-                return;
+            int secretIndex = sceneIndex(SC_SECRET, 4);
+            if (secretIndex >= 0 && sceneUnlocked(secretIndex)) {
+                dialogIndex = scenes.get(secretIndex).index + 1;
+                day = 4;
+                cardTop = "NGÀY 5";
+                cardMain = "SAU BUỔI HẸN HÒ";
+                cardNarration = false;
+                cardNext = CARD_TO_DIALOG;
+                cardStart = System.currentTimeMillis();
+                screen = CARD;
+            } else {
+                screen = TITLE;
+                menuSel = 0;
+                dialogIndex = 0;
+                day = 0;
             }
+        }
+        else if (screen == ENDING_SE) {
             screen = TITLE;
             menuSel = 0;
             dialogIndex = 0;
@@ -1647,7 +1682,7 @@ public class GameLogic extends GameStory {
     @Override
     public void keyReleased(KeyEvent e) {
         int key = e.getKeyCode();
-        if (screen == MARIO) {
+        if (screen == MARIO || (screen == PAUSE && pausedScreen == MARIO)) {
             if (marioGame != null) marioGame.keyReleased(key);
             return;
         }
@@ -1660,15 +1695,6 @@ public class GameLogic extends GameStory {
 
     @Override
     public void keyTyped(KeyEvent e) {
-    }
-
-    public void startMarioMinigame() {
-        if (marioGame == null) {
-            marioGame = new sanbaka.mario.MarioMinigame();
-        }
-        marioGame.start();
-        screen = MARIO;
-        requestFocusInWindow();
     }
 
     public double laneX(int lane) {

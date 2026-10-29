@@ -42,10 +42,16 @@ public abstract class GameStory extends GameMenuState {
 
     public void advanceDialog() {
         if (dialogIndex >= lines.size()) {
-            screen = ENDING_HE;
+            screen = isSecretEndingDialog(dialogIndex - 1) ? ENDING_SE : ENDING_HE;
             return;
         }
         Line current = lines.get(dialogIndex);
+        if (current.who.startsWith("@SE ·")) {
+            day = 4;
+            if (mysteryBoxCollected) unlockScene(SC_SECRET, 4);
+            screen = ENDING_HE;
+            return;
+        }
         if (current.who.startsWith("@NGÀY ") && current.who.contains("TẠI PHÒNG TRỌ")) {
             enterRoomMarker();
             return;
@@ -73,6 +79,16 @@ public abstract class GameStory extends GameMenuState {
         }
         int shownIndex = dialogIndex;
         dialogIndex++;
+        if (current.text.startsWith("Thắng lấy chiếc máy ra khỏi ba lô")) {
+            startMarioMinigame();
+            return;
+        }
+        if (dialogIndex < lines.size() && lines.get(dialogIndex).who.startsWith("@SE ·")) {
+            day = 4;
+            if (mysteryBoxCollected) unlockScene(SC_SECRET, 4);
+            screen = ENDING_HE;
+            return;
+        }
         long now = System.currentTimeMillis();
         if (dialogIndex < lines.size() && lines.get(dialogIndex).text.startsWith("Một lúc sau, tiếng cánh quạt trực thăng")) {
             cardTop = "";
@@ -92,6 +108,15 @@ public abstract class GameStory extends GameMenuState {
             cardNext = CARD_TO_ROOM;
             fadeDialogIndex = shownIndex;
             startFade(FADE_ROOM, now);
+        }
+        else if (dialogIndex < lines.size() && lines.get(dialogIndex).text.startsWith("Chuyển cảnh: Lễ đường.")) {
+            dialogIndex++;
+            cardTop = "NGÀY CƯỚI";
+            cardMain = "LỄ ĐƯỜNG";
+            cardNarration = false;
+            cardNext = CARD_TO_DIALOG;
+            cardStart = now;
+            screen = CARD;
         }
         else if (dialogIndex < lines.size() && lines.get(dialogIndex).who.startsWith("@Một lúc sau")) {
             cardTop = "";
@@ -115,6 +140,15 @@ public abstract class GameStory extends GameMenuState {
         }
     }
 
+    public void startMarioMinigame() {
+        if (marioGame == null) {
+            marioGame = new sanbaka.mario.MarioMinigame();
+        }
+        marioGame.start();
+        screen = MARIO;
+        requestFocusInWindow();
+    }
+
     public void findCallRange() {
         callStart = -1;
         callEnd = -1;
@@ -133,6 +167,7 @@ public abstract class GameStory extends GameMenuState {
             String marker = lines.get(i).who;
             if (marker.startsWith("@Một lúc sau")) continue;
             if (marker.startsWith("@")) {
+                if (marker.startsWith("@SE ·")) return 5;
                 if (!marker.startsWith("@NGÀY ") || !marker.contains("SAU KHI THI")) return -1;
                 int dayStart = marker.indexOf("NGÀY ") + "NGÀY ".length();
                 return Character.digit(marker.charAt(dayStart), 10);
@@ -140,7 +175,43 @@ public abstract class GameStory extends GameMenuState {
         }
         return -1;
     }
+    public boolean isSecretEndingDialog(int idx) {
+        for (int i = Math.min(idx, lines.size() - 1); i >= 0; i--) {
+            String who = lines.get(i).who;
+            if (who.startsWith("@")) return who.startsWith("@SE ·");
+        }
+        return false;
+    }
+
+    public boolean isWeddingEndingDialog(int idx) {
+        for (int i = Math.min(idx, lines.size() - 1); i >= 0; i--) {
+            if (lines.get(i).text.startsWith("Chuyển cảnh: Lễ đường.")) return true;
+        }
+        return false;
+    }
+
     public String sanbakaExpressionForDialog(int idx) {
+        if (isSecretEndingDialog(idx)) {
+            if (idx < 0 || idx >= lines.size() || isWeddingEndingDialog(idx)) return null;
+            int expressionStart = -1;
+            for (int i = 0; i <= idx; i++) {
+                Line line = lines.get(i);
+                if (line.who.startsWith("Sanbaka") && !line.who.endsWith("(tin nhắn)")
+                        && line.text.equals("Hì hì! Bất ngờ chưa?")) {
+                    expressionStart = i;
+                    break;
+                }
+            }
+            if (expressionStart < 0) return null;
+            String expression = null;
+            for (int i = expressionStart; i <= idx; i++) {
+                Line line = lines.get(i);
+                if (line.who.startsWith("Sanbaka") && !line.who.endsWith("(tin nhắn)")) {
+                    expression = classifySecretSanbakaExpression(line.text);
+                }
+            }
+            return expression;
+        }
         int targetDay = afterExamDay(idx);
         if (targetDay < 1) return null;
 
@@ -148,7 +219,7 @@ public abstract class GameStory extends GameMenuState {
         for (int i = Math.min(idx, lines.size() - 1); i >= 0; i--) {
             String marker = lines.get(i).who;
             if (marker.startsWith("@")) {
-                if (targetDay == 5 && marker.startsWith("@Một lúc sau")) {
+                if (targetDay == 5 && (marker.startsWith("@Một lúc sau") || marker.startsWith("@SE ·"))) {
                     sectionStart = i;
                     break;
                 }
@@ -180,12 +251,25 @@ public abstract class GameStory extends GameMenuState {
         return hasDirectSanbaka ? currentExpression : null;
     }
 
+    private String classifySecretSanbakaExpression(String text) {
+        if (text.contains("Hì hì! Bất ngờ chưa?") || text.contains("Đúng rồi đó!")
+                || text.contains("Bí mật!") || text.contains("Em đồng ý!")
+                || text.contains("Em nói là em đồng ý!") || text.contains("Em đã chờ ngày này")
+                || text.contains("Đẹp không anh?") || text.contains("Em yêu anh, Thắng")
+                || text.contains("Hì hì! Thế anh có muốn từ chối")) return "vui_cuoi";
+        return "binh_thuong";
+    }
+
     private String classifySanbakaExpression(String text) {
         if (text.contains("Anh đây rồi!") || text.contains("Em đã bảo anh đi cẩn thận")
-                || text.contains("em chỉ sợ anh")) return "lo_lang";
+                || text.contains("em chỉ sợ anh") || text.contains("Vậy anh có thích không?")
+                || text.contains("Ơ? Anh định làm gì thế?")) return "lo_lang";
         if (text.contains("Anh cứ nói ngọt đi!") || text.contains("Miệng ngọt ghê")
-                || text.contains("Đồ ngốc! Đi thôi!")) return "xau_ho";
-        if (text.contains("Anh đến rồi!") || text.contains("Tuần này anh vất vả rồi.")) return "vui_cuoi";
+                || text.contains("Đồ ngốc! Đi thôi!") || text.contains("Đúng rồi đó!")
+                || text.contains("Bí mật!") || text.contains("Em đã chờ ngày này")) return "xau_ho";
+        if (text.contains("Anh đến rồi!") || text.contains("Tuần này anh vất vả rồi.")
+                || text.contains("Hì hì! Bất ngờ chưa?") || text.contains("Em đồng ý!")
+                || text.contains("Đẹp không anh?") || text.contains("Em yêu anh, Thắng")) return "vui_cuoi";
         return "binh_thuong";
     }
     public boolean isCallLine(int idx) {

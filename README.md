@@ -168,12 +168,12 @@ src/main/java/sanbaka/
 │
 ├── state/                              # [CHỨC NĂNG 2: QUẢN LÝ TRẠNG THÁI & TIẾN TRÌNH]
 │   ├── GameState.java                  # Trạng thái phiên chơi, thông số màn hình, timer, HP, energy
-│   └── GameMenuState.java              # Trạng thái menu, chọn 11 cảnh, lưu/nạp tiến trình (.sanbaka_svbk_progress.properties)
+│   └── GameMenuState.java              # Trạng thái menu, chọn 12 cảnh, lưu/nạp tiến trình (.sanbaka_svbk_progress.properties)
 │
 ├── logic/                              # [CHỨC NĂNG 3: VẬT LÝ, LUẬT CHƠI & KỊCH BẢN]
 │   ├── GameLogic.java                  # Vật lý, va chạm hitbox, sinh xe ngẫu nhiên, cơ chế tắc đường, bàn phím
 │   ├── GameStory.java                  # Quản lý dòng thời gian cốt truyện, hiệu ứng typewriter chữ chạy, chuyển cảnh fade
-│   └── StoryData.java                  # Toàn bộ 118 dòng thoại chi tiết cho cả 5 ngày thi
+│   └── StoryData.java                  # Toàn bộ 189 dòng thoại cho 5 ngày thi và Secret Ending
 │
 ├── render/                             # [CHỨC NĂNG 4: ĐỒ HỌA & HIỂN THỊ JAVA 2D]
 │   ├── GameVisuals.java                # Vẽ vector cơ sở: sấm sét, mây, mưa, trực thăng, avatar dự phòng
@@ -260,8 +260,8 @@ java -cp "build/classes;src/main/resources;assets;." sanbaka.SanbakaSmokeTest
 ```
 
 *Các tiêu chí được kiểm định tự động:*
-* [x] **Story Integrity:** Kiểm tra đủ 118 dòng thoại của 5 ngày thi trong `StoryData`.
-* [x] **Scene Linking:** Kiểm tra tính toàn vẹn của 11 phân đoạn kịch bản mở khóa.
+* [x] **Story Integrity:** Kiểm tra có lời thoại ngày 1, ngày 5 và marker Secret Ending trong `StoryData`.
+* [x] **Scene Linking:** Kiểm tra có đủ 12 cảnh, gồm cảnh Secret Ending `SE???`.
 * [x] **Asset Fallback:** Kiểm tra bộ nạp `ArtAssets` tự động fallback mượt mà khi thiếu file ảnh.
 * [x] **Factory Pattern:** Kiểm tra khởi tạo đa hình các loại xe cộ và chướng ngại vật qua `Thing.create()`.
 * [x] **Decoupled Surroundings:** Tốc độ cuộn đường và xe cộ xung quanh giữ nhịp tự nhiên, độc lập với việc người chơi bị làm chậm.

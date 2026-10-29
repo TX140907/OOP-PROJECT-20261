@@ -202,6 +202,14 @@ public class GameMenuRenderer extends GameRoadRenderer {
             g.setColor(new Color(255, 255, 255, 190));
             g.fill(new Rectangle2D.Double(cx - 5, cy - 6, 10, 5));
             g.fill(new Rectangle2D.Double(cx - 5, cy + 4, 10, 4));
+        } else if (type == SC_SECRET) {
+            for (int i = 0; i < 4; i++) {
+                double a = i * Math.PI / 2;
+                double sx = cx + Math.cos(a) * 9;
+                double sy = cy + Math.sin(a) * 9;
+                g.fill(new Ellipse2D.Double(sx - 2.5, sy - 2.5, 5, 5));
+            }
+            g.draw(new Ellipse2D.Double(cx - 4, cy - 4, 8, 8));
         } else {
             poly(g, cx - 15, cy - 4, cx, cy - 12, cx + 15, cy - 4, cx, cy + 4);
             g.fill(new RoundRectangle2D.Double(cx - 8, cy, 16, 9, 4, 4));
@@ -233,7 +241,7 @@ public class GameMenuRenderer extends GameRoadRenderer {
         else lockIcon(g, x + h / 2, y + h / 2, new Color(130, 136, 152));
         g.setFont(new Font("Dialog", Font.BOLD, 19));
         g.setColor(!open ? new Color(140, 146, 162) : hv ? Color.WHITE : INK);
-        g.drawString(open ? s.name : "???", (float) (x + h + 2), (float) (y + h * 0.46));
+        g.drawString(open || s.type == SC_SECRET ? s.name : "???", (float) (x + h + 2), (float) (y + h * 0.46));
         g.setFont(new Font("Dialog", Font.PLAIN, 13));
         g.setColor(!open ? new Color(150, 156, 172) : hv ? new Color(255, 255, 255, 230) : new Color(110, 116, 130));
         g.drawString(open ? "Nhấn để chơi" : "Chưa mở khóa", (float) (x + h + 2), (float) (y + h * 0.46 + 21));
@@ -249,16 +257,17 @@ public class GameMenuRenderer extends GameRoadRenderer {
         g.drawString("Đã mở khóa " + unlockedCount() + " / " + scenes.size()
                 + " cảnh · Chọn một cảnh để bắt đầu từ đó", 84, 74);
         for (int d = 0; d < 5; d++) {
-            int ry = 92 + d * 104;
+            int ry = 90 + d * 82;
             g.setFont(new Font("Dialog", Font.BOLD, 15));
             g.setColor(PINK);
             g.drawString(dayTitles[d], 60, ry + 16);
             int k = 0;
             for (int si = 0; si < scenes.size(); si++) {
-                if (scenes.get(si).dayIdx == d) {
-                    sceneCard(g, si, 60 + k * 290, ry + 26, 276, 66);
-                    k++;
-                }
+                if (scenes.get(si).dayIdx != d) continue;
+                int row = d == 4 && k >= 2 ? 1 : 0;
+                int col = d == 4 ? k % 2 : k;
+                sceneCard(g, si, 60 + col * 430, ry + 22 + row * 62, 400, 56);
+                k++;
             }
         }
     }
