@@ -1471,6 +1471,16 @@ public class SanbakaSmokeTest {
             throw new AssertionError("Pressing ENTER on ENDING_HE without MysteryBox must return to TITLE screen!");
         }
 
-        System.out.println("  ✓ testMysteryBoxEasterEggAndCurb1_5s passed (50% road/50% sidewalk curb positioning, 1.5s curb fire, Hidden Mario Ending trigger)");
+        // 6. Kiểm tra tỉ lệ xuất hiện ở Màn 2 (day == 1) là tuyệt đối 100%
+        for (int i = 0; i < 50; i++) {
+            logic.mysteryBoxSpawned = false;
+            logic.day = 1;
+            logic.beginDay();
+            if (!logic.map2MysteryBoxRolled) {
+                throw new AssertionError("MysteryBox spawn rate in Map 2 must be absolute (100%), but rolled false at iteration " + i);
+            }
+        }
+
+        System.out.println("  ✓ testMysteryBoxEasterEggAndCurb1_5s passed (Map 2 100% absolute, 50% road/50% sidewalk curb positioning, 1.5s curb fire, Hidden Mario Ending trigger)");
     }
 }
