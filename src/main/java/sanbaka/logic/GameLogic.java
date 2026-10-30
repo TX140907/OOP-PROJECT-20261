@@ -122,13 +122,7 @@ public class GameLogic extends GameStory {
             screen = DIALOG;
         }
         if (screen == MARIO) {
-            if (marioGame != null) {
-                marioGame.update(now);
-                if (marioGame.isVictoryReady(now)) {
-                    screen = DIALOG;
-                    fadeInStart = now;
-                }
-            }
+            if (marioGame != null && !marioStoryMode && !marioIntroMode) marioGame.update(now);
             repaint();
             if (PERF_LOG_ENABLED) recordPerformance(false, System.nanoTime() - perfStart);
             return;
@@ -1574,25 +1568,43 @@ public class GameLogic extends GameStory {
         if (menuTransitionTo >= 0) return;
         int key = e.getKeyCode();
         if (screen == MARIO) {
-            if (key == KeyEvent.VK_M) {
-                screen = DIALOG;
-                fadeInStart = System.currentTimeMillis();
-                repaint();
-                return;
-            }
             if (key == KeyEvent.VK_ESCAPE) {
                 pauseGame();
                 repaint();
                 return;
             }
-            if (marioGame != null && marioGame.player.isCompleted
-                    && (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE)) {
-                screen = DIALOG;
+            if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                if (marioIntroMode) {
+                    marioIntroMode = false;
+                    if (marioGame != null) marioGame.start();
+                    fadeInStart = System.currentTimeMillis();
+                    repaint();
+                    return;
+                }
+                if (marioGame != null && marioGame.player.isCompleted) {
+                    if (!marioStoryMode) {
+                        marioStoryMode = true;
+                        marioRewardDrawerOpenAt = 0;
+                        fadeInStart = System.currentTimeMillis();
+                    } else {
+                        if (dialogIndex < lines.size() && !lines.get(dialogIndex).who.startsWith("@")
+                                && revealDialogImmediatelyIfTyping()) return;
+                        advanceMarioStory();
+                    }
+                    repaint();
+                    return;
+                }
+            }
+            if (key == KeyEvent.VK_M && !marioStoryMode) {
+                marioIntroMode = false;
+                if (marioGame != null) marioGame.skipToVictory();
+                marioStoryMode = true;
+                marioRewardDrawerOpenAt = 0;
                 fadeInStart = System.currentTimeMillis();
                 repaint();
                 return;
             }
-            if (marioGame != null) marioGame.keyPressed(key);
+            if (!marioStoryMode && !marioIntroMode && marioGame != null) marioGame.keyPressed(key);
             return;
         }
         if (key == KeyEvent.VK_ESCAPE) {

@@ -50,6 +50,22 @@ public class MarioMinigame {
         restartRequested = false;
     }
 
+    public void skipToVictory() {
+        player.isDead = false;
+        player.isFlagSliding = false;
+        player.isCompleted = true;
+        player.enteredCastle = false;
+        player.vx = 0;
+        player.vy = 0;
+        player.facingRight = true;
+        player.onGround = true;
+        player.x = world.castleDoorX - 42;
+        player.y = (world.rows - 2) * MarioPlayer.TILE - player.getHeight();
+        player.prevY = player.y;
+        world.cameraX = Math.max(0, Math.min(world.cols * MarioPlayer.TILE - world.viewWidth,
+                world.castleDoorX - world.viewWidth / 2.0));
+        lastTime = System.currentTimeMillis();
+    }
     public void update(long now) {
         if (lastTime == 0) lastTime = now;
         double dt = (now - lastTime) / 1000.0;
@@ -105,6 +121,10 @@ public class MarioMinigame {
     // VẼ KHUNG MÁY CHƠI GAME; nền phía sau do màn hình game cung cấp.
     // ==========================================
     public void render(Graphics2D g) {
+        render(g, true);
+    }
+
+    public void render(Graphics2D g, boolean showOverlayHints) {
         // Vẽ màn hình game Mario vào buffer riêng
         Graphics2D sg = screenBuffer.createGraphics();
         sg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
@@ -118,7 +138,7 @@ public class MarioMinigame {
         g.drawImage(screenBuffer, SCREEN_X, SCREEN_Y, SCREEN_W, SCREEN_H, null);
 
         // 5. Hiệu ứng chữ hướng dẫn điều khiển thanh lịch ở rìa
-        drawOverlayHints(g);
+        if (showOverlayHints) drawOverlayHints(g);
     }
 
     private void drawHandheldConsole(Graphics2D g) {

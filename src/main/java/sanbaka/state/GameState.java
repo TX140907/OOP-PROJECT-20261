@@ -100,6 +100,9 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public static final int MARIO = 14;
     public static final int ENDING_SE = 15;
     public sanbaka.mario.MarioMinigame marioGame = null;
+    public boolean marioStoryMode = false;
+    public boolean marioIntroMode = false;
+    public long marioRewardDrawerOpenAt = 0;
     public volatile java.awt.image.BufferedImage dialogBackground;
     public volatile boolean videoFrameDirty = false;
     public java.awt.image.BufferedImage afterExamBackground;
@@ -109,6 +112,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public java.awt.image.BufferedImage secretEndingBackground;
     public java.awt.image.BufferedImage afterDateBackground;
     public java.awt.image.BufferedImage weddingBackground;
+    public java.awt.image.BufferedImage trafficJamBackground;
     public final java.util.Map<String, java.awt.image.BufferedImage> sanbakaExpressionImages = new java.util.HashMap<>();
     public int screen = TITLE;
     public int dialogIndex = 0;

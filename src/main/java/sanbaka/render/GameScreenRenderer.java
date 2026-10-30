@@ -18,7 +18,11 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (pausedScreen == ROOM) {
             drawRoom(g);
             drawCurrentDialog(g);
-        } else if (pausedScreen == MARIO) drawMarioGame(g);
+        } else if (pausedScreen == MARIO) {
+            drawMarioGame(g);
+            if (marioIntroMode) drawMarioIntroOverlay(g);
+            else if (marioStoryMode) drawMarioStoryOverlay(g);
+        }
         else drawRoad(g);
     }
     void drawFade(Graphics2D g) {
@@ -69,6 +73,8 @@ public class GameScreenRenderer extends GameMenuRenderer {
     }
 
     void drawCallPhone(Graphics2D g) {
+        g.setColor(new Color(0, 0, 0, 120));
+        g.fillRect(0, 0, W, H);
         long now = System.currentTimeMillis();
         if (callStartedAt == 0) callStartedAt = now;
         Line cur = lines.get(dialogIndex);
@@ -335,6 +341,8 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (screen == AIR) drawAir(g);
         else if (screen == MARIO) {
             drawMarioGame(g);
+            if (marioIntroMode) drawMarioIntroOverlay(g);
+            else if (marioStoryMode) drawMarioStoryOverlay(g);
             drawPauseButton(g, W - 58);
         }
         else drawDialog(g);
@@ -624,9 +632,118 @@ public class GameScreenRenderer extends GameMenuRenderer {
         }
         g.setColor(new Color(0, 0, 0, 160));
         g.fillRect(0, 0, W, H);
-        if (marioGame != null) marioGame.render(g);
+        if (marioGame != null) marioGame.render(g, !marioStoryMode && !marioIntroMode);
     }
 
+    private void drawMarioIntroOverlay(Graphics2D g) {
+        int x = sanbaka.mario.MarioMinigame.SCREEN_X + 16;
+        int y = sanbaka.mario.MarioMinigame.SCREEN_Y + 112;
+        int width = sanbaka.mario.MarioMinigame.SCREEN_W - 32;
+        int height = 132;
+        g.setColor(new Color(2, 12, 8, 228));
+        g.fillRoundRect(x, y, width, height, 12, 12);
+        g.setColor(new Color(128, 191, 150));
+        g.setStroke(new BasicStroke(2f));
+        g.drawRoundRect(x, y, width, height, 12, 12);
+        g.setColor(new Color(205, 245, 213));
+        g.setFont(new Font("Monospaced", Font.BOLD, 15));
+        String[] welcome = {
+            "CHÀO MỪNG NGƯỜI CHƠI!",
+            "NHIỆM VỤ CUỐI CÙNG:",
+            "CHINH PHỤC TRÁI TIM CÔNG CHÚA!"
+        };
+        int baseline = y + 34;
+        for (String row : welcome) {
+            g.drawString(row, x + (width - g.getFontMetrics().stringWidth(row)) / 2, baseline);
+            baseline += 25;
+        }
+        g.setFont(new Font("Monospaced", Font.PLAIN, 10));
+        String hint = "ENTER / SPACE  ·  BẮT ĐẦU";
+        g.drawString(hint, x + width - 20 - g.getFontMetrics().stringWidth(hint), y + height - 12);
+    }
+    void drawMarioStoryOverlay(Graphics2D g) {
+        if (dialogIndex < 0 || dialogIndex >= lines.size()) return;
+        if (marioRewardDrawerOpenAt > 0) drawMarioRewardDrawer(g);
+        Line line = lines.get(dialogIndex);
+        if (line.who.startsWith("Màn hình máy chơi game")) {
+            drawMarioScreenMessage(g, line.text);
+        } else if (line.who.startsWith("Dẫn truyện")) {
+            drawSecretNarrationBox(g, line.text);
+        } else {
+            drawDialogueBox(g, line);
+        }
+    }
+
+    private void drawMarioScreenMessage(Graphics2D g, String text) {
+        int x = sanbaka.mario.MarioMinigame.SCREEN_X + 16;
+        int y = sanbaka.mario.MarioMinigame.SCREEN_Y + 112;
+        int width = sanbaka.mario.MarioMinigame.SCREEN_W - 32;
+        int height = 132;
+        g.setColor(new Color(2, 12, 8, 228));
+        g.fillRoundRect(x, y, width, height, 12, 12);
+        g.setColor(new Color(128, 191, 150));
+        g.setStroke(new BasicStroke(2f));
+        g.drawRoundRect(x, y, width, height, 12, 12);
+        g.setColor(new Color(205, 245, 213));
+        g.setFont(new Font("Monospaced", Font.BOLD, 17));
+        drawWrapped(g, visibleDialogText(text), x + 20, y + 55, width - 40, 27);
+        g.setFont(new Font("Monospaced", Font.PLAIN, 10));
+        String hint = "ENTER / SPACE  ·  TIẾP TỤC";
+        g.drawString(hint, x + width - 20 - g.getFontMetrics().stringWidth(hint), y + height - 14);
+    }
+
+    private void drawSecretNarrationBox(Graphics2D g, String text) {
+        panel(g, 48, 438, 864, 158, new Color(255, 255, 255, 196));
+        g.setColor(INK);
+        g.setFont(new Font("Dialog", Font.ITALIC, 20));
+        drawWrapped(g, visibleDialogText(text), 82, 489, 796, 28);
+        g.setColor(MINT);
+        g.setFont(new Font("Dialog", Font.BOLD, 15));
+        String hint = "ENTER / SPACE  ·  TIẾP TỤC";
+        g.drawString(hint, 888 - g.getFontMetrics().stringWidth(hint), 574);
+    }
+
+    private void drawMarioRewardDrawer(Graphics2D g) {
+        double progress = Math.min(1.0, Math.max(0.0,
+                (System.currentTimeMillis() - marioRewardDrawerOpenAt) / 520.0));
+        int drawerX = sanbaka.mario.MarioMinigame.CONSOLE_X
+                + sanbaka.mario.MarioMinigame.CONSOLE_W - 10 + (int) (42 * (1.0 - progress));
+        int drawerY = sanbaka.mario.MarioMinigame.SCREEN_Y
+                + sanbaka.mario.MarioMinigame.SCREEN_H / 2 - 44;
+        int drawerW = 158;
+        int drawerH = 88;
+
+        g.setColor(new Color(0, 0, 0, 120));
+        g.fillRoundRect(drawerX + 5, drawerY + 7, drawerW, drawerH, 15, 15);
+        g.setColor(new Color(137, 132, 123));
+        g.fillRoundRect(drawerX, drawerY, drawerW, drawerH, 14, 14);
+        g.setColor(new Color(236, 229, 212));
+        g.setStroke(new BasicStroke(2f));
+        g.drawRoundRect(drawerX, drawerY, drawerW, drawerH, 14, 14);
+        g.setColor(new Color(91, 18, 34));
+        g.fillRoundRect(drawerX + 9, drawerY + 9, drawerW - 18, drawerH - 18, 10, 10);
+        g.setColor(new Color(139, 34, 54));
+        g.drawRoundRect(drawerX + 14, drawerY + 14, drawerW - 28, drawerH - 28, 8, 8);
+
+        int ringX = drawerX + drawerW / 2;
+        int ringY = drawerY + drawerH / 2 + 5;
+        g.setColor(new Color(250, 205, 80));
+        g.setStroke(new BasicStroke(6f));
+        g.drawOval(ringX - 15, ringY - 13, 30, 28);
+        g.setStroke(new BasicStroke(2f));
+        g.setColor(new Color(255, 238, 168));
+        g.drawOval(ringX - 11, ringY - 9, 22, 20);
+        Path2D.Double gem = new Path2D.Double();
+        gem.moveTo(ringX, ringY - 24);
+        gem.lineTo(ringX + 9, ringY - 14);
+        gem.lineTo(ringX, ringY - 5);
+        gem.lineTo(ringX - 9, ringY - 14);
+        gem.closePath();
+        g.setColor(new Color(196, 237, 255));
+        g.fill(gem);
+        g.setColor(new Color(255, 255, 255, 220));
+        g.draw(gem);
+    }
     void drawExam(Graphics2D g) {
         g.setColor(new Color(228,239,244));
         g.fillRect(0,0,W,H);
@@ -646,8 +763,9 @@ public class GameScreenRenderer extends GameMenuRenderer {
         boolean secretEnding = dialogIndex < lines.size() && afterExamDay == 5
                 && isSecretEndingDialog(dialogIndex);
         boolean weddingEnding = dialogIndex < lines.size() && isWeddingEndingDialog(dialogIndex);
+        boolean trafficJam = dialogIndex < lines.size() && isTrafficJamDialog(dialogIndex);
         java.awt.image.BufferedImage background = weddingEnding ? weddingBackground
-                : secretEnding ? afterDateBackground : switch (afterExamDay) {
+                : secretEnding ? afterDateBackground : trafficJam ? trafficJamBackground : switch (afterExamDay) {
             case 2 -> afterExamRainBackground;
             case 3 -> afterExamSnowBackground;
             case 4 -> afterExamSunBackground;
@@ -678,7 +796,11 @@ public class GameScreenRenderer extends GameMenuRenderer {
         }
         g.setColor(INK);
         g.setFont(new Font("Dialog",Font.BOLD,18));
-        drawCurrentDialog(g);
+        if (secretEnding && currentLine.who.startsWith("Dẫn truyện")) {
+            drawSecretNarrationBox(g, currentLine.text);
+        } else {
+            drawCurrentDialog(g);
+        }
     }
 
     void drawChatPhone(Graphics2D g) {

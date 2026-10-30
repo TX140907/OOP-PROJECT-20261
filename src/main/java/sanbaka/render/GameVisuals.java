@@ -335,7 +335,7 @@ public class GameVisuals extends GameLogic {
         int kind = who.startsWith("Sanbaka") ? 0
                 : who.startsWith("Thắng") ? 1
                 : who.startsWith("Komori") ? 2
-                : who.startsWith("Chủ trọ") ? 3 : 4;
+                : (who.startsWith("Chủ trọ") || who.startsWith("Người chủ trì")) ? 3 : 4;
         int cacheKey = (kind << 16) | (r & 0xFFFF);
         BufferedImage cached = AVATAR_CIRCLE_CACHE.get(cacheKey);
         int pad = 4;

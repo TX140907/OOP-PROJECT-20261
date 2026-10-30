@@ -53,6 +53,7 @@ public class SanbakaGame extends GameScreenRenderer {
         secretEndingBackground = loadAfterExamBackground("sanbaka2.jpg");
         afterDateBackground = loadAfterExamBackground("Toa_C1_toi.png");
         weddingBackground = loadAfterExamBackground("Le_duong.png");
+        trafficJamBackground = loadAfterExamBackground("tac_duong.png");
         sanbakaExpressionImages.put("binh_thuong", loadSanbakaExpression("sanbaka_ngay_thuong", "binh_thuong.png"));
         sanbakaExpressionImages.put("lo_lang", loadSanbakaExpression("sanbaka_ngay_thuong", "lo_lang.png"));
         sanbakaExpressionImages.put("vui_cuoi", loadSanbakaExpression("sanbaka_ngay_thuong", "vui_cuoi.png"));

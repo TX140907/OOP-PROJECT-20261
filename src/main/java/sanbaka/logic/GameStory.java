@@ -145,10 +145,34 @@ public abstract class GameStory extends GameMenuState {
             marioGame = new sanbaka.mario.MarioMinigame();
         }
         marioGame.start();
+        marioStoryMode = false;
+        marioIntroMode = true;
+        marioRewardDrawerOpenAt = 0;
         screen = MARIO;
         requestFocusInWindow();
     }
 
+    public void advanceMarioStory() {
+        if (!marioStoryMode || dialogIndex < 0 || dialogIndex >= lines.size()) return;
+        Line current = lines.get(dialogIndex);
+        if (current.who.startsWith("Màn hình máy chơi game")
+                && current.text.startsWith("PHẦN THƯỞNG CUỐI CÙNG")) {
+            if (marioRewardDrawerOpenAt == 0) {
+                marioRewardDrawerOpenAt = System.currentTimeMillis();
+                return;
+            }
+            if (System.currentTimeMillis() - marioRewardDrawerOpenAt < 520) return;
+        }
+        dialogIndex++;
+        if (dialogIndex < lines.size()) {
+            Line next = lines.get(dialogIndex);
+            if (next.who.startsWith("Thắng") && next.text.startsWith("SANBAKA?! Sao em lại ở đây?!")) {
+                marioStoryMode = false;
+                screen = DIALOG;
+                fadeInStart = System.currentTimeMillis();
+            }
+        }
+    }
     public void findCallRange() {
         callStart = -1;
         callEnd = -1;
@@ -175,6 +199,15 @@ public abstract class GameStory extends GameMenuState {
         }
         return -1;
     }
+    public boolean isTrafficJamDialog(int idx) {
+        if (idx < 0 || idx >= lines.size()) return false;
+        for (int i = idx; i >= 0; i--) {
+            String marker = lines.get(i).who;
+            if (marker.startsWith("@")) return marker.contains("TẮC ĐƯỜNG");
+        }
+        return false;
+    }
+
     public boolean isSecretEndingDialog(int idx) {
         for (int i = Math.min(idx, lines.size() - 1); i >= 0; i--) {
             String who = lines.get(i).who;
@@ -214,6 +247,11 @@ public abstract class GameStory extends GameMenuState {
             int expressionStart = -1;
             for (int i = 0; i <= idx; i++) {
                 Line line = lines.get(i);
+                if (line.who.startsWith("Thắng")
+                        && line.text.startsWith("SANBAKA?! Sao em lại ở đây?!")) {
+                    expressionStart = i;
+                    break;
+                }
                 if (line.who.startsWith("Sanbaka") && !line.who.endsWith("(tin nhắn)")
                         && line.text.equals("Hì hì! Bất ngờ chưa?")) {
                     expressionStart = i;
@@ -221,7 +259,8 @@ public abstract class GameStory extends GameMenuState {
                 }
             }
             if (expressionStart < 0) return null;
-            String expression = null;
+            String expression = lines.get(expressionStart).who.startsWith("Thắng")
+                    ? "vui_cuoi" : null;
             for (int i = expressionStart; i <= idx; i++) {
                 Line line = lines.get(i);
                 if (line.who.startsWith("Sanbaka") && !line.who.endsWith("(tin nhắn)")) {
