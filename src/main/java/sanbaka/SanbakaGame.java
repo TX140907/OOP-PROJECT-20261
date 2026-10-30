@@ -53,16 +53,20 @@ public class SanbakaGame extends GameScreenRenderer {
         secretEndingBackground = loadAfterExamBackground("sanbaka2.jpg");
         afterDateBackground = loadAfterExamBackground("Toa_C1_toi.png");
         weddingBackground = loadAfterExamBackground("Le_duong.png");
-        sanbakaExpressionImages.put("binh_thuong", loadSanbakaExpression("binh_thuong.png"));
-        sanbakaExpressionImages.put("lo_lang", loadSanbakaExpression("lo_lang.png"));
-        sanbakaExpressionImages.put("vui_cuoi", loadSanbakaExpression("vui_cuoi.png"));
-        sanbakaExpressionImages.put("xau_ho", loadSanbakaExpression("xau_ho.png"));
+        sanbakaExpressionImages.put("binh_thuong", loadSanbakaExpression("sanbaka_ngay_thuong", "binh_thuong.png"));
+        sanbakaExpressionImages.put("lo_lang", loadSanbakaExpression("sanbaka_ngay_thuong", "lo_lang.png"));
+        sanbakaExpressionImages.put("vui_cuoi", loadSanbakaExpression("sanbaka_ngay_thuong", "vui_cuoi.png"));
+        sanbakaExpressionImages.put("xau_ho", loadSanbakaExpression("sanbaka_ngay_thuong", "xau_ho.png"));
+        sanbakaExpressionImages.put("ngai_ngung", loadSanbakaExpression("sanbaka_ngay_thuong", "ngai_ngung.png"));
+        sanbakaExpressionImages.put("wedding_binh_thuong", loadSanbakaExpression("sanbaka_vay_cuoi", "binh_thuong.png"));
+        sanbakaExpressionImages.put("wedding_vui_cuoi", loadSanbakaExpression("sanbaka_vay_cuoi", "vui_cuoi.png"));
+        sanbakaExpressionImages.put("wedding_xau_ho", loadSanbakaExpression("sanbaka_vay_cuoi", "xau_ho.png"));
     }
 
-    private java.awt.image.BufferedImage loadSanbakaExpression(String fileName) {
+    private java.awt.image.BufferedImage loadSanbakaExpression(String folder, String fileName) {
         String[] resources = {
-            "/assets/expression/" + fileName,
-            "/expression/" + fileName
+            "/assets/expression/" + folder + "/" + fileName,
+            "/expression/" + folder + "/" + fileName
         };
         for (String resource : resources) {
             try (java.io.InputStream in = SanbakaGame.class.getResourceAsStream(resource)) {
@@ -70,7 +74,7 @@ public class SanbakaGame extends GameScreenRenderer {
             } catch (Exception ignored) {}
         }
 
-        java.io.File imageFile = new java.io.File("assets/expression", fileName);
+        java.io.File imageFile = new java.io.File(new java.io.File("assets/expression", folder), fileName);
         if (!imageFile.isFile()) return null;
         try {
             return scaleExpressionImage(javax.imageio.ImageIO.read(imageFile));

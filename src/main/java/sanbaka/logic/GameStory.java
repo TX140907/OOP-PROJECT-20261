@@ -192,7 +192,25 @@ public abstract class GameStory extends GameMenuState {
 
     public String sanbakaExpressionForDialog(int idx) {
         if (isSecretEndingDialog(idx)) {
-            if (idx < 0 || idx >= lines.size() || isWeddingEndingDialog(idx)) return null;
+            if (idx < 0 || idx >= lines.size()) return null;
+            if (isProposalSpeechDialog(idx)) return "ngai_ngung";
+            if (isWeddingEndingDialog(idx)) {
+                int weddingStart = 0;
+                for (int i = 0; i <= idx; i++) {
+                    if (lines.get(i).text.startsWith("Chuyển cảnh: Lễ đường.")) {
+                        weddingStart = i + 1;
+                        break;
+                    }
+                }
+                String expression = null;
+                for (int i = weddingStart; i <= idx; i++) {
+                    Line line = lines.get(i);
+                    if (line.who.startsWith("Sanbaka") && !line.who.endsWith("(tin nhắn)")) {
+                        expression = classifyWeddingSanbakaExpression(line.text);
+                    }
+                }
+                return expression == null ? null : "wedding_" + expression;
+            }
             int expressionStart = -1;
             for (int i = 0; i <= idx; i++) {
                 Line line = lines.get(i);
@@ -251,6 +269,28 @@ public abstract class GameStory extends GameMenuState {
         return hasDirectSanbaka ? currentExpression : null;
     }
 
+    private boolean isProposalSpeechDialog(int idx) {
+        int proposalStart = -1;
+        int proposalAcceptance = lines.size();
+        for (int i = 0; i < lines.size(); i++) {
+            Line line = lines.get(i);
+            if (proposalStart < 0 && line.who.startsWith("Sanbaka")
+                    && line.text.equals("Ơ? Anh định làm gì thế?")) {
+                proposalStart = i;
+            }
+            if (proposalStart >= 0 && line.who.startsWith("Sanbaka") && line.text.equals("Em đồng ý!")) {
+                proposalAcceptance = i;
+                break;
+            }
+        }
+        return proposalStart >= 0 && idx >= proposalStart && idx < proposalAcceptance;
+    }
+    private String classifyWeddingSanbakaExpression(String text) {
+        if (text.contains("Anh cũng đẹp trai lắm")) return "xau_ho";
+        if (text.contains("Em đến rồi đây!") || text.equals("Con đồng ý!")
+                || text.contains("Tất nhiên rồi!")) return "vui_cuoi";
+        return "binh_thuong";
+    }
     private String classifySecretSanbakaExpression(String text) {
         if (text.contains("Hì hì! Bất ngờ chưa?") || text.contains("Đúng rồi đó!")
                 || text.contains("Bí mật!") || text.contains("Em đồng ý!")
