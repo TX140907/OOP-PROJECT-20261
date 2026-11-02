@@ -21,7 +21,7 @@ if errorlevel 1 goto failed
 if /i "%~1"=="--build-only" goto success
 
 :launch
-powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -STA -File "run-loading.ps1"
+powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -STA -File "run-loading.ps1" -JavaGraphicsOptions "-Dsun.java2d.d3d=false -Dsun.java2d.opengl=true"
 if errorlevel 1 goto failed
 
 :success
