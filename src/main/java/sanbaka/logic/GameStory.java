@@ -147,6 +147,8 @@ public abstract class GameStory extends GameMenuState {
         marioGame.start();
         marioStoryMode = false;
         marioIntroMode = true;
+        marioIntroDialogueMode = false;
+        marioIntroDialogueStartedAt = 0;
         marioRewardDrawerOpenAt = 0;
         screen = MARIO;
         requestFocusInWindow();

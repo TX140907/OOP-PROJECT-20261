@@ -1368,17 +1368,18 @@ public class SanbakaSmokeTest {
         minigame.render(g);
         g.dispose();
 
-        // 8. Kiểm tra phím M từ màn hình chính TITLE mở Minigame và ESC quay lại
+        // 8. Kiểm tra phím M từ màn hình chính TITLE không mở Minigame
         sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
         logic.screen = GameState.TITLE;
         java.awt.event.KeyEvent keyM = new java.awt.event.KeyEvent(
                 logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
                 java.awt.event.KeyEvent.VK_M, 'm');
         logic.keyPressed(keyM);
-        if (logic.screen != GameState.MARIO || logic.marioGame == null) {
-            throw new AssertionError("Pressing M on TITLE screen must transition to MARIO screen!");
+        if (logic.screen != GameState.TITLE || logic.marioGame != null) {
+            throw new AssertionError("Pressing M on TITLE screen must not transition to MARIO screen!");
         }
 
+        logic.startMarioMinigame();
         java.awt.event.KeyEvent keyEsc = new java.awt.event.KeyEvent(
                 logic, java.awt.event.KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
                 java.awt.event.KeyEvent.VK_ESCAPE, (char) 27);

@@ -102,6 +102,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public sanbaka.mario.MarioMinigame marioGame = null;
     public boolean marioStoryMode = false;
     public boolean marioIntroMode = false;
+    public boolean marioIntroDialogueMode = false;
+    public long marioIntroDialogueStartedAt = 0;
     public long marioRewardDrawerOpenAt = 0;
     public volatile java.awt.image.BufferedImage dialogBackground;
     public volatile boolean videoFrameDirty = false;
@@ -249,6 +251,12 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public abstract void resumeRoad();
 
     public String visibleDialogText(String fullText) {
+        if (marioIntroDialogueMode && "Trò gì đây... Hình như là Mario!".equals(fullText)) {
+            if (marioIntroDialogueStartedAt == 0) marioIntroDialogueStartedAt = System.currentTimeMillis();
+            long elapsed = Math.max(0, System.currentTimeMillis() - marioIntroDialogueStartedAt);
+            int count = Math.min(fullText.length(), (int) (elapsed * TYPEWRITER_CHARS_PER_SECOND / 1000));
+            return fullText.substring(0, count);
+        }
         if (dialogIndex < 0 || dialogIndex >= lines.size()) return fullText;
         sanbaka.model.Line current = lines.get(dialogIndex);
         if (current.who.endsWith("(tin nhắn)") && !current.who.startsWith("Sanbaka")) return fullText;
@@ -274,6 +282,18 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
                 / TYPEWRITER_CHARS_PER_SECOND;
         if (System.currentTimeMillis() - typedDialogStartedAt >= revealDuration) return false;
         typedDialogStartedAt = System.currentTimeMillis() - revealDuration;
+        repaint();
+        return true;
+    }
+
+    public boolean revealMarioIntroDialogueImmediatelyIfTyping() {
+        String fullText = "Trò gì đây... Hình như là Mario!";
+        if (!marioIntroDialogueMode) return false;
+        if (marioIntroDialogueStartedAt == 0) marioIntroDialogueStartedAt = System.currentTimeMillis();
+        long revealDuration = (fullText.length() * 1000L + TYPEWRITER_CHARS_PER_SECOND - 1)
+                / TYPEWRITER_CHARS_PER_SECOND;
+        if (System.currentTimeMillis() - marioIntroDialogueStartedAt >= revealDuration) return false;
+        marioIntroDialogueStartedAt = System.currentTimeMillis() - revealDuration;
         repaint();
         return true;
     }

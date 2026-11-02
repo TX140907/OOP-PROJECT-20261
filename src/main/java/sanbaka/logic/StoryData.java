@@ -183,7 +183,7 @@ public class StoryData {
             "Dẫn truyện: Thắng lấy chiếc máy ra khỏi ba lô, tò mò bật nguồn. Màn hình sáng lên, hiển thị giao diện của một trò chơi kỳ lạ.",
             "Màn hình máy chơi game: CHÚC MỪNG! BẠN ĐÃ CHIẾN THẮNG!",
             "Màn hình máy chơi game: PHẦN THƯỞNG CUỐI CÙNG ĐANG ĐƯỢC MỞ KHÓA...",
-            "Thắng: Hả?... Khoan đã, cái gì đây?!",
+            "Thắng: Hả?... Khoan đã, cái gì đây?! Một cái nhẫn??",
             "Màn hình máy chơi game: NHIỆM VỤ CUỐI CÙNG ĐÃ HOÀN THÀNH.",
             "Thắng: Cái trò gì kỳ quặc thế này…",
             "Dẫn truyện: Đúng lúc đó, một giọng nói quen thuộc vang lên từ phía sau.",

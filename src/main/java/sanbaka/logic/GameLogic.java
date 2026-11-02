@@ -1575,9 +1575,19 @@ public class GameLogic extends GameStory {
             }
             if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
                 if (marioIntroMode) {
-                    marioIntroMode = false;
-                    if (marioGame != null) marioGame.start();
-                    fadeInStart = System.currentTimeMillis();
+                    if (!marioIntroDialogueMode) {
+                        marioIntroDialogueMode = true;
+                    } else {
+                        if (revealMarioIntroDialogueImmediatelyIfTyping()) {
+                            repaint();
+                            return;
+                        }
+                        marioIntroMode = false;
+                        marioIntroDialogueMode = false;
+                        marioIntroDialogueStartedAt = 0;
+                        if (marioGame != null) marioGame.start();
+                        fadeInStart = System.currentTimeMillis();
+                    }
                     repaint();
                     return;
                 }
@@ -1597,6 +1607,7 @@ public class GameLogic extends GameStory {
             }
             if (key == KeyEvent.VK_M && !marioStoryMode) {
                 marioIntroMode = false;
+                marioIntroDialogueMode = false;
                 if (marioGame != null) marioGame.skipToVictory();
                 marioStoryMode = true;
                 marioRewardDrawerOpenAt = 0;
@@ -1624,10 +1635,6 @@ public class GameLogic extends GameStory {
             }
         }
         if (screen == TITLE || screen == PAUSE) {
-            if (screen == TITLE && key == KeyEvent.VK_M) {
-                startMarioMinigame();
-                return;
-            }
             if (key == KeyEvent.VK_ENTER) activateHoveredMenuButton();
             return;
         }

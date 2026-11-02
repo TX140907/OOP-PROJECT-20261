@@ -3,18 +3,33 @@ package sanbaka;
 import java.awt.Dimension;
 import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
+import java.awt.Font;
+import java.awt.image.BufferedImage;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.function.IntConsumer;
 import sanbaka.logic.StoryData;
 import sanbaka.render.GameScreenRenderer;
 
 public class SanbakaGame extends GameScreenRenderer {
     public SanbakaGame() {
-        titleFont = loadTitleFont();
+        this(null, null, null);
+        startGameLoop();
+    }
+
+    SanbakaGame(IntConsumer progressListener, BufferedImage loadingBackground, Font loadingTitleFont) {
+        IntConsumer progress = progressListener == null ? value -> {} : progressListener;
+        titleFont = loadingTitleFont == null ? loadTitleFont() : loadingTitleFont.deriveFont(Font.BOLD, 42f);
+        progress.accept(22);
         setPreferredSize(new Dimension(W, H));
         setFocusable(true);
         addKeyListener(this);
         lines.addAll(StoryData.build());
         findCallRange();
         buildScenes();
+        progress.accept(32);
 
         // loadProgress(); // hàm load tiến độ chơi game (nếu muốn tiếp tục)
         addMouseListener(new java.awt.event.MouseAdapter() {
@@ -44,24 +59,44 @@ public class SanbakaGame extends GameScreenRenderer {
         timerPrecisionThread.setName("HighPrecisionTimerFixer");
         timerPrecisionThread.start();
 
-        timer.start();
-        dialogBackground = loadDialogBackground();
+        dialogBackground = loadDialogBackground(loadingBackground);
+        progress.accept(48);
         afterExamBackground = loadAfterExamBackground("Toa_C1.png");
+        progress.accept(56);
         afterExamRainBackground = loadAfterExamBackground("Toa_C1_mua.png");
+        progress.accept(64);
         afterExamSnowBackground = loadAfterExamBackground("Toa_C1_tuyet.png");
+        progress.accept(70);
         afterExamSunBackground = loadAfterExamBackground("Toa_C1_nang.png");
+        progress.accept(76);
         secretEndingBackground = loadAfterExamBackground("sanbaka2.jpg");
+        progress.accept(81);
         afterDateBackground = loadAfterExamBackground("Toa_C1_toi.png");
+        progress.accept(85);
         weddingBackground = loadAfterExamBackground("Le_duong.png");
+        progress.accept(89);
         trafficJamBackground = loadAfterExamBackground("tac_duong.png");
+        progress.accept(92);
         sanbakaExpressionImages.put("binh_thuong", loadSanbakaExpression("sanbaka_ngay_thuong", "binh_thuong.png"));
+        progress.accept(93);
         sanbakaExpressionImages.put("lo_lang", loadSanbakaExpression("sanbaka_ngay_thuong", "lo_lang.png"));
+        progress.accept(94);
         sanbakaExpressionImages.put("vui_cuoi", loadSanbakaExpression("sanbaka_ngay_thuong", "vui_cuoi.png"));
+        progress.accept(95);
         sanbakaExpressionImages.put("xau_ho", loadSanbakaExpression("sanbaka_ngay_thuong", "xau_ho.png"));
+        progress.accept(96);
         sanbakaExpressionImages.put("ngai_ngung", loadSanbakaExpression("sanbaka_ngay_thuong", "ngai_ngung.png"));
+        progress.accept(97);
         sanbakaExpressionImages.put("wedding_binh_thuong", loadSanbakaExpression("sanbaka_vay_cuoi", "binh_thuong.png"));
+        progress.accept(98);
         sanbakaExpressionImages.put("wedding_vui_cuoi", loadSanbakaExpression("sanbaka_vay_cuoi", "vui_cuoi.png"));
+        progress.accept(99);
         sanbakaExpressionImages.put("wedding_xau_ho", loadSanbakaExpression("sanbaka_vay_cuoi", "xau_ho.png"));
+        progress.accept(100);
+    }
+
+    public void startGameLoop() {
+        timer.start();
     }
 
     private java.awt.image.BufferedImage loadSanbakaExpression(String folder, String fileName) {
@@ -169,7 +204,7 @@ public class SanbakaGame extends GameScreenRenderer {
         return new java.awt.Font("SansSerif", java.awt.Font.BOLD, 42);
     }
 
-    private java.awt.image.BufferedImage loadDialogBackground() {
+    private java.awt.image.BufferedImage loadDialogBackground(BufferedImage preloadedBackground) {
         // 0. Ưu tiên phát video lặp lại (loop) opening_video.mp4 thay cho ảnh nền sanbaka2
         String[] videoPaths = {
             "assets/background/opening_video.mp4",
@@ -194,6 +229,7 @@ public class SanbakaGame extends GameScreenRenderer {
                 break;
             }
         }
+        if (preloadedBackground != null) return scaleAfterExamBackground(preloadedBackground);
         // 1. Nạp trực tiếp từ thư mục assets ngoài cùng của dự án (fallback nếu không có video)
         String[] paths = {
             "assets/background/sanbaka2.jpg",
@@ -245,24 +281,113 @@ public class SanbakaGame extends GameScreenRenderer {
     }
 
     public static void main(String[] args) {
+        if (args.length >= 2 && "--external-loader".equals(args[0])) {
+            startWithExternalLoader(Paths.get(args[1]));
+            return;
+        }
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Tuần thi của SVBK");
-            SanbakaGame game = new SanbakaGame();
-            java.net.URL iconUrl = SanbakaGame.class.getResource("/assets/avatars/Sanbaka.jpg");
-            if (iconUrl != null) {
-                try {
-                    frame.setIconImage(javax.imageio.ImageIO.read(iconUrl));
-                } catch (java.io.IOException ignored) {
-                    // Keep the default window icon if the image cannot be loaded.
-                }
-            }
+            LoadingScreen loadingScreen = new LoadingScreen();
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.setContentPane(game);
+            frame.setContentPane(loadingScreen);
             frame.pack();
             frame.setResizable(false);
             frame.setLocationRelativeTo(null);
             frame.setVisible(true);
-            game.requestFocusInWindow();
+
+            Thread loadingThread = new Thread(() -> {
+                try {
+                    loadingScreen.setProgress(25);
+                    BufferedImage loadingBackground = LoadingScreen.loadBackground();
+                    SwingUtilities.invokeLater(() -> {
+                        loadingScreen.setBackgroundImage(loadingBackground);
+                        loadingScreen.setProgress(28);
+                    });
+                    Font loadingTitleFont = LoadingScreen.loadTitleFont();
+                    SwingUtilities.invokeLater(() -> {
+                        loadingScreen.setTitleFont(loadingTitleFont);
+                        loadingScreen.setProgress(31);
+                    });
+                    SanbakaGame game = new SanbakaGame(
+                            value -> SwingUtilities.invokeLater(() -> loadingScreen.setProgress(
+                                    31 + (int) Math.round((value - 22) * 69.0 / 78.0))),
+                            loadingBackground,
+                            loadingTitleFont);
+                    SwingUtilities.invokeLater(() -> {
+                        frame.setContentPane(game);
+                        frame.pack();
+                        frame.setLocationRelativeTo(null);
+                        game.startGameLoop();
+                        game.requestFocusInWindow();
+                    });
+                } catch (Throwable error) {
+                    error.printStackTrace();
+                    String message = error.getMessage() == null ? error.getClass().getSimpleName() : error.getMessage();
+                    SwingUtilities.invokeLater(() -> loadingScreen.setError(message));
+                }
+            }, "SanbakaResourceLoader");
+            loadingThread.setDaemon(true);
+            loadingThread.start();
         });
+    }
+
+    private static void startWithExternalLoader(Path progressFile) {
+        writeLoadProgress(progressFile, 25);
+        Thread loadingThread = new Thread(() -> {
+            try {
+                SanbakaGame game = new SanbakaGame(
+                        value -> writeLoadProgress(progressFile,
+                                31 + (int) Math.round((value - 22) * 68.0 / 78.0)),
+                        null,
+                        null);
+                SwingUtilities.invokeLater(() -> {
+                    JFrame frame = new JFrame("Tuần thi của SVBK");
+                    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+                    frame.setUndecorated(true);
+                    frame.setTitle("SANBAKA_GAME_CONTENT");
+                    frame.setContentPane(game);
+                    frame.pack();
+                    frame.setResizable(false);
+                    frame.addNotify();
+                    try {
+                        Path windowFile = progressFile.resolveSibling("loading-window.txt");
+                        Path embeddedFile = progressFile.resolveSibling("loading-embedded.txt");
+                        Files.deleteIfExists(embeddedFile);
+                        Files.write(windowFile, Long.toString(ProcessHandle.current().pid()).getBytes(StandardCharsets.US_ASCII));
+                        writeLoadProgress(progressFile, 100);
+                        Thread handoff = new Thread(() -> {
+                            long deadline = System.currentTimeMillis() + 60_000;
+                            while (System.currentTimeMillis() < deadline) {
+                                if (Files.exists(embeddedFile)) {
+                                    SwingUtilities.invokeLater(() -> {
+                                        frame.setVisible(true);
+                                        game.startGameLoop();
+                                        game.requestFocusInWindow();
+                                    });
+                                    return;
+                                }
+                                try { Thread.sleep(20); } catch (InterruptedException ignored) { return; }
+                            }
+                            writeLoadProgress(progressFile, -1);
+                        }, "SanbakaWindowHandoff");
+                        handoff.setDaemon(true);
+                        handoff.start();
+                    } catch (Exception error) {
+                        throw new RuntimeException(error);
+                    }
+                });
+            } catch (Throwable error) {
+                error.printStackTrace();
+                writeLoadProgress(progressFile, -1);
+            }
+        }, "SanbakaResourceLoader");
+        loadingThread.setDaemon(false);
+        loadingThread.start();
+    }
+
+    private static void writeLoadProgress(Path progressFile, int progress) {
+        try {
+            Files.write(progressFile, Integer.toString(progress).getBytes(StandardCharsets.US_ASCII));
+        } catch (Exception ignored) {}
     }
 }

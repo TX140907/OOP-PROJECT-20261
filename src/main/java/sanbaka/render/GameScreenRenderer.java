@@ -20,7 +20,10 @@ public class GameScreenRenderer extends GameMenuRenderer {
             drawCurrentDialog(g);
         } else if (pausedScreen == MARIO) {
             drawMarioGame(g);
-            if (marioIntroMode) drawMarioIntroOverlay(g);
+            if (marioIntroMode) {
+                drawMarioIntroOverlay(g);
+                if (marioIntroDialogueMode) drawMarioIntroDialogueOverlay(g);
+            }
             else if (marioStoryMode) drawMarioStoryOverlay(g);
         }
         else drawRoad(g);
@@ -309,6 +312,8 @@ public class GameScreenRenderer extends GameMenuRenderer {
         Graphics2D g=(Graphics2D)gg;
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         g.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED);
         g.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED);
         btns.clear();
@@ -341,7 +346,10 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (screen == AIR) drawAir(g);
         else if (screen == MARIO) {
             drawMarioGame(g);
-            if (marioIntroMode) drawMarioIntroOverlay(g);
+            if (marioIntroMode) {
+                drawMarioIntroOverlay(g);
+                if (marioIntroDialogueMode) drawMarioIntroDialogueOverlay(g);
+            }
             else if (marioStoryMode) drawMarioStoryOverlay(g);
             drawPauseButton(g, W - 58);
         }
@@ -660,6 +668,10 @@ public class GameScreenRenderer extends GameMenuRenderer {
         g.setFont(new Font("Monospaced", Font.PLAIN, 10));
         String hint = "ENTER / SPACE  ·  BẮT ĐẦU";
         g.drawString(hint, x + width - 20 - g.getFontMetrics().stringWidth(hint), y + height - 12);
+    }
+
+    private void drawMarioIntroDialogueOverlay(Graphics2D g) {
+        drawDialogueBox(g, new Line("Thắng", "Trò gì đây... Hình như là Mario!"));
     }
     void drawMarioStoryOverlay(Graphics2D g) {
         if (dialogIndex < 0 || dialogIndex >= lines.size()) return;
