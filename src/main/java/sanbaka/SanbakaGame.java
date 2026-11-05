@@ -5,10 +5,8 @@ import javax.swing.JFrame;
 import javax.swing.SwingUtilities;
 import java.awt.Font;
 import java.awt.image.BufferedImage;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.io.File;
+import java.io.InputStream;
 import java.util.function.IntConsumer;
 import sanbaka.logic.StoryData;
 import sanbaka.render.GameScreenRenderer;
@@ -31,7 +29,7 @@ public class SanbakaGame extends GameScreenRenderer {
         buildScenes();
         progress.accept(32);
 
-        // loadProgress(); // hàm load tiến độ chơi game (nếu muốn tiếp tục)
+        // loadProgress(); // Bỏ dấu // khi game hoàn thiện để nạp tiến trình đã lưu.
         addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mousePressed(java.awt.event.MouseEvent e) {
                 if (e.getButton() == java.awt.event.MouseEvent.BUTTON1) {
@@ -280,13 +278,24 @@ public class SanbakaGame extends GameScreenRenderer {
         }
     }
 
-    public static void main(String[] args) {
-        if (args.length >= 2 && "--external-loader".equals(args[0])) {
-            startWithExternalLoader(Paths.get(args[1]));
-            return;
+    private static BufferedImage loadGameIcon() {
+        File iconFile = new File("assets/avatars/Sanbaka.jpg");
+        if (iconFile.isFile()) {
+            try { return javax.imageio.ImageIO.read(iconFile); }
+            catch (Exception ignored) {}
         }
+        try (InputStream in = SanbakaGame.class.getResourceAsStream("/avatars/Sanbaka.jpg")) {
+            return in == null ? null : javax.imageio.ImageIO.read(in);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             JFrame frame = new JFrame("Tuần thi của SVBK");
+            BufferedImage gameIcon = loadGameIcon();
+            if (gameIcon != null) frame.setIconImage(gameIcon);
             LoadingScreen loadingScreen = new LoadingScreen();
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             frame.setContentPane(loadingScreen);
@@ -331,63 +340,4 @@ public class SanbakaGame extends GameScreenRenderer {
         });
     }
 
-    private static void startWithExternalLoader(Path progressFile) {
-        writeLoadProgress(progressFile, 25);
-        Thread loadingThread = new Thread(() -> {
-            try {
-                SanbakaGame game = new SanbakaGame(
-                        value -> writeLoadProgress(progressFile,
-                                31 + (int) Math.round((value - 22) * 68.0 / 78.0)),
-                        null,
-                        null);
-                SwingUtilities.invokeLater(() -> {
-                    JFrame frame = new JFrame("Tuần thi của SVBK");
-                    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-                    frame.setUndecorated(true);
-                    frame.setTitle("SANBAKA_GAME_CONTENT");
-                    frame.setContentPane(game);
-                    frame.pack();
-                    frame.setResizable(false);
-                    frame.addNotify();
-                    try {
-                        Path windowFile = progressFile.resolveSibling("loading-window.txt");
-                        Path embeddedFile = progressFile.resolveSibling("loading-embedded.txt");
-                        Files.deleteIfExists(embeddedFile);
-                        Files.write(windowFile, Long.toString(ProcessHandle.current().pid()).getBytes(StandardCharsets.US_ASCII));
-                        writeLoadProgress(progressFile, 100);
-                        Thread handoff = new Thread(() -> {
-                            long deadline = System.currentTimeMillis() + 60_000;
-                            while (System.currentTimeMillis() < deadline) {
-                                if (Files.exists(embeddedFile)) {
-                                    SwingUtilities.invokeLater(() -> {
-                                        frame.setVisible(true);
-                                        game.startGameLoop();
-                                        game.requestFocusInWindow();
-                                    });
-                                    return;
-                                }
-                                try { Thread.sleep(20); } catch (InterruptedException ignored) { return; }
-                            }
-                            writeLoadProgress(progressFile, -1);
-                        }, "SanbakaWindowHandoff");
-                        handoff.setDaemon(true);
-                        handoff.start();
-                    } catch (Exception error) {
-                        throw new RuntimeException(error);
-                    }
-                });
-            } catch (Throwable error) {
-                error.printStackTrace();
-                writeLoadProgress(progressFile, -1);
-            }
-        }, "SanbakaResourceLoader");
-        loadingThread.setDaemon(false);
-        loadingThread.start();
-    }
-
-    private static void writeLoadProgress(Path progressFile, int progress) {
-        try {
-            Files.write(progressFile, Integer.toString(progress).getBytes(StandardCharsets.US_ASCII));
-        } catch (Exception ignored) {}
-    }
 }

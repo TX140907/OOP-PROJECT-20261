@@ -63,9 +63,10 @@ public class GameLogic extends GameStory {
         teaSpawnCount = 0;
         lastTeaSpawn = stageStarted;
         warmUntil = 0;
+        mysteryBoxSpawned = false;
         mysteryBoxSpawnedThisStage = false;
         if (day == 1) {
-            map2MysteryBoxRolled = !mysteryBoxSpawned; // Tỉ lệ xuất hiện tuyệt đối (100%) ở màn 2
+            map2MysteryBoxRolled = !mysteryBoxSecured; // Xuất hiện lại cho tới khi hoàn thành Ngày 4 an toàn
         }
         floatingTextManager.clear();
         beCause = "";
@@ -146,6 +147,10 @@ public class GameLogic extends GameStory {
                 startFade(FADE_JAM, now);
             }
             else if (elapsed >= getStageDurationMs()) {
+                if (day == HOT_DAY && mysteryBoxCollected && !mysteryBoxSecured) {
+                    mysteryBoxSecured = true;
+                    saveProgress();
+                }
                 startFade(FADE_END, now);
             }
         }
@@ -440,10 +445,9 @@ public class GameLogic extends GameStory {
                 lastStudentSpawn = now - 1000;
             }
         }
-        // Spawn Hộp bí ẩn (Mystery Box) Easter Egg:
-        // - Xuất hiện ở Màn 2 với tỉ lệ tuyệt đối (100%), hoặc Màn 4 nếu Màn 2 chưa xuất hiện (đúng 1 lần duy nhất).
-        // - Nếu Màn 2 đã xuất hiện rồi thì không cho xuất hiện lại nữa.
-        if (canSpawn && !mysteryBoxSpawned && !mysteryBoxSpawnedThisStage && t >= 7.5 && dur - t > 7.0) {
+        // Xuất hiện lại ở Màn 2/Màn 4 sau mỗi lượt chưa lấy được; chỉ ngừng
+        // sau khi người chơi đã nhặt và hoàn thành an toàn Ngày 4.
+        if (canSpawn && !mysteryBoxSecured && !mysteryBoxSpawnedThisStage && t >= 7.5 && dur - t > 7.0) {
             boolean shouldSpawn = (day == 1 && map2MysteryBoxRolled) || (day == HOT_DAY);
             if (shouldSpawn) {
                 if (trySpawnMysteryBox()) {

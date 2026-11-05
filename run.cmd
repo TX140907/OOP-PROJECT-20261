@@ -3,8 +3,6 @@ setlocal EnableDelayedExpansion
 pushd "%~dp0"
 if errorlevel 1 exit /b 1
 
-if /i not "%~1"=="--build-only" goto launch
-
 if not exist "build\classes" mkdir "build\classes"
 if errorlevel 1 goto failed
 
@@ -20,8 +18,7 @@ if errorlevel 1 goto failed
 
 if /i "%~1"=="--build-only" goto success
 
-:launch
-powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -STA -File "run-loading.ps1" -JavaGraphicsOptions "-Dsun.java2d.d3d=false -Dsun.java2d.opengl=true"
+java --enable-native-access=ALL-UNNAMED -Dsun.java2d.d3d=false -Dsun.java2d.opengl=true -Dsun.awt.noerasebackground=true -cp "build/classes;assets;." sanbaka.SanbakaGame
 if errorlevel 1 goto failed
 
 :success

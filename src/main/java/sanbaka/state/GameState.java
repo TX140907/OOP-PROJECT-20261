@@ -205,6 +205,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public boolean mysteryBoxCollected = false;
     public boolean map2MysteryBoxRolled = false;
     public boolean mysteryBoxSpawnedThisStage = false;
+    public boolean mysteryBoxSecured = false;
     // ---- Màn 5: Boss Trận Không Chiến & Tên Lửa Trực Thăng (phím E) ----
     public BossEnemy boss = null;
     public java.util.List<PlayerMissile> missiles = new ArrayList<>();

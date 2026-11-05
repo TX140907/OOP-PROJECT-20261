@@ -95,21 +95,52 @@ public abstract class GameMenuState extends GameState {
     }
 
     public void loadProgress() {
+        Properties p = new Properties();
         try (java.io.InputStream in = new java.io.FileInputStream(SAVE_FILE)) {
-            Properties p = new Properties();
             p.load(in);
-            maxScene = Math.max(-1, Math.min(scenes.size() - 1, Integer.parseInt(p.getProperty("maxScene", "-1").trim())));
-            won = Boolean.parseBoolean(p.getProperty("won", "false").trim());
         } catch (Exception e) {
             // chưa có tiến trình đã lưu
+            return;
         }
+
+        try {
+            String sceneKey = p.getProperty("maxSceneKey", "").trim();
+            int loadedScene = -1;
+            if (!sceneKey.isEmpty()) {
+                String[] parts = sceneKey.split(":", 2);
+                if (parts.length == 2) {
+                    int type = Integer.parseInt(parts[0]);
+                    int dayIdx = Integer.parseInt(parts[1]);
+                    for (int i = 0; i < scenes.size(); i++) {
+                        Scene scene = scenes.get(i);
+                        if (scene.type == type && scene.dayIdx == dayIdx) {
+                            loadedScene = i;
+                            break;
+                        }
+                    }
+                }
+            } else {
+                int legacyIndex = Integer.parseInt(p.getProperty("maxScene", "-1").trim());
+                loadedScene = Math.max(-1, Math.min(scenes.size() - 1, legacyIndex));
+            }
+            maxScene = loadedScene;
+        } catch (Exception ignored) {
+            maxScene = -1;
+        }
+        won = Boolean.parseBoolean(p.getProperty("won", "false").trim());
+        mysteryBoxSecured = Boolean.parseBoolean(p.getProperty("mysteryBoxSecured", "false").trim());
     }
 
     public void saveProgress() {
         try (java.io.OutputStream out = new java.io.FileOutputStream(SAVE_FILE)) {
             Properties p = new Properties();
             p.setProperty("maxScene", String.valueOf(maxScene));
+            if (maxScene >= 0 && maxScene < scenes.size()) {
+                Scene scene = scenes.get(maxScene);
+                p.setProperty("maxSceneKey", scene.type + ":" + scene.dayIdx);
+            }
             p.setProperty("won", String.valueOf(won));
+            p.setProperty("mysteryBoxSecured", String.valueOf(mysteryBoxSecured));
             p.store(out, "Tuan thi cua SVBK - tien trinh choi");
         } catch (Exception e) {
             // không ghi được thì bỏ qua

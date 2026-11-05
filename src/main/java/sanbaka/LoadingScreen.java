@@ -28,7 +28,8 @@ final class LoadingScreen extends JPanel {
     }
 
     void setProgress(int value) {
-        progress = Math.max(0, Math.min(100, value));
+        // Quy đổi tiến độ nội bộ (25–100) sang 0–100 chỉ để hiển thị trên splash.
+        progress = Math.max(0, Math.min(100, (value - 25) * 100 / 75));
         repaint();
     }
 
