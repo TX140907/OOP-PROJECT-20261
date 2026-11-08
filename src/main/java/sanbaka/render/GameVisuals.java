@@ -69,8 +69,10 @@ public class GameVisuals extends GameLogic {
 
     public void drawConfetti(Graphics2D g, long now) {
         for (double[] p : pops) {
-            double age = (now - p[2]) / 450.0;
-            g.setColor(new Color(255, 245, 190, (int) (200 * (1 - age))));
+            double age = Math.max(0.0, Math.min(1.0, (now - p[2]) / 450.0));
+            int alpha = Math.max(0, Math.min(255, (int) Math.round(200 * (1 - age))));
+            if (alpha == 0) continue;
+            g.setColor(new Color(255, 245, 190, alpha));
             g.setStroke(new BasicStroke(4f * (float) (1 - age) + 1f));
             double r = 14 + age * 80;
             g.draw(new Ellipse2D.Double(p[0] - r, p[1] - r, 2 * r, 2 * r));
