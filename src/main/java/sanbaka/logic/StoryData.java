@@ -80,7 +80,8 @@ public class StoryData {
             "Chủ trọ: Dưới gầm giường có cái thuyền phao đấy. Lôi ra mà chèo!",
             "Thắng: ...Bác nói thật ạ?",
             "Chủ trọ: Cháu thử tìm xem, biết đâu có thật!",
-            "Thắng: Đi thôi mày. Nhanh không làm cổ đông cho trường giờ!"
+            "Thắng: Dạ vâng ạ!",
+            "Thắng: Đi thôi mày. nhanh ko làm cổ đông cho trường giờ"
         );
         add(lines, "NGÀY 2 · SAU KHI THI",
             "Sanbaka: Anh đây rồi! Sao ướt hết thế này?",

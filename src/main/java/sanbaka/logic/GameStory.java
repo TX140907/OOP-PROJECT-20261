@@ -210,6 +210,16 @@ public abstract class GameStory extends GameMenuState {
         return false;
     }
 
+    public boolean isHelicopterRescueDialog(int idx) {
+        if (idx < 0 || idx >= lines.size()) return false;
+        for (int i = idx; i >= 0; i--) {
+            Line line = lines.get(i);
+            if (line.who.startsWith("@")) return false;
+            if (line.text.startsWith("…Cái méo gì thế?!")) return true;
+        }
+        return false;
+    }
+
     public boolean isSecretEndingDialog(int idx) {
         for (int i = Math.min(idx, lines.size() - 1); i >= 0; i--) {
             String who = lines.get(i).who;
@@ -230,6 +240,7 @@ public abstract class GameStory extends GameMenuState {
             if (idx < 0 || idx >= lines.size()) return null;
             if (isProposalSpeechDialog(idx)) return "ngai_ngung";
             if (isWeddingEndingDialog(idx)) {
+                if (isWeddingOpeningThangDialog(idx)) return "wedding_binh_thuong";
                 int weddingStart = 0;
                 for (int i = 0; i <= idx; i++) {
                     if (lines.get(i).text.startsWith("Chuyển cảnh: Lễ đường.")) {
@@ -308,6 +319,85 @@ public abstract class GameStory extends GameMenuState {
             if (i <= idx) currentExpression = classifySanbakaExpression(line.text);
         }
         return hasDirectSanbaka ? currentExpression : null;
+    }
+
+    /** Chỉ hiện biểu cảm Komori ở lời thoại trực tiếp; giữ qua câu trả lời của Thắng. */
+    public String komoriExpressionForDialog(int idx) {
+        if (idx < 0 || idx >= lines.size() || isCallLine(idx)) return null;
+        Line current = lines.get(idx);
+        if (isDirectKomoriLine(current)) return classifyKomoriExpression(current.text);
+        if (!current.who.equals("Thắng")) return null;
+        if (current.text.startsWith("Đi thôi mày. nhanh ko làm cổ đông cho trường giờ")) return "binh_thuong";
+        if (current.text.startsWith("Mày cười cái chó gì, nhanh tao còn đi thi!")) return "cuoi_nhe_rang";
+        if (current.text.equals("…") && idx + 1 < lines.size()
+                && lines.get(idx + 1).text.startsWith("Mày cười cái chó gì, nhanh tao còn đi thi!")) {
+            return "cuoi_nhe_rang";
+        }
+
+        for (int i = idx - 1; i >= 0; i--) {
+            Line previous = lines.get(i);
+            if (isCallLine(i)) return null;
+            if (previous.who.startsWith("@")) break;
+            if (isDirectKomoriLine(previous)) return classifyKomoriExpression(previous.text);
+            if (previous.who.startsWith("Dẫn truyện")) break;
+            if (!previous.who.equals("Thắng")) return null;
+        }
+        if (isOpeningThangLine(idx) && "Komori".equals(nextDirectSpeaker(idx))) return "binh_thuong";
+        return null;
+    }
+
+    private boolean isDirectKomoriLine(Line line) {
+        return line.who.startsWith("Komori") && !line.who.contains("(điện thoại)");
+    }
+
+    private boolean isOpeningThangLine(int idx) {
+        for (int i = idx - 1; i >= 0; i--) {
+            String who = lines.get(i).who;
+            if (who.startsWith("@")) return true;
+            if (!who.equals("Thắng") && !who.startsWith("Dẫn truyện")) return false;
+        }
+        return true;
+    }
+
+    private boolean isWeddingOpeningThangDialog(int idx) {
+        if (idx < 0 || idx >= lines.size() || !lines.get(idx).who.equals("Thắng")) return false;
+        if (!"Sanbaka".equals(nextDirectSpeaker(idx))) return false;
+        for (int i = idx - 1; i >= 0; i--) {
+            Line previous = lines.get(i);
+            if (previous.text.startsWith("Chuyển cảnh: Lễ đường.")) return true;
+            if (!previous.who.startsWith("Dẫn truyện")) return false;
+        }
+        return false;
+    }
+
+    private String nextDirectSpeaker(int idx) {
+        for (int i = idx + 1; i < lines.size(); i++) {
+            Line next = lines.get(i);
+            if (next.who.startsWith("@")) return null;
+            if (next.who.equals("Thắng") || next.who.startsWith("Dẫn truyện")) continue;
+            if (isDirectKomoriLine(next)) return "Komori";
+            return next.who;
+        }
+        return null;
+    }
+
+    private String classifyKomoriExpression(String text) {
+        if (text.contains("ghen với cái chăn") || text.contains("bơi xong tao ngồi")
+                || text.contains("Mơ tiếp đi") || text.contains("Tao bảo rồi")
+                || text.contains("Viết đi, nhớ ghi tên tao")
+                || text.contains("Chúc mừng thằng cu")) {
+            return "cuoi_toe";
+        }
+        if (text.contains("lần thứ mười") || text.contains("về ôn tiếp")
+                || text.contains("sợ mày ốm") || text.contains("phát đề qua bưu điện")
+                || text.contains("tối qua mày ôn bài chăm chỉ")
+                || text.contains("mười phút rồi ngủ gục") || text.contains("nghe mày than nhớ vợ")
+                || text.contains("Từ lúc mày còn đang ngủ nướng")
+                || text.contains("Mày có bao giờ dậy đúng giờ")
+                || text.contains("giờ lượn đi em")) {
+            return "cuoi_nhe_rang";
+        }
+        return "binh_thuong";
     }
 
     private boolean isProposalSpeechDialog(int idx) {

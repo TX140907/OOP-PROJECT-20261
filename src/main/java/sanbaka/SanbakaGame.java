@@ -74,6 +74,13 @@ public class SanbakaGame extends GameScreenRenderer {
         weddingBackground = loadAfterExamBackground("Le_duong.png");
         progress.accept(89);
         trafficJamBackground = loadAfterExamBackground("tac_duong.png");
+        trafficJamHelicopterBackground = loadAfterExamBackground("tac_duong_2.png");
+        landlordExpressionImage = loadSanbakaExpression("chu_tro", "chu_tro.png");
+        komoriExpressionImages.put("binh_thuong", loadSanbakaExpression("komori", "binh_thuong.png"));
+        progress.accept(90);
+        komoriExpressionImages.put("cuoi_nhe_rang", loadSanbakaExpression("komori", "cuoi_nhe_rang.png"));
+        progress.accept(91);
+        komoriExpressionImages.put("cuoi_toe", loadSanbakaExpression("komori", "cuoi_toe.png"));
         progress.accept(92);
         sanbakaExpressionImages.put("binh_thuong", loadSanbakaExpression("sanbaka_ngay_thuong", "binh_thuong.png"));
         progress.accept(93);

@@ -17,6 +17,9 @@ public class GameScreenRenderer extends GameMenuRenderer {
         if (pausedScreen == DIALOG) drawDialog(g);
         else if (pausedScreen == ROOM) {
             drawRoom(g);
+            drawKomoriExpression(g, dialogIndex);
+            drawLandlordExpression(g, dialogIndex);
+            drawRoomTitle(g);
             drawCurrentDialog(g);
         } else if (pausedScreen == MARIO) {
             drawMarioGame(g);
@@ -333,6 +336,9 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (screen == CARD) drawCard(g);
         else if (screen == ROOM) {
             drawRoom(g);
+            drawKomoriExpression(g, dialogIndex);
+            drawLandlordExpression(g, dialogIndex);
+            drawRoomTitle(g);
             drawCurrentDialog(g);
             drawPauseButton(g, W - 58);
         }
@@ -621,7 +627,10 @@ public class GameScreenRenderer extends GameMenuRenderer {
         g.setColor(tint[d]);
         g.fillRect(0, 0, W, H);
 
-        // tiêu đề cảnh
+    }
+
+    private void drawRoomTitle(Graphics2D g) {
+        int d = Math.max(0, Math.min(day, 4));
         String title = dayTitles[d] + " · PHÒNG TRỌ";
         g.setFont(new Font("Dialog", Font.BOLD, 18));
         int tw = g.getFontMetrics().stringWidth(title);
@@ -776,8 +785,11 @@ public class GameScreenRenderer extends GameMenuRenderer {
                 && isSecretEndingDialog(dialogIndex);
         boolean weddingEnding = dialogIndex < lines.size() && isWeddingEndingDialog(dialogIndex);
         boolean trafficJam = dialogIndex < lines.size() && isTrafficJamDialog(dialogIndex);
+        boolean helicopterRescue = dialogIndex < lines.size() && isHelicopterRescueDialog(dialogIndex);
         java.awt.image.BufferedImage background = weddingEnding ? weddingBackground
-                : secretEnding ? afterDateBackground : trafficJam ? trafficJamBackground : switch (afterExamDay) {
+                : secretEnding ? afterDateBackground
+                : trafficJam ? (helicopterRescue && trafficJamHelicopterBackground != null
+                        ? trafficJamHelicopterBackground : trafficJamBackground) : switch (afterExamDay) {
             case 2 -> afterExamRainBackground;
             case 3 -> afterExamSnowBackground;
             case 4 -> afterExamSunBackground;
@@ -795,6 +807,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
         }
         Line currentLine = lines.get(dialogIndex);
         if (!isMessage(currentLine)) {
+            drawKomoriExpression(g, dialogIndex);
             String expressionName = sanbakaExpressionForDialog(dialogIndex);
             java.awt.image.BufferedImage expression = expressionName == null
                     ? null : sanbakaExpressionImages.get(expressionName);
@@ -813,6 +826,44 @@ public class GameScreenRenderer extends GameMenuRenderer {
         } else {
             drawCurrentDialog(g);
         }
+    }
+
+    private void drawKomoriExpression(Graphics2D g, int idx) {
+        String expressionName = komoriExpressionForDialog(idx);
+        java.awt.image.BufferedImage expression = expressionName == null
+                ? null : komoriExpressionImages.get(expressionName);
+        if (expression == null) return;
+        int height = (int) Math.round(H * 1.25);
+        int width = (int) Math.round(expression.getWidth()
+                * (height / (double) expression.getHeight()));
+        int x = -25;
+        int y = 0;
+        g.drawImage(expression, x, y, width, height, null);
+    }
+
+    private void drawLandlordExpression(Graphics2D g, int idx) {
+        if (idx < 0 || idx >= lines.size() || landlordExpressionImage == null
+                || !isLandlordExpressionActive(idx)) return;
+        int height = H - 15;
+        int width = (int) Math.round(landlordExpressionImage.getWidth()
+                * (height / (double) landlordExpressionImage.getHeight()));
+        int x = (W - width) / 2;
+        g.drawImage(landlordExpressionImage, x, H - height, width, height, null);
+    }
+
+    private boolean isLandlordExpressionActive(int idx) {
+        Line current = lines.get(idx);
+        if (current.who.equals("Thắng")
+                && current.text.startsWith("Đi thôi mày. nhanh ko làm cổ đông cho trường giờ")) return false;
+        if (current.who.startsWith("Chủ trọ")) return true;
+        if (!current.who.equals("Thắng")) return false;
+        for (int i = idx - 1; i >= 0; i--) {
+            Line previous = lines.get(i);
+            if (previous.who.startsWith("@")) return false;
+            if (previous.who.startsWith("Chủ trọ")) return true;
+            if (!previous.who.equals("Thắng")) return false;
+        }
+        return false;
     }
 
     void drawChatPhone(Graphics2D g) {

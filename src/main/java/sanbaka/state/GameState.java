@@ -115,7 +115,10 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public java.awt.image.BufferedImage afterDateBackground;
     public java.awt.image.BufferedImage weddingBackground;
     public java.awt.image.BufferedImage trafficJamBackground;
+    public java.awt.image.BufferedImage trafficJamHelicopterBackground;
+    public java.awt.image.BufferedImage landlordExpressionImage;
     public final java.util.Map<String, java.awt.image.BufferedImage> sanbakaExpressionImages = new java.util.HashMap<>();
+    public final java.util.Map<String, java.awt.image.BufferedImage> komoriExpressionImages = new java.util.HashMap<>();
     public int screen = TITLE;
     public int dialogIndex = 0;
     private static final int TYPEWRITER_CHARS_PER_SECOND = 42;
