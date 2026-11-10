@@ -6,6 +6,12 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
 
+$localJdkBin = Join-Path $projectRoot "oracleJdk-27\bin"
+if (Test-Path (Join-Path $localJdkBin "javac.exe")) {
+    $env:JAVA_HOME = Join-Path $projectRoot "oracleJdk-27"
+    $env:PATH = "$localJdkBin;$env:PATH"
+}
+
 $outputDir = Join-Path $projectRoot "build\classes"
 if (-not (Test-Path $outputDir)) {
     New-Item -ItemType Directory -Force -Path $outputDir | Out-Null

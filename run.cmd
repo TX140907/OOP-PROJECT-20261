@@ -3,6 +3,18 @@ setlocal EnableDelayedExpansion
 pushd "%~dp0"
 if errorlevel 1 exit /b 1
 
+if exist "%~dp0oracleJdk-27\bin\javac.exe" (
+    set "JAVA_HOME=%~dp0oracleJdk-27"
+    set "PATH=%~dp0oracleJdk-27\bin;%PATH%"
+)
+
+where javac >nul 2>&1
+if errorlevel 1 (
+    echo [LOI] Khong tim thay trinh bien dich javac tren he thong hoac thu muc oracleJdk-27.
+    echo Vui long cai dat JDK 22 tro len hoac kiem tra thu muc oracleJdk-27.
+    goto failed
+)
+
 if not exist "build\classes" mkdir "build\classes"
 if errorlevel 1 goto failed
 
