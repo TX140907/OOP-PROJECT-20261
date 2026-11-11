@@ -34,7 +34,7 @@ public class GameEnvironmentRenderer extends GameVisuals {
             return size() > TREE_CACHE_LIMIT;
         }
     };
-    private final BufferedImage[] lampImageCache = new BufferedImage[2];
+    private final BufferedImage[] lampImageCache = new BufferedImage[4];
 
     GameEnvironmentRenderer() {
         for (int i = 0; i < waterRipplePaths.length; i++) waterRipplePaths[i] = new Path2D.Double();
@@ -199,20 +199,34 @@ public class GameEnvironmentRenderer extends GameVisuals {
     }
 
     void drawLamp(Graphics2D g, double x, double y, int dir) {
-        int cacheIndex = dir < 0 ? 0 : 1;
+        boolean nightLamp = (day == 1 || day == 2);
+        int cacheIndex = (nightLamp ? 2 : 0) + (dir < 0 ? 0 : 1);
         BufferedImage sprite = lampImageCache[cacheIndex];
         if (sprite == null) {
             sprite = ArtAssets.createCompatibleImage(96, 48);
             Graphics2D spriteGraphics = sprite.createGraphics();
             spriteGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            drawLampArt(spriteGraphics, 48, 24, cacheIndex == 0 ? -1 : 1);
+            drawLampArt(spriteGraphics, 48, 24, dir < 0 ? -1 : 1, nightLamp);
             spriteGraphics.dispose();
             lampImageCache[cacheIndex] = sprite;
         }
         g.drawImage(sprite, (int) (x - 48), (int) (y - 24), null);
     }
 
-    private void drawLampArt(Graphics2D g, double x, double y, int dir) {
+    private void drawLampArt(Graphics2D g, double x, double y, int dir, boolean nightLamp) {
+        String lampFile = nightLamp ? "StreetLamp_night.png" : "StreetLamp_day.png";
+        BufferedImage art = ArtAssets.load("Environment", lampFile);
+        if (art == null) art = ArtAssets.load("StreetLamp", lampFile);
+        if (art == null) art = ArtAssets.load("Environment", "StreetLamp.png");
+        if (art == null) art = ArtAssets.load("StreetLamp", "StreetLamp.png");
+        if (art != null) {
+            AffineTransform old = g.getTransform();
+            g.translate(x, y);
+            if (dir < 0) g.scale(-1, 1);
+            g.drawImage(art, -48, -24, 96, 48, null);
+            g.setTransform(old);
+            return;
+        }
         g.setColor(new Color(255, 243, 190, 60));
         g.fill(new Ellipse2D.Double(x + dir * 24 - 16, y - 16, 32, 32));
         g.setColor(new Color(70, 76, 90));
@@ -243,12 +257,35 @@ public class GameEnvironmentRenderer extends GameVisuals {
     }
 
     private void drawTreeArt(Graphics2D g, double x, double y, double r, int variant) {
+        int palIdx = (variant % 7 == 0 ? 2 : variant % 2) % 3;
+        String[] treeFiles = {"Tree_green_dark.png", "Tree_green_light.png", "Tree_blossom.png"};
+        BufferedImage art = null;
+        if (day == 2) {
+            art = ArtAssets.load("Environment", "Tree_snow.png");
+            if (art == null) art = ArtAssets.load("RoadsideTree", "Tree_snow.png");
+        }
+        if (art == null) {
+            art = ArtAssets.load("Environment", treeFiles[palIdx]);
+            if (art == null) art = ArtAssets.load("RoadsideTree", treeFiles[palIdx]);
+        }
+        if (art == null) {
+            art = ArtAssets.load("Environment", "Tree.png");
+            if (art == null) art = ArtAssets.load("RoadsideTree", "Tree.png");
+        }
+        if (art != null) {
+            int d = (int) Math.round(r * 2);
+            g.setColor(new Color(0, 0, 0, 45));
+            g.fill(new Ellipse2D.Double(x - r + 5, y - r + 8, 2 * r, 2 * r));
+            g.drawImage(art, (int) Math.round(x - r), (int) Math.round(y - r), d, d, null);
+            return;
+        }
+
         Color[][] pal = {
             {new Color(52, 122, 82), new Color(72, 150, 98), new Color(118, 188, 124)},
             {new Color(98, 128, 64), new Color(124, 156, 80), new Color(166, 190, 108)},
             {new Color(226, 132, 168), new Color(244, 160, 190), new Color(255, 208, 224)}
         };
-        Color[] c = pal[(variant % 7 == 0 ? 2 : variant % 2) % 3];
+        Color[] c = pal[palIdx];
         if (day == 1) c = new Color[]{shade(c[0], 0.8), shade(c[1], 0.8), shade(c[2], 0.8)};
         g.setColor(new Color(0, 0, 0, 45));
         g.fill(new Ellipse2D.Double(x - r + 5, y - r + 8, 2 * r, 2 * r));
@@ -265,6 +302,16 @@ public class GameEnvironmentRenderer extends GameVisuals {
     }
 
     void drawHouse(Graphics2D g, double x, double y, double w, double h, Color roof) {
+        BufferedImage houseArt = ArtAssets.load("Environment", "RoadsideHouse.png");
+        if (houseArt == null) houseArt = ArtAssets.load("RoadsideHouse", "RoadsideHouse.png");
+        if (houseArt == null) houseArt = ArtAssets.load("Environment", "House.png");
+        if (houseArt != null) {
+            g.setColor(new Color(0, 0, 0, 40));
+            g.fill(new RoundRectangle2D.Double(x - 7, y + 8, w, h, 8, 8));
+            g.drawImage(houseArt, (int) Math.round(x), (int) Math.round(y),
+                    (int) Math.round(w), (int) Math.round(h), null);
+            return;
+        }
         g.setColor(new Color(0, 0, 0, 40));
         g.fill(new RoundRectangle2D.Double(x - 7, y + 8, w, h, 8, 8));
         g.setColor(shade(roof, 1.12));

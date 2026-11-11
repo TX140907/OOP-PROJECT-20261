@@ -191,19 +191,36 @@ public class Student extends Thing {
     public void draw(Graphics2D g, GameVisuals scene) {
         long now = System.currentTimeMillis();
 
-        // 1. Nếu có ảnh vẽ riêng từ Artist, ưu tiên nạp và vẽ ảnh
-        BufferedImage art = ArtAssets.load("Student", "Student.png");
+        // 1. Nếu có ảnh vẽ riêng từ Artist (đa trạng thái: idle, walk1, walk2, yield hoặc Student.png), ưu tiên nạp và vẽ ảnh
+        String stateFrame;
+        if (isYielding) {
+            stateFrame = "Student_yield.png";
+        } else if (phase == PHASE_SIDEWALK_WAIT) {
+            stateFrame = "Student_idle.png";
+        } else {
+            stateFrame = ((now / 140) % 2 == 0) ? "Student_walk1.png" : "Student_walk2.png";
+        }
+
+        BufferedImage art = ArtAssets.load("Student", stateFrame);
+        if (art == null) art = ArtAssets.load("Student", "Student.png");
         if (art == null) art = ArtAssets.load("Student", "student.png");
         if (art != null) {
             int dw = (int) this.w;
             int dh = (int) this.h;
             AffineTransform old = g.getTransform();
+            Stroke oldStroke = g.getStroke();
             g.translate(this.x, this.y);
             if (this.dir < 0) {
                 g.scale(-1, 1);
             }
+            if (phase == PHASE_SIDEWALK_WAIT) {
+                drawSidewalkIndicator(g, now);
+            }
+            g.setColor(COLOR_SHADOW);
+            g.fill(new Ellipse2D.Double(-12, 13, 24, 10));
             g.drawImage(art, -dw / 2, -dh / 2, dw, dh, null);
             g.setTransform(old);
+            g.setStroke(oldStroke);
             return;
         }
 

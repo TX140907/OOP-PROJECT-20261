@@ -95,11 +95,22 @@ public class GameMenuRenderer extends GameRoadRenderer {
         g.fillRoundRect((int) x + 23, (int) y + 12, 5, 18, 3, 3);
     }
 
+    void drawSharpBackdrop(Graphics2D g, Image img) {
+        if (img == null) return;
+        Object oldInterp = g.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
+        Object oldRender = g.getRenderingHint(RenderingHints.KEY_RENDERING);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(img, 0, 0, W, H, null);
+        if (oldInterp != null) g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, oldInterp);
+        if (oldRender != null) g.setRenderingHint(RenderingHints.KEY_RENDERING, oldRender);
+    }
+
     void drawSoftBackground(Graphics2D g) {
         if (menuForegroundOnly) return;
         if (dialogBackground != null) {
-            g.drawImage(dialogBackground, 0, 0, W, H, null);
-            g.setColor(new Color(18, 22, 36, 150));
+            drawSharpBackdrop(g, dialogBackground);
+            g.setColor(new Color(18, 22, 36, 145));
             g.fillRect(0, 0, W, H);
         } else {
             g.setPaint(new GradientPaint(0, 0, new Color(255, 232, 238), 0, H, new Color(255, 244, 233)));
@@ -119,9 +130,9 @@ public class GameMenuRenderer extends GameRoadRenderer {
     void drawTitleBackground(Graphics2D g) {
         boolean hasBg = dialogBackground != null;
         if (hasBg) {
-            g.drawImage(dialogBackground, 0, 0, W, H, null);
-            g.setPaint(new GradientPaint(0, 0, new Color(18, 22, 36, 175), 540, 0, new Color(18, 22, 36, 0)));
-            g.fillRect(0, 0, 540, H);
+            drawSharpBackdrop(g, dialogBackground);
+            g.setPaint(new GradientPaint(0, 0, new Color(18, 22, 36, 160), 500, 0, new Color(18, 22, 36, 0)));
+            g.fillRect(0, 0, 500, H);
         } else {
             g.setColor(new Color(255, 224, 231));
             g.fillRect(0, 0, W, H);

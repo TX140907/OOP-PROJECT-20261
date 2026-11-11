@@ -33,13 +33,24 @@ public class PlayerBike extends PlayerVehicle {
             int wob = (int) (Math.sin(now / 130.0 + i * 1.7) * 3);
             g.fillOval(px - s / 2 + wob, py + 48 + i * 9, s, s);
         }
-        String directionImage = Math.abs(lean) < 0.08
-                ? "PlayerBike.png"
-                : lean < 0 ? "PlayerBike_left.png" : "PlayerBike_right.png";
-        BufferedImage art = ArtAssets.load("PlayerBike", directionImage);
-        if (art == null && !"PlayerBike.png".equals(directionImage)) {
-            art = ArtAssets.load("PlayerBike", "PlayerBike.png");
-        }        if (art != null) {
+        BufferedImage art = null;
+        if (invulnerable > now) {
+            art = ArtAssets.load("PlayerBike", "PlayerBike_hit.png");
+        }
+        if (art == null) {
+            String directionImage = Math.abs(lean) < 0.08
+                    ? "PlayerBike.png"
+                    : lean < 0 ? "PlayerBike_left.png" : "PlayerBike_right.png";
+            art = ArtAssets.load("PlayerBike", directionImage);
+            if (art == null && "PlayerBike.png".equals(directionImage)) {
+                art = ArtAssets.load("PlayerBike", "PlayerBike_straight.png");
+            }
+            if (art == null && !"PlayerBike.png".equals(directionImage)) {
+                art = ArtAssets.load("PlayerBike", "PlayerBike.png");
+                if (art == null) art = ArtAssets.load("PlayerBike", "PlayerBike_straight.png");
+            }
+        }
+        if (art != null) {
             g.drawImage(art, px - 30, py - 50, 60, 100, null);
             g.setTransform(oldTransform);
             g.setComposite(oldComposite);

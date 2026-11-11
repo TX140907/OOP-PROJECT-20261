@@ -11,6 +11,12 @@ public class EnergyBolt extends Thing {
         double scale = 1 + 0.12 * Math.sin(System.currentTimeMillis() / 160.0);
         java.awt.image.BufferedImage art = ArtAssets.load("EnergyBolt", "EnergyBolt.png");
         if (art == null) {
+            art = ArtAssets.load("EnergyBolt", "Mixue.png");
+        }
+        if (art == null) {
+            art = ArtAssets.load("Mixue", "Mixue.png");
+        }
+        if (art == null) {
             scene.drawBolt(g, x, y, scale);
             return;
         }

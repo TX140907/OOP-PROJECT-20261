@@ -218,11 +218,24 @@ public class SanbakaGame extends GameScreenRenderer {
         for (String vPath : videoPaths) {
             java.io.File videoFile = new java.io.File(vPath);
             if (videoFile.isFile()) {
+                double scaleX = 1.0, scaleY = 1.0;
+                try {
+                    java.awt.GraphicsConfiguration gc = java.awt.GraphicsEnvironment
+                            .getLocalGraphicsEnvironment()
+                            .getDefaultScreenDevice()
+                            .getDefaultConfiguration();
+                    java.awt.geom.AffineTransform tx = gc.getDefaultTransform();
+                    scaleX = Math.max(1.0, Math.min(2.0, tx.getScaleX()));
+                    scaleY = Math.max(1.0, Math.min(2.0, tx.getScaleY()));
+                } catch (Throwable ignored) {}
+                final int videoW = (int) Math.round(W * scaleX);
+                final int videoH = (int) Math.round(H * scaleY);
+
                 Thread videoStartupThread = new Thread(() ->
                         sanbaka.assets.VideoBackgroundPlayer.startLoopingVideo(
                                 videoFile,
-                                W,
-                                H,
+                                videoW,
+                                videoH,
                                 () -> screen != ROAD && screen != AIR && screen != EXAM && screen != ENDING_BE && screen != ENDING_HE && screen != ENDING_SE && screen != MARIO,
                                 frame -> {
                                     dialogBackground = frame;

@@ -2,11 +2,14 @@ package sanbaka.model;
 
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
+import sanbaka.assets.ArtAssets;
 import sanbaka.render.GameVisuals;
 
 /**
  * Hiệu ứng vụ nổ diện rộng của trái bom ở Màn 5.
  * Thể hiện trực quan bán kính sát thương (blastRadius), vòng sóng xung kích và ngọn lửa mở rộng.
+ * Hỗ trợ gắn ảnh riêng tại: assets/objects/BombExplosion/BombExplosion.png (hoặc Explosion/Explosion.png).
  */
 public class BombExplosion {
     public double x;
@@ -42,6 +45,17 @@ public class BombExplosion {
 
         // Sóng xung kích mở rộng dần từ tâm ra bán kính sát thương
         double curR = radius * (0.35 + 0.65 * Math.sin(progress * Math.PI * 0.5));
+
+        BufferedImage art = ArtAssets.load("BombExplosion", "BombExplosion.png");
+        if (art == null) {
+            art = ArtAssets.load("Explosion", "Explosion.png");
+        }
+        if (art != null) {
+            int d = (int) Math.round(curR * 2.0);
+            g.drawImage(art, (int) Math.round(x - curR), (int) Math.round(y - curR), d, d, null);
+            g.setComposite(old);
+            return;
+        }
 
         // 1. Quầng lửa bán kính sát thương
         RadialGradientPaint rgp = new RadialGradientPaint(

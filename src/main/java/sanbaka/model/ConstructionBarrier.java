@@ -18,7 +18,11 @@ public class ConstructionBarrier extends Thing {
         g.rotate(this.angle);
         double w = this.w, h = this.h, hw = w / 2, hh = h / 2;
 
-        BufferedImage art = ArtAssets.load("ConstructionBarrier", "ConstructionBarrier.png");
+        boolean blink = (System.currentTimeMillis() / 220) % 2 == 0;
+        BufferedImage art = blink ? ArtAssets.load("ConstructionBarrier", "ConstructionBarrier_blink.png") : null;
+        if (art == null) {
+            art = ArtAssets.load("ConstructionBarrier", "ConstructionBarrier.png");
+        }
         if (art != null) {
             g.setColor(new Color(0, 0, 0, 50));
             g.fill(new RoundRectangle2D.Double(-hw + 3, -hh + 5, w, h, 8, 8));
@@ -28,7 +32,6 @@ public class ConstructionBarrier extends Thing {
             return;
         }
 
-        boolean blink = (System.currentTimeMillis() / 220) % 2 == 0;
         int idx = blink ? 1 : 0;
         int padX = (int) Math.ceil(hw + 16);
         int padY = (int) Math.ceil(hh + 16);

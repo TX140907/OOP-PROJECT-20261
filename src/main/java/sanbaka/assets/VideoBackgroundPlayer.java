@@ -15,8 +15,9 @@ import java.util.function.Consumer;
 
 /**
  * Bộ phát video nền MP4 lặp vô hạn (loop) sử dụng Windows Media Foundation thông qua Java FFM API.
- * Thu phóng đồng nhất (Uniform Scale / Cover) để lấy khung hình rộng nhất có thể trong giới hạn video
- * mà giữ nguyên 100% tỉ lệ dài/rộng gốc (không méo hình), kết hợp nội suy Bilinear & làm nét cạnh.
+ * Thu phóng đồng nhất (Uniform Scale / Cover) giữ nguyên 100% tỉ lệ khung hình gốc,
+ * kết hợp nội suy bậc ba Catmull-Rom Bicubic 4x4 cho kênh sáng (Luma Y), nội suy Bilinear 2x2
+ * cho kênh màu (Chroma UV) và bộ lọc làm nét thích ứng tương phản (Contrast-Adaptive Sharpening - CAS).
  */
 public final class VideoBackgroundPlayer {
     private static final int FIRST_VIDEO_STREAM = 0xFFFFFFFC;
@@ -142,61 +143,99 @@ public final class VideoBackgroundPlayer {
                 if (fps < 5.0 || fps > 120.0) fps = 24.0;
                 long frameIntervalNanos = Math.round(1_000_000_000.0 / fps);
 
-                // Tính vùng nhìn lớn nhất trong giới hạn video mà giữ nguyên 100% tỉ lệ dài/rộng (Uniform Scale + Center Crop)
-                // Với video 1280x720 và cửa sổ 960x640: scale = min(1280/960, 720/640) = 1.125 -> vùng lấy là 1080x720 (lấy trọn 100% chiều cao 720, crop đều 100px mỗi bên trái/phải)
+                // Tính vùng nhìn lớn nhất trong giới hạn video giữ nguyên 100% tỉ lệ dài/rộng (Uniform Scale + Center Crop)
                 double uniformScale = Math.min(srcW / (double) targetW, srcH / (double) targetH);
                 double viewW = targetW * uniformScale;
                 double viewH = targetH * uniformScale;
                 double startX = (srcW - viewW) * 0.5;
                 double startY = (srcH - viewH) * 0.5;
 
+                // Bảng tọa độ & trọng số Catmull-Rom Bicubic 4x4 cho Luma (Y) và Bilinear 2x2 cho Chroma (UV)
                 int[] lumaX0 = new int[targetW];
                 int[] lumaX1 = new int[targetW];
-                int[] lumaWx = new int[targetW];
+                int[] lumaX2 = new int[targetW];
+                int[] lumaX3 = new int[targetW];
+                int[] lumaWx0 = new int[targetW];
+                int[] lumaWx1 = new int[targetW];
+                int[] lumaWx2 = new int[targetW];
+                int[] lumaWx3 = new int[targetW];
+
                 int[] chromaX0 = new int[targetW];
+                int[] chromaX1 = new int[targetW];
+                int[] chromaWx = new int[targetW];
                 int uvPairsW = (srcW >> 1) - 1;
 
+                int[] weights = new int[4];
                 for (int x = 0; x < targetW; x++) {
                     double fx = startX + (x + 0.5) * uniformScale - 0.5;
                     if (fx < 0) fx = 0;
                     else if (fx > srcW - 1) fx = srcW - 1;
-                    int ix0 = (int) fx;
-                    int ix1 = Math.min(ix0 + 1, srcW - 1);
-                    lumaX0[x] = ix0;
-                    lumaX1[x] = ix1;
-                    lumaWx[x] = (int) Math.round((fx - ix0) * 256.0);
+                    int ix1 = (int) Math.floor(fx);
+                    double tx = fx - ix1;
+                    lumaX0[x] = Math.max(0, ix1 - 1);
+                    lumaX1[x] = Math.min(Math.max(0, ix1), srcW - 1);
+                    lumaX2[x] = Math.min(srcW - 1, ix1 + 1);
+                    lumaX3[x] = Math.min(srcW - 1, ix1 + 2);
+
+                    computeCatmullRomWeights(tx, weights);
+                    lumaWx0[x] = weights[0];
+                    lumaWx1[x] = weights[1];
+                    lumaWx2[x] = weights[2];
+                    lumaWx3[x] = weights[3];
 
                     double cfx = (startX + (x + 0.5) * uniformScale) * 0.5 - 0.5;
                     if (cfx < 0) cfx = 0;
                     else if (cfx > uvPairsW) cfx = uvPairsW;
-                    int cx0 = Math.min((int) cfx, uvPairsW);
+                    int cx0 = (int) cfx;
+                    int cx1 = Math.min(cx0 + 1, uvPairsW);
                     chromaX0[x] = cx0 << 1;
+                    chromaX1[x] = cx1 << 1;
+                    chromaWx[x] = (int) Math.round((cfx - cx0) * 256.0);
                 }
 
                 int[] lumaY0 = new int[targetH];
                 int[] lumaY1 = new int[targetH];
-                int[] lumaWy = new int[targetH];
+                int[] lumaY2 = new int[targetH];
+                int[] lumaY3 = new int[targetH];
+                int[] lumaWy0 = new int[targetH];
+                int[] lumaWy1 = new int[targetH];
+                int[] lumaWy2 = new int[targetH];
+                int[] lumaWy3 = new int[targetH];
+
                 int[] chromaY0 = new int[targetH];
+                int[] chromaY1 = new int[targetH];
+                int[] chromaWy = new int[targetH];
                 int uvRowsH = (srcH >> 1) - 1;
 
                 for (int y = 0; y < targetH; y++) {
                     double fy = startY + (y + 0.5) * uniformScale - 0.5;
                     if (fy < 0) fy = 0;
                     else if (fy > srcH - 1) fy = srcH - 1;
-                    int iy0 = (int) fy;
-                    int iy1 = Math.min(iy0 + 1, srcH - 1);
-                    lumaY0[y] = iy0 * stride;
-                    lumaY1[y] = iy1 * stride;
-                    lumaWy[y] = (int) Math.round((fy - iy0) * 256.0);
+                    int iy1 = (int) Math.floor(fy);
+                    double ty = fy - iy1;
+                    lumaY0[y] = Math.max(0, iy1 - 1) * stride;
+                    lumaY1[y] = Math.min(Math.max(0, iy1), srcH - 1) * stride;
+                    lumaY2[y] = Math.min(srcH - 1, iy1 + 1) * stride;
+                    lumaY3[y] = Math.min(srcH - 1, iy1 + 2) * stride;
+
+                    computeCatmullRomWeights(ty, weights);
+                    lumaWy0[y] = weights[0];
+                    lumaWy1[y] = weights[1];
+                    lumaWy2[y] = weights[2];
+                    lumaWy3[y] = weights[3];
 
                     double cfy = (startY + (y + 0.5) * uniformScale) * 0.5 - 0.5;
                     if (cfy < 0) cfy = 0;
                     else if (cfy > uvRowsH) cfy = uvRowsH;
-                    int cy0 = Math.min((int) cfy, uvRowsH);
+                    int cy0 = (int) cfy;
+                    int cy1 = Math.min(cy0 + 1, uvRowsH);
                     chromaY0[y] = (srcH + cy0) * stride;
+                    chromaY1[y] = (srcH + cy1) * stride;
+                    chromaWy[y] = (int) Math.round((cfy - cy0) * 256.0);
                 }
 
                 byte[] rawBytes = new byte[stride * srcH * 3 / 2];
+                int[] lumaBuffer = new int[targetW * targetH];
 
                 MemorySegment pStreamIdx = arena.allocate(ValueLayout.JAVA_INT);
                 MemorySegment pFlags = arena.allocate(ValueLayout.JAVA_INT);
@@ -269,15 +308,18 @@ public final class VideoBackgroundPlayer {
                                     MemorySegment.copy(raw, ValueLayout.JAVA_BYTE, 0, rawBytes, 0, minBytes);
 
                                     int[] dstPixels = ((DataBufferInt) currentWrite.getRaster().getDataBuffer()).getData();
-                                    decodeUniformCover(
+                                    decodeUniformCoverSharp(
                                             rawBytes,
+                                            lumaBuffer,
                                             dstPixels,
                                             targetW,
                                             targetH,
-                                            lumaX0, lumaX1, lumaWx,
-                                            lumaY0, lumaY1, lumaWy,
-                                            chromaX0,
-                                            chromaY0
+                                            lumaX0, lumaX1, lumaX2, lumaX3,
+                                            lumaWx0, lumaWx1, lumaWx2, lumaWx3,
+                                            lumaY0, lumaY1, lumaY2, lumaY3,
+                                            lumaWy0, lumaWy1, lumaWy2, lumaWy3,
+                                            chromaX0, chromaX1, chromaWx,
+                                            chromaY0, chromaY1, chromaWy
                                     );
 
                                     onFrameReady.accept(currentWrite);
@@ -330,41 +372,145 @@ public final class VideoBackgroundPlayer {
         return firstFrameDecoded[0];
     }
 
-    private static void decodeUniformCover(
+    /**
+     * Tính bộ 4 trọng số nội suy bậc ba Catmull-Rom (a = -0.60 để giữ cạnh sắc nét hơn chuẩn -0.50).
+     * Tổng 4 trọng số luôn bằng đúng 256 (Q8 fixed-point).
+     */
+    private static void computeCatmullRomWeights(double t, int[] out) {
+        final double a = -0.60;
+        double t2 = t * t;
+        double t3 = t2 * t;
+        double w0 = a * (-t3 + 2.0 * t2 - t);
+        double w1 = (a + 2.0) * t3 - (a + 3.0) * t2 + 1.0;
+        double w2 = -(a + 2.0) * t3 + (2.0 * a + 3.0) * t2 - a * t;
+        double w3 = a * (t3 - t2);
+
+        int iw0 = (int) Math.round(w0 * 256.0);
+        int iw1 = (int) Math.round(w1 * 256.0);
+        int iw2 = (int) Math.round(w2 * 256.0);
+        int iw3 = 256 - iw0 - iw1 - iw2;
+        out[0] = iw0;
+        out[1] = iw1;
+        out[2] = iw2;
+        out[3] = iw3;
+    }
+
+    private static void decodeUniformCoverSharp(
             byte[] raw,
+            int[] lumaBuf,
             int[] dstPixels,
             int targetW,
             int targetH,
-            int[] lumaX0, int[] lumaX1, int[] lumaWx,
-            int[] lumaY0, int[] lumaY1, int[] lumaWy,
-            int[] chromaX0,
-            int[] chromaY0) {
+            int[] lumaX0, int[] lumaX1, int[] lumaX2, int[] lumaX3,
+            int[] lumaWx0, int[] lumaWx1, int[] lumaWx2, int[] lumaWx3,
+            int[] lumaY0, int[] lumaY1, int[] lumaY2, int[] lumaY3,
+            int[] lumaWy0, int[] lumaWy1, int[] lumaWy2, int[] lumaWy3,
+            int[] chromaX0, int[] chromaX1, int[] chromaWx,
+            int[] chromaY0, int[] chromaY1, int[] chromaWy) {
+
+        // Pha 1: Nội suy bậc ba Catmull-Rom 4x4 trên kênh độ sáng (Luma Y)
         int idx = 0;
         for (int y = 0; y < targetH; y++) {
             int ly0 = lumaY0[y];
             int ly1 = lumaY1[y];
-            int lwy = lumaWy[y];
-            int lwyInv = 256 - lwy;
-            int cy = chromaY0[y];
+            int ly2 = lumaY2[y];
+            int ly3 = lumaY3[y];
+            int wy0 = lumaWy0[y];
+            int wy1 = lumaWy1[y];
+            int wy2 = lumaWy2[y];
+            int wy3 = lumaWy3[y];
 
             for (int x = 0; x < targetW; x++) {
                 int lx0 = lumaX0[x];
                 int lx1 = lumaX1[x];
-                int lwx = lumaWx[x];
-                int lwxInv = 256 - lwx;
+                int lx2 = lumaX2[x];
+                int lx3 = lumaX3[x];
+                int wx0 = lumaWx0[x];
+                int wx1 = lumaWx1[x];
+                int wx2 = lumaWx2[x];
+                int wx3 = lumaWx3[x];
 
-                int y00 = raw[ly0 + lx0] & 0xFF;
-                int y01 = raw[ly0 + lx1] & 0xFF;
-                int y10 = raw[ly1 + lx0] & 0xFF;
-                int y11 = raw[ly1 + lx1] & 0xFF;
-                int yTop = y00 * lwxInv + y01 * lwx;
-                int yBot = y10 * lwxInv + y11 * lwx;
-                int yVal = (yTop * lwyInv + yBot * lwy + 32768) >> 16;
+                int r0 = (raw[ly0 + lx0] & 0xFF) * wx0 + (raw[ly0 + lx1] & 0xFF) * wx1
+                       + (raw[ly0 + lx2] & 0xFF) * wx2 + (raw[ly0 + lx3] & 0xFF) * wx3;
+                int r1 = (raw[ly1 + lx0] & 0xFF) * wx0 + (raw[ly1 + lx1] & 0xFF) * wx1
+                       + (raw[ly1 + lx2] & 0xFF) * wx2 + (raw[ly1 + lx3] & 0xFF) * wx3;
+                int r2 = (raw[ly2 + lx0] & 0xFF) * wx0 + (raw[ly2 + lx1] & 0xFF) * wx1
+                       + (raw[ly2 + lx2] & 0xFF) * wx2 + (raw[ly2 + lx3] & 0xFF) * wx3;
+                int r3 = (raw[ly3 + lx0] & 0xFF) * wx0 + (raw[ly3 + lx1] & 0xFF) * wx1
+                       + (raw[ly3 + lx2] & 0xFF) * wx2 + (raw[ly3 + lx3] & 0xFF) * wx3;
 
-                int cx = chromaX0[x];
-                int u = (raw[cy + cx] & 0xFF) - 128;
-                int v = (raw[cy + cx + 1] & 0xFF) - 128;
+                int yVal = (r0 * wy0 + r1 * wy1 + r2 * wy2 + r3 * wy3 + 32768) >> 16;
+                if (yVal < 0) yVal = 0;
+                else if (yVal > 255) yVal = 255;
+                lumaBuf[idx++] = yVal;
+            }
+        }
 
+        // Pha 2: Làm nét thích ứng tương phản (CAS 3x3) + Nội suy Bilinear kênh màu (UV) + Chuyển đổi BT.709 RGB
+        int lastRow = targetH - 1;
+        int lastCol = targetW - 1;
+        idx = 0;
+
+        for (int y = 0; y < targetH; y++) {
+            int cy0 = chromaY0[y];
+            int cy1 = chromaY1[y];
+            int cwy = chromaWy[y];
+            int cwyInv = 256 - cwy;
+            boolean innerY = (y > 0 && y < lastRow);
+
+            for (int x = 0; x < targetW; x++, idx++) {
+                int yVal = lumaBuf[idx];
+
+                if (innerY && x > 0 && x < lastCol) {
+                    int n = lumaBuf[idx - targetW];
+                    int s = lumaBuf[idx + targetW];
+                    int w = lumaBuf[idx - 1];
+                    int e = lumaBuf[idx + 1];
+                    int nw = lumaBuf[idx - targetW - 1];
+                    int ne = lumaBuf[idx - targetW + 1];
+                    int sw = lumaBuf[idx + targetW - 1];
+                    int se = lumaBuf[idx + targetW + 1];
+
+                    // Trung bình cục bộ Gaussian 3x3 đẳng hướng
+                    int localAvg = (4 * yVal + 2 * (n + s + w + e) + (nw + ne + sw + se) + 8) >> 4;
+                    int detail = yVal - localAvg;
+
+                    if (detail > 1 || detail < -1) {
+                        int minCross = Math.min(yVal, Math.min(Math.min(n, s), Math.min(w, e)));
+                        int maxCross = Math.max(yVal, Math.max(Math.max(n, s), Math.max(w, e)));
+                        // Trọng số CAS thích ứng: làm nét mạnh ở chi tiết vừa/nhỏ, giảm dần ở biên cực gắt để chống răng cưa
+                        int headroom = Math.min(minCross, 255 - maxCross);
+                        int casGain = 176 + ((headroom * 140) >> 8); // ~0.68x đến 1.23x
+                        int sharpened = yVal + ((detail * casGain) >> 8);
+
+                        // Chống viền sáng/tối giả (Anti-ringing clamp)
+                        int minLimit = Math.max(0, minCross - 7);
+                        int maxLimit = Math.min(255, maxCross + 7);
+                        if (sharpened < minLimit) sharpened = minLimit;
+                        else if (sharpened > maxLimit) sharpened = maxLimit;
+                        yVal = sharpened;
+                    }
+                }
+
+                // Nội suy Bilinear 2x2 cho kênh màu U, V (triệt tiêu hiện tượng vỡ khối màu 4:2:0)
+                int cx0 = chromaX0[x];
+                int cx1 = chromaX1[x];
+                int cwx = chromaWx[x];
+                int cwxInv = 256 - cwx;
+
+                int u00 = raw[cy0 + cx0] & 0xFF;
+                int u01 = raw[cy0 + cx1] & 0xFF;
+                int u10 = raw[cy1 + cx0] & 0xFF;
+                int u11 = raw[cy1 + cx1] & 0xFF;
+                int u = (((u00 * cwxInv + u01 * cwx) * cwyInv + (u10 * cwxInv + u11 * cwx) * cwy + 32768) >> 16) - 128;
+
+                int v00 = raw[cy0 + cx0 + 1] & 0xFF;
+                int v01 = raw[cy0 + cx1 + 1] & 0xFF;
+                int v10 = raw[cy1 + cx0 + 1] & 0xFF;
+                int v11 = raw[cy1 + cx1 + 1] & 0xFF;
+                int v = (((v00 * cwxInv + v01 * cwx) * cwyInv + (v10 * cwxInv + v11 * cwx) * cwy + 32768) >> 16) - 128;
+
+                // Chuyển đổi không gian màu chuẩn HD BT.709
                 int c = yVal - 16;
                 if (c < 0) c = 0;
                 int c298 = 298 * c + 128;
@@ -376,7 +522,7 @@ public final class VideoBackgroundPlayer {
                 if (g < 0) g = 0; else if (g > 255) g = 255;
                 if (b < 0) b = 0; else if (b > 255) b = 255;
 
-                dstPixels[idx++] = 0xFF000000 | (r << 16) | (g << 8) | b;
+                dstPixels[idx] = 0xFF000000 | (r << 16) | (g << 8) | b;
             }
         }
     }

@@ -1,11 +1,13 @@
 package sanbaka.render;
 
+import sanbaka.assets.ArtAssets;
 import sanbaka.model.*;
 import sanbaka.state.GameState;
 
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
 import java.util.*;
 import javax.swing.*;
 
@@ -82,60 +84,77 @@ public class GameRoadRenderer extends GameCharacterRenderer {
             drawLot(g, 0, n, topY);
             drawLot(g, 1, n, topY);
         }
-        // vỉa hè lát gạch
-        g.setColor(day == 2 ? new Color(220, 226, 232) : new Color(206, 193, 168));
-        g.fillRect(ROAD_X, 0, 45, H);
-        g.fillRect(rx1, 0, 45, H);
-        g.setColor(new Color(0, 0, 0, 22));
-        for (double y = (s % 44) - 44; y < H; y += 44) {
-            g.fillRect(ROAD_X, (int) y, 45, 2);
-            g.fillRect(rx1, (int) y, 45, 2);
+        BufferedImage roadTile = day != 1 ? ArtAssets.load("Environment", "Road_tile.png") : null;
+        if (roadTile == null && day != 1) {
+            roadTile = ArtAssets.load("RoadTile", "Road_tile.png");
         }
-        g.fillRect(ROAD_X + 22, 0, 1, H);
-        g.fillRect(rx1 + 22, 0, 1, H);
-        g.setColor(new Color(150, 140, 120));
-        g.fillRect(rx0 - 4, 0, 4, H);
-        g.fillRect(rx1, 0, 4, H);
-        g.setColor(new Color(255, 255, 255, 70));
-        g.fillRect(rx0 - 6, 0, 2, H);
-        g.fillRect(rx1 + 4, 0, 2, H);
-        for (int n = n0; n <= n1; n++) {
-            double ly = s - (n + 1) * 160.0 + 100;
-            drawLamp(g, ROAD_X + 9, ly, 1);
-            drawLamp(g, ROAD_X + ROAD_W - 9, ly, -1);
-        }
-        // Ngày 2 (day == 1) bị ngập: bỏ toàn bộ mặt đường và vạch sơn bên dưới lớp nước.
-        if (day != 1) {
-            g.setColor(ASPHALT_COLORS[day]);
-            g.fillRect(rx0, 0, rx1 - rx0, H);
-            g.setColor(new Color(0, 0, 0, 16));
-            for (int l = 0; l < 3; l++) {
-                g.fillRect((int) laneX(l) - 30, 0, 14, H);
-                g.fillRect((int) laneX(l) + 16, 0, 14, H);
+        if (roadTile != null) {
+            int tileH = Math.max(64, roadTile.getHeight());
+            double startTileY = (s % tileH) - tileH;
+            for (double ty = startTileY; ty < H; ty += tileH) {
+                g.drawImage(roadTile, ROAD_X, (int) Math.round(ty), ROAD_W, tileH, null);
             }
             for (int n = n0; n <= n1; n++) {
-                int h = hash(n, 7);
-                double py = s - (n + 1) * 160.0 + (h % 120);
-                double px = rx0 + 20 + (h / 7) % (rx1 - rx0 - 90);
-                g.setColor(new Color(0, 0, 0, 26));
-                g.fill(new RoundRectangle2D.Double(px, py, 36 + h % 30, 12 + h % 10, 6, 6));
-                g.setColor(new Color(0, 0, 0, 40));
-                g.setStroke(STROKE_CRACK);
-                g.draw(new Line2D.Double(px + 60, py + 30, px + 74, py + 52));
-                g.draw(new Line2D.Double(px + 74, py + 52, px + 70, py + 70));
-                g.setStroke(STROKE_1F);
-                if (hash(n, 3) % 9 == 0) {
-                    double cy = s - (n + 1) * 160.0 + 80;
-                    g.setColor(new Color(245, 245, 238, 205));
-                    for (int i = 0; i < 10; i++) g.fill(new Rectangle2D.Double(rx0 + 6 + i * 46, cy - 22, 26, 44));
-                }
+                double ly = s - (n + 1) * 160.0 + 100;
+                drawLamp(g, ROAD_X + 9, ly, 1);
+                drawLamp(g, ROAD_X + ROAD_W - 9, ly, -1);
             }
-            g.setColor(new Color(240, 240, 235, 210));
-            g.fillRect(rx0 + 6, 0, 3, H);
-            g.fillRect(rx1 - 9, 0, 3, H);
-            for (double y = (s % 80) - 80; y < H; y += 80) {
-                g.fillRect((int) dividerX(1) - 2, (int) y, 4, 40);
-                g.fillRect((int) dividerX(2) - 2, (int) y, 4, 40);
+        } else {
+            // vỉa hè lát gạch
+            g.setColor(day == 2 ? new Color(220, 226, 232) : new Color(206, 193, 168));
+            g.fillRect(ROAD_X, 0, 45, H);
+            g.fillRect(rx1, 0, 45, H);
+            g.setColor(new Color(0, 0, 0, 22));
+            for (double y = (s % 44) - 44; y < H; y += 44) {
+                g.fillRect(ROAD_X, (int) y, 45, 2);
+                g.fillRect(rx1, (int) y, 45, 2);
+            }
+            g.fillRect(ROAD_X + 22, 0, 1, H);
+            g.fillRect(rx1 + 22, 0, 1, H);
+            g.setColor(new Color(150, 140, 120));
+            g.fillRect(rx0 - 4, 0, 4, H);
+            g.fillRect(rx1, 0, 4, H);
+            g.setColor(new Color(255, 255, 255, 70));
+            g.fillRect(rx0 - 6, 0, 2, H);
+            g.fillRect(rx1 + 4, 0, 2, H);
+            for (int n = n0; n <= n1; n++) {
+                double ly = s - (n + 1) * 160.0 + 100;
+                drawLamp(g, ROAD_X + 9, ly, 1);
+                drawLamp(g, ROAD_X + ROAD_W - 9, ly, -1);
+            }
+            // Ngày 2 (day == 1) bị ngập: bỏ toàn bộ mặt đường và vạch sơn bên dưới lớp nước.
+            if (day != 1) {
+                g.setColor(ASPHALT_COLORS[day]);
+                g.fillRect(rx0, 0, rx1 - rx0, H);
+                g.setColor(new Color(0, 0, 0, 16));
+                for (int l = 0; l < 3; l++) {
+                    g.fillRect((int) laneX(l) - 30, 0, 14, H);
+                    g.fillRect((int) laneX(l) + 16, 0, 14, H);
+                }
+                for (int n = n0; n <= n1; n++) {
+                    int h = hash(n, 7);
+                    double py = s - (n + 1) * 160.0 + (h % 120);
+                    double px = rx0 + 20 + (h / 7) % (rx1 - rx0 - 90);
+                    g.setColor(new Color(0, 0, 0, 26));
+                    g.fill(new RoundRectangle2D.Double(px, py, 36 + h % 30, 12 + h % 10, 6, 6));
+                    g.setColor(new Color(0, 0, 0, 40));
+                    g.setStroke(STROKE_CRACK);
+                    g.draw(new Line2D.Double(px + 60, py + 30, px + 74, py + 52));
+                    g.draw(new Line2D.Double(px + 74, py + 52, px + 70, py + 70));
+                    g.setStroke(STROKE_1F);
+                    if (hash(n, 3) % 9 == 0) {
+                        double cy = s - (n + 1) * 160.0 + 80;
+                        g.setColor(new Color(245, 245, 238, 205));
+                        for (int i = 0; i < 10; i++) g.fill(new Rectangle2D.Double(rx0 + 6 + i * 46, cy - 22, 26, 44));
+                    }
+                }
+                g.setColor(new Color(240, 240, 235, 210));
+                g.fillRect(rx0 + 6, 0, 3, H);
+                g.fillRect(rx1 - 9, 0, 3, H);
+                for (double y = (s % 80) - 80; y < H; y += 80) {
+                    g.fillRect((int) dividerX(1) - 2, (int) y, 4, 40);
+                    g.fillRect((int) dividerX(2) - 2, (int) y, 4, 40);
+                }
             }
         }
         if (day == 1) drawFlood(g, rx0, rx1, s, now);

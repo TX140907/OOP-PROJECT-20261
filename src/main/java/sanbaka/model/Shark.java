@@ -110,6 +110,17 @@ public class Shark extends Thing {
         double sinkScale = diveDist < 28 ? diveDist / 28.0 : 1.0;
         double sway = Math.sin(now / 70.0) * 2.5;
 
+        BufferedImage finArt = ArtAssets.load("Shark", "Shark_fin.png");
+        if (finArt == null) {
+            finArt = ArtAssets.load("Shark", "SharkFin.png");
+        }
+        if (finArt != null) {
+            int fw = (int) Math.round(44 * sinkScale);
+            int fh = (int) Math.round(56 * sinkScale);
+            g.drawImage(finArt, (int) Math.round(sway - fw / 2.0), -fh / 2, fw, fh, null);
+            return;
+        }
+
         // Bóng cá mập lờ mờ dưới mặt nước
         g.setColor(new Color(18, 38, 62, (int) (95 * sinkScale)));
         g.fill(new Ellipse2D.Double(-18 + sway * 0.5, -30, 36, 62));

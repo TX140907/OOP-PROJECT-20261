@@ -2,10 +2,13 @@ package sanbaka.model;
 
 import java.awt.*;
 import java.awt.geom.*;
+import java.awt.image.BufferedImage;
+import sanbaka.assets.ArtAssets;
 import sanbaka.render.GameVisuals;
 
 /**
  * Viên đạn năng lượng do Boss hoặc máy bay địch bắn ra trong Màn 5.
+ * Hỗ trợ gắn ảnh riêng tại: assets/objects/BossBullet/ (BossBullet_aimed.png, EnemyBullet.png, BossBullet_spray.png hoặc BossBullet.png).
  */
 public class BossBullet {
     public static final int TYPE_AIMED = 0;          // Đạn ngắm bắn tỉa từ Boss
@@ -38,8 +41,29 @@ public class BossBullet {
 
     public void draw(Graphics2D g, GameVisuals scene) {
         if (!active) return;
-        long now = System.currentTimeMillis();
         double r = radius;
+
+        String specificName = kind == TYPE_AIMED ? "BossBullet_aimed.png"
+                : kind == TYPE_PLANE_STRAIGHT ? "EnemyBullet.png"
+                : "BossBullet_spray.png";
+        BufferedImage art = ArtAssets.load("BossBullet", specificName);
+        if (art == null && kind == TYPE_PLANE_STRAIGHT) {
+            art = ArtAssets.load("BossBullet", "BossBullet_plane.png");
+        }
+        if (art == null) {
+            art = ArtAssets.load("BossBullet", "BossBullet.png");
+        }
+        if (art != null) {
+            int size = (int) Math.round(r * 3.6);
+            AffineTransform old = g.getTransform();
+            g.translate(x, y);
+            if (Math.abs(vx) > 0.01 || Math.abs(vy) > 0.01) {
+                g.rotate(Math.atan2(vy, vx));
+            }
+            g.drawImage(art, -size / 2, -size / 2, size, size, null);
+            g.setTransform(old);
+            return;
+        }
 
         if (kind == TYPE_AIMED) {
             // Đạn bắn tỉa của Boss: màu đỏ thẫm / cam rực cháy

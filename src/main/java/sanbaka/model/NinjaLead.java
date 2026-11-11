@@ -65,7 +65,13 @@ public class NinjaLead extends Thing {
         g.rotate(this.angle);
         double hw = this.w / 2, hh = this.h / 2;
 
-        BufferedImage art = ArtAssets.load("NinjaLead", "NinjaLead.png");
+        BufferedImage art = null;
+        if ((cutPhase == 1 || cutPhase == 2) && cutDir != 0) {
+            art = ArtAssets.load("NinjaLead", cutDir < 0 ? "NinjaLead_left.png" : "NinjaLead_right.png");
+        }
+        if (art == null) {
+            art = ArtAssets.load("NinjaLead", "NinjaLead.png");
+        }
         if (art != null) {
             g.setColor(new Color(0, 0, 0, 55));
             g.fill(new RoundRectangle2D.Double(-hw + 3, -hh + 6, this.w, this.h, 16, 16));

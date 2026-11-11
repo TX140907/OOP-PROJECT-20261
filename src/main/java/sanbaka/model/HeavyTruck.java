@@ -37,7 +37,10 @@ public class HeavyTruck extends Thing {
         g.setColor(new Color(0, 0, 0, 55));
         g.fill(new RoundRectangle2D.Double(-hw + 5, -hh + 8, w, h, 18, 18));
 
-        BufferedImage art = ArtAssets.load("HeavyTruck", "HeavyTruck.png");
+        BufferedImage art = brake ? ArtAssets.load("HeavyTruck", "HeavyTruck_brake.png") : null;
+        if (art == null) {
+            art = ArtAssets.load("HeavyTruck", "HeavyTruck.png");
+        }
         if (art != null) {
             g.drawImage(art, (int) -hw, (int) -hh, (int) w, (int) h, null);
             g.setTransform(old);
@@ -143,7 +146,10 @@ public class HeavyTruck extends Thing {
 
     private void drawCached(Graphics2D g, GameVisuals scene) {
         boolean brake = this.jam || this.fwd == 0;
-        BufferedImage suppliedArt = ArtAssets.load("HeavyTruck", "HeavyTruck.png");
+        BufferedImage suppliedArt = brake ? ArtAssets.load("HeavyTruck", "HeavyTruck_brake.png") : null;
+        if (suppliedArt == null) {
+            suppliedArt = ArtAssets.load("HeavyTruck", "HeavyTruck.png");
+        }
         if (suppliedArt != null) {
             AffineTransform old = g.getTransform();
             Stroke oldStroke = g.getStroke();

@@ -281,6 +281,16 @@ public class GameVisuals extends GameLogic {
         double pulse = 1.0 + 0.05 * Math.sin(now / 150.0);
         g.scale(pulse, pulse);
 
+        BufferedImage shieldSprite = ArtAssets.load("ShieldItem", "ShieldBubble.png");
+        if (shieldSprite == null) {
+            shieldSprite = ArtAssets.load("ShieldBubble", "ShieldBubble.png");
+        }
+        if (shieldSprite != null) {
+            g.drawImage(shieldSprite, -36, -44, 72, 88, null);
+            g.setTransform(old);
+            return;
+        }
+
         // Bong bóng năng lượng bảo hộ bao quanh xe
         g.setColor(SHIELD_AURA_FILL);
         g.fill(new Ellipse2D.Double(-34, -42, 68, 84));
@@ -606,8 +616,26 @@ public class GameVisuals extends GameLogic {
 
     /**
      * Vẽ hiệu ứng bọt nước và tia nước tóe lên khi xuồng máy cọ sát lề đường ngập nước ở Màn 2.
+     * Hỗ trợ gắn ảnh riêng tại: assets/objects/BoatCurbSplash/BoatCurbSplash.png (hoặc PlayerBoat/BoatCurbSplash.png).
      */
     public void drawBoatCurbSplash(Graphics2D g, double cx, double cy, double intensity, long now) {
+        BufferedImage splashSprite = ArtAssets.load("BoatCurbSplash", "BoatCurbSplash.png");
+        if (splashSprite == null) {
+            splashSprite = ArtAssets.load("PlayerBoat", "BoatCurbSplash.png");
+        }
+        if (splashSprite != null) {
+            int sideDir = cx < W / 2.0 ? -1 : 1;
+            Composite oldComp = g.getComposite();
+            AffineTransform old = g.getTransform();
+            float alpha = (float) Math.max(0.2, Math.min(1.0, intensity));
+            g.setComposite(AlphaComposite.SrcOver.derive(alpha));
+            g.translate(cx, cy);
+            if (sideDir < 0) g.scale(-1, 1);
+            g.drawImage(splashSprite, -28, -36, 56, 72, null);
+            g.setTransform(old);
+            g.setComposite(oldComp);
+            return;
+        }
         Stroke oldStroke = g.getStroke();
         g.setStroke(new BasicStroke(2.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         int sideDir = cx < W / 2.0 ? -1 : 1;
@@ -691,6 +719,17 @@ public class GameVisuals extends GameLogic {
         g.translate(cx, cy + Math.sin(time * 4.2) * 2);
         g.rotate(tilt);
         g.scale(sc, sc);
+
+        BufferedImage heliArt = !showThang ? ArtAssets.load("PlayerHelicopter", "PlayerHelicopter_rescue.png") : null;
+        if (heliArt == null) heliArt = ArtAssets.load("PlayerHelicopter", "PlayerHelicopter.png");
+        if (heliArt == null) heliArt = ArtAssets.load("Helicopter", "Helicopter.png");
+        if (heliArt != null) {
+            g.drawImage(heliArt, -140, -56, 204, 104, null);
+            g.setTransform(old);
+            g.setStroke(oldStroke);
+            return;
+        }
+
         Color bodyD = new Color(63, 145, 121);
         Color glass = new Color(196, 230, 246);
         // đuôi + cánh quạt đuôi
@@ -737,6 +776,16 @@ public class GameVisuals extends GameLogic {
     }
 
     public void drawCloud(Graphics2D g, double x, double y, double s, int a) {
+        BufferedImage cloudArt = ArtAssets.load("Environment", "Cloud.png");
+        if (cloudArt == null) cloudArt = ArtAssets.load("Cloud", "Cloud.png");
+        if (cloudArt != null) {
+            Composite oldComp = g.getComposite();
+            g.setComposite(AlphaComposite.SrcOver.derive(Math.max(0f, Math.min(1f, a / 255f))));
+            g.drawImage(cloudArt, (int) Math.round(x), (int) Math.round(y - 18 * s),
+                    (int) Math.round(110 * s), (int) Math.round(52 * s), null);
+            g.setComposite(oldComp);
+            return;
+        }
         g.setColor(new Color(255, 255, 255, a));
         g.fill(new Ellipse2D.Double(x, y, 110 * s, 34 * s));
         g.fill(new Ellipse2D.Double(x + 20 * s, y - 18 * s, 56 * s, 42 * s));

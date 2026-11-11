@@ -798,7 +798,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
         };
         if (background == null) background = dialogBackground;
         if (background != null) {
-            g.drawImage(background, 0, 0, W, H, null);
+            drawSharpBackdrop(g, background);
         }
         if (dialogIndex >= lines.size()) {
             screen = isSecretEndingDialog(dialogIndex - 1) ? ENDING_SE : ENDING_HE;

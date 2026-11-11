@@ -4,5 +4,6 @@
 
 Tên ảnh được nhận:
 - EnergyBolt.png
+- Mixue.png
 
 Ảnh được co giãn theo khung của đối tượng. Nên dùng PNG nền trong suốt. Khởi động lại game sau khi thay ảnh để nạp lại cache.
