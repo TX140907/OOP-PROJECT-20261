@@ -1427,10 +1427,10 @@ public class GameLogic extends GameStory {
                 mit.remove();
                 continue;
             }
-            if (boss != null && boss.combatActive && Math.abs(m.x - boss.x) < 38 && Math.abs(m.y - boss.y) < 52) {
+            if (boss != null && boss.checkMissileHit(m.x, m.y)) {
                 m.active = false;
                 boss.takeMissileHit(BossConfig.missileDamage, now);
-                floatingTextManager.spawn(boss.x - 20, boss.y, "missile_hit", true);
+                floatingTextManager.spawn(boss.x - boss.w * 0.25, boss.y, "missile_hit", true);
                 mit.remove();
                 continue;
             }

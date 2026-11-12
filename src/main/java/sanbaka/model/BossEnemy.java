@@ -34,8 +34,8 @@ public class BossEnemy {
     public double y = 280.0;
     public double targetY = 280.0;
     public double vy = 0.0;
-    public double w = 70.0;
-    public double h = 95.0;
+    public double w = 130.0;
+    public double h = 176.0;
 
     public int currentHp = 0;
     public int maxHp = 20;
@@ -78,6 +78,8 @@ public class BossEnemy {
     public BossEnemy() {
         this.maxHp = BossConfig.maxHp;
         this.currentHp = 0;
+        this.w = BossConfig.bossWidth > 0 ? BossConfig.bossWidth : 130.0;
+        this.h = BossConfig.bossHeight > 0 ? BossConfig.bossHeight : 176.0;
     }
 
     public void triggerBossSequence(long now) {
@@ -85,6 +87,8 @@ public class BossEnemy {
         this.maxHp = BossConfig.maxHp;
         this.currentHp = 0;
         this.chargeProgress = 0.0;
+        this.w = BossConfig.bossWidth > 0 ? BossConfig.bossWidth : 130.0;
+        this.h = BossConfig.bossHeight > 0 ? BossConfig.bossHeight : 176.0;
         this.state = STATE_WARNING;
         this.stateStartedAt = now;
         this.x = 1060.0;
@@ -99,6 +103,19 @@ public class BossEnemy {
     public boolean canPlayerFire(long now) {
         return combatActive && state != STATE_INACTIVE && state != STATE_WARNING
                 && state != STATE_ENTERING && state != STATE_CHARGING && state != STATE_DEFEATED;
+    }
+
+    public double getHitboxHalfWidth() {
+        return w * 0.42;
+    }
+
+    public double getHitboxHalfHeight() {
+        return h * 0.45;
+    }
+
+    public boolean checkMissileHit(double mx, double my) {
+        if (!combatActive || currentHp <= 0 || state == STATE_DEFEATED) return false;
+        return Math.abs(mx - x) <= getHitboxHalfWidth() && Math.abs(my - y) <= getHitboxHalfHeight();
     }
 
     public boolean takeMissileHit(int dmg, long now) {
@@ -213,13 +230,15 @@ public class BossEnemy {
                     if (aimElapsed >= BossConfig.attack1AimShootIntervalMs) {
                         laserAiming = false;
                         lastAimShootTime = now;
-                        double dx = laserTargetX - (x - 20);
-                        double dy = laserTargetY - y;
+                        double spawnX = x - w * 0.38;
+                        double spawnY = y - h * 0.05;
+                        double dx = laserTargetX - spawnX;
+                        double dy = laserTargetY - spawnY;
                         double dist = Math.hypot(dx, dy);
                         if (dist > 1) {
                             double bvx = (dx / dist) * BossConfig.bossAimBulletSpeed;
                             double bvy = (dy / dist) * BossConfig.bossAimBulletSpeed;
-                            gs.bossBullets.add(new BossBullet(x - 20, y, bvx, bvy, BossBullet.TYPE_AIMED));
+                            gs.bossBullets.add(new BossBullet(spawnX, spawnY, bvx, bvy, BossBullet.TYPE_AIMED));
                         }
                     }
                 }
@@ -240,7 +259,7 @@ public class BossEnemy {
                     lastSprayShoot = now;
                     double angle = Math.PI + (rng.nextDouble() - 0.5) * 1.35;
                     double spd = 360 + rng.nextInt(120);
-                    gs.bossBullets.add(new BossBullet(x - 16, y, Math.cos(angle) * spd, Math.sin(angle) * spd, BossBullet.TYPE_SPRAY));
+                    gs.bossBullets.add(new BossBullet(x - w * 0.35, y, Math.cos(angle) * spd, Math.sin(angle) * spd, BossBullet.TYPE_SPRAY));
                     addAfterimage(now, 0.45f);
                 }
 
@@ -301,7 +320,7 @@ public class BossEnemy {
                     lastSprayShoot = now;
                     double angle = Math.PI + (rng.nextDouble() - 0.5) * 1.25;
                     double spd = 350 + rng.nextInt(110);
-                    gs.bossBullets.add(new BossBullet(x - 16, y, Math.cos(angle) * spd, Math.sin(angle) * spd, BossBullet.TYPE_SPRAY));
+                    gs.bossBullets.add(new BossBullet(x - w * 0.35, y, Math.cos(angle) * spd, Math.sin(angle) * spd, BossBullet.TYPE_SPRAY));
                 }
                 if (now - stateStartedAt >= BossConfig.attack3IntroSprayMs && x <= targetX + 10) {
                     x = targetX;
@@ -351,13 +370,15 @@ public class BossEnemy {
                     if (aimElapsed >= BossConfig.attack1AimShootIntervalMs) {
                         laserAiming = false;
                         lastAimShootTime = now;
-                        double dx = laserTargetX - (x - 20);
-                        double dy = laserTargetY - y;
+                        double spawnX = x - w * 0.38;
+                        double spawnY = y - h * 0.05;
+                        double dx = laserTargetX - spawnX;
+                        double dy = laserTargetY - spawnY;
                         double dist = Math.hypot(dx, dy);
                         if (dist > 1) {
                             double bvx = (dx / dist) * BossConfig.bossAimBulletSpeed;
                             double bvy = (dy / dist) * BossConfig.bossAimBulletSpeed;
-                            gs.bossBullets.add(new BossBullet(x - 20, y, bvx, bvy, BossBullet.TYPE_AIMED));
+                            gs.bossBullets.add(new BossBullet(spawnX, spawnY, bvx, bvy, BossBullet.TYPE_AIMED));
                         }
                     }
                 }
@@ -400,9 +421,9 @@ public class BossEnemy {
         double py;
         for (int i = 0; i < 5; i++) {
             py = 110 + rng.nextInt(370);
-            if (Math.abs(py - bossY) > 65) return py;
+            if (Math.abs(py - bossY) > (h * 0.55 + 20)) return py;
         }
-        return (bossY < 300) ? (bossY + 120) : (bossY - 120);
+        return (bossY < 300) ? (bossY + (h * 0.6 + 25)) : (bossY - (h * 0.6 + 25));
     }
 
     public void draw(Graphics2D g, GameVisuals scene, double heliX, double heliY) {
@@ -419,7 +440,7 @@ public class BossEnemy {
         if (state == STATE_TRANSITION_SPRAY && (now - stateStartedAt > BossConfig.transitionSprayDurationMs * 0.45)) {
             Composite oldComp = g.getComposite();
             g.setColor(new Color(15, 18, 26, 38)); // Siêu nhạt
-            g.fill(new RoundRectangle2D.Double(x - 70, y - h / 2 - 12, 140, h + 24, 14, 14));
+            g.fill(new RoundRectangle2D.Double(x - w, y - h / 2 - 12, w * 2, h + 24, 14, 14));
             g.setComposite(oldComp);
         }
 
@@ -442,7 +463,7 @@ public class BossEnemy {
             drawBossFigure(g, x, y, now, false);
             // Dấu chấm than cảnh báo cạnh Boss khi chuẩn bị lướt biến mất
             if (state == STATE_TRANSITION_SPRAY) {
-                drawWarningExclamation(g, x - 28, y - 38, now);
+                drawWarningExclamation(g, x - w * 0.42, y - h * 0.42, now);
             }
         }
 
@@ -570,7 +591,9 @@ public class BossEnemy {
         Stroke old = g.getStroke();
         g.setStroke(new BasicStroke(blink ? 2.5f : 1.2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g.setColor(blink ? new Color(255, 40, 40, 230) : new Color(255, 120, 40, 160));
-        g.draw(new Line2D.Double(x - 16, y - 4, targetX, targetY));
+        double spawnX = x - w * 0.38;
+        double spawnY = y - h * 0.05;
+        g.draw(new Line2D.Double(spawnX, spawnY, targetX, targetY));
         g.setColor(new Color(255, 240, 180));
         g.fill(new Ellipse2D.Double(targetX - 4, targetY - 4, 8, 8));
         g.setStroke(old);
@@ -603,10 +626,39 @@ public class BossEnemy {
         g.drawString("!", cx + tw / 2 + 7, cy + 10);
     }
 
+    private BufferedImage selectBossSprite(long now) {
+        boolean hit = (lastHitAt > 0 && now - lastHitAt < 220) || state == STATE_DEFEATED;
+        if (hit) {
+            BufferedImage hitArt = ArtAssets.load("Boss", "Boss_hit.png");
+            if (hitArt != null) return hitArt;
+        }
+        if (state == STATE_CHARGING) {
+            BufferedImage chargeArt = ArtAssets.load("Boss", "Boss_charge.png");
+            if (chargeArt != null) return chargeArt;
+        }
+        boolean aimingOrJustShot = laserAiming || (lastAimShootTime > 0 && now - lastAimShootTime < 260);
+        if (aimingOrJustShot && (state == STATE_ATTACK1 || state == STATE_ATTACK3)) {
+            BufferedImage aimArt = ArtAssets.load("Boss", "Boss_attack_aim.png");
+            if (aimArt != null) return aimArt;
+        }
+        if (state == STATE_TRANSITION_SPRAY || state == STATE_TRANSITION_RETURN || state == STATE_ATTACK3) {
+            BufferedImage sprayArt = ArtAssets.load("Boss", "Boss_attack_spray.png");
+            if (sprayArt != null) return sprayArt;
+        }
+        if ((now / 220) % 2 == 1) {
+            BufferedImage idle2 = ArtAssets.load("Boss", "Boss_idle2.png");
+            if (idle2 != null) return idle2;
+        }
+        BufferedImage idle1 = ArtAssets.load("Boss", "Boss_idle1.png");
+        if (idle1 != null) return idle1;
+        return ArtAssets.load("Boss", "Boss.png");
+    }
+
     private void drawBossFigure(Graphics2D g, double bx, double by, long now, boolean ghost) {
-        BufferedImage art = ArtAssets.load("Boss", "Boss.png");
+        BufferedImage art = selectBossSprite(now);
         if (art != null) {
-            g.drawImage(art, (int) (bx - w / 2), (int) (by - h / 2), (int) w, (int) h, null);
+            double floatOffset = Math.sin(now / 180.0) * 3.5;
+            g.drawImage(art, (int) Math.round(bx - w / 2), (int) Math.round(by - h / 2 + floatOffset), (int) w, (int) h, null);
             return;
         }
 

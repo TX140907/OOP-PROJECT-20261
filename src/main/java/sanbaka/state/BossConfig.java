@@ -12,8 +12,10 @@ public class BossConfig {
     public static long warningFlashMs = 1800;
     public static long introChargeMs = 2500;
     public static double dashSpeed = 340.0;
-    public static double minY = 110.0;
-    public static double maxY = 490.0;
+    public static double bossWidth = 130.0;
+    public static double bossHeight = 176.0;
+    public static double minY = 135.0;
+    public static double maxY = 480.0;
 
     public static double missileCooldownSec = 0.30;
     public static double missileSpeed = 680.0;
@@ -79,6 +81,8 @@ public class BossConfig {
                 warningFlashMs = getLong(prop, "boss.warning_flash_ms", warningFlashMs);
                 introChargeMs = getLong(prop, "boss.intro_charge_ms", introChargeMs);
                 dashSpeed = getDouble(prop, "boss.dash_speed", dashSpeed);
+                bossWidth = getDouble(prop, "boss.width", bossWidth);
+                bossHeight = getDouble(prop, "boss.height", bossHeight);
                 minY = getDouble(prop, "boss.min_y", minY);
                 maxY = getDouble(prop, "boss.max_y", maxY);
 
