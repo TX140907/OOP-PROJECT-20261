@@ -49,7 +49,7 @@ OOP-PROJECT-20261/
 
 | STT | Tên file chuẩn | Ngữ cảnh phát trong game | Phong cách & Cảm xúc gợi ý | Thời lượng gợi ý |
 | :-: | :--- | :--- | :--- | :---: |
-| 1 | `bgm_title_menu.wav` | Màn hình Menu chính (`TITLE`), Chọn cảnh, Hướng dẫn | Tươi sáng, năng động, pha chút Chiptune / Synth-pop hiện đại mang hơi thở đời sống sinh viên. | `60s – 120s` (Loop) |
+| 1 | `bgm_main_menu.wav` / `bgm_title_menu.wav` | Màn hình Menu chính (`TITLE`), Chọn cảnh, Hướng dẫn | Tươi sáng, năng động, pha chút Chiptune / Synth-pop hiện đại mang hơi thở đời sống sinh viên. | `60s – 120s` (Loop) |
 | 2 | `bgm_room_dialog.wav` | Cảnh Phòng trọ (`ROOM`) & Hội thoại đầu/cuối ngày (`DIALOG`) | Nhẹ nhàng, Lo-fi Chill hoặc Guitar/Piano ấm áp, thư giãn nhưng hơi bâng khuâng mùa thi. | `60s – 90s` (Loop) |
 | 3 | `bgm_day1_sunny.wav` | **Ngày 1 (Trời đẹp):** Lái xe máy ngày đầu đi thi | Nhịp độ vừa phải (`~120 BPM`), vui tươi, hứng khởi, giai điệu bắt tai. | `45s – 60s` (Loop) |
 | 4 | `bgm_day2_flood.wav` | **Ngày 2 (Mưa lớn, đường ngập):** Chèo xuồng máy vượt lũ | Nhịp điệu dồn dập hơn, pha âm hưởng phiêu lưu vượt sóng nước và cạm bẫy cá mập. | `45s – 60s` (Loop) |
@@ -266,3 +266,23 @@ Nếu thời gian có hạn, nhóm có thể chia làm **3 mức độ ưu tiên
 * 🔴 **Ưu tiên 1 (P1 - Cốt lõi, cần có trước tiên):** Nhạc nền chính, tiếng va chạm, tiếng nhặt vật phẩm, tiếng chó sủa, tiếng cá mập đớp, tiếng bắn tên lửa & bom nổ màn Boss, tiếng chiến thắng/thất bại.
 * 🟡 **Ưu tiên 2 (P2 - Tăng mạnh cảm giác chơi):** Tiếng cọ lề bốc cháy, tiếng trượt băng/đóng băng, tiếng gió mùa, tiếng mưa sấm, tiếng Ninja Lead xi-nhan, tiếng ổ gà, tiếng điện thoại/tin nhắn, bộ âm thanh Mario 8-bit.
 * 🟢 **Ưu tiên 3 (P3 - Hoàn thiện chi tiết nhỏ):** Tiếng bước chân sinh viên, tiếng nút bấm Menu, tiếng gõ chữ typewriter, tiếng đường đạn rít qua tai, tiếng còi xe NPC.
+
+---
+
+## 6. TIẾN ĐỘ TÍCH HỢP & TỐI ƯU ÂM THANH MỚI NHẤT
+
+1. **Nhạc nền & Môi trường Ngày 2:**
+   - Khi chơi (`ROAD`): Nhạc `bgm_day2.wav` phát song song cùng tiếng mưa to `amb_rain_heavy.wav` (âm lượng $45\%$).
+   - Kết thúc màn (`FADE_END` / `CARD`): Ngắt ngay lập tức `bgm_day2.wav` và chuyển sang nhạc hội thoại.
+   - Hội thoại sau thi (`NGÀY 2 · SAU KHI THI`): Tiếng mưa chuyển sang mưa rơi tí tách nhẹ nhàng ngoài hiên C1 (âm lượng $22\%$).
+2. **Nhạc nền & Tiếng gió mùa Ngày 3:**
+   - `bgm_day3.wav`: Tối ưu nén từ $13.28\text{ MB} \to 2.41\text{ MB}$ ($-82\%$, chuẩn `16kHz 8-bit Stereo`), phát lặp ở Màn 3.
+   - `winter_wind.wav`: Trích xuất $3.8\text{ giây}$ đầu tương ứng thời lượng mỗi đợt gió lạnh, fade-out mượt mà, nén từ $2.58\text{ MB} \to 121.6\text{ KB}$ ($-95\%$), lưu tại `assets/sound/ambience/amb_winter_wind.wav`. Âm lượng gió được cân chỉnh ở mức $30\%$ (nhỏ hơn nhạc nền, tạo không khí rét buốt chân thực).
+3. **Nhạc nền Màn 1 & Màn 5 đợt 1:**
+   - `bgm_day1+5.wav`: Tối ưu nén từ $12.86\text{ MB} \to 2.33\text{ MB}$ ($-81.9\%$, chuẩn `16kHz 8-bit Stereo`, thời lượng $72.9\text{s}$ loop).
+   - Tích hợp phát tự động cho:
+     - **Màn 1 (`day == 0`):** Đoạn đường đi thi ngày đầu tiên.
+     - **Màn 5 đợt 1 (`day == 4`, đường bộ):** Đoạn đường đông và kẹt xe trước khi chuyển sang trực thăng.
+4. **Âm thanh đường phố & Trực thăng Màn 5:**
+   - `street.wav`: Nén từ $2.78\text{ MB} \to 505\text{ KB}$ ($-82\%$, thời lượng $15.8\text{s}$ loop), phát khi xe dừng kẹt xe và vào hội thoại gọi điện cho Komori (âm lượng $30\%$).
+   - `helicopter.wav`: Nén từ $1.14\text{ MB} \to 206\text{ KB}$ ($-82\%$, thời lượng $6.5\text{s}$ loop), bắt đầu phát từ câu *"Một lúc sau, tiếng cánh quạt trực thăng vang lên từ phía trên"* qua phân cảnh chuyển tiếp `AIR` và kéo dài xuyên suốt cuộc trò chuyện với Komori trên loa cho đến hết hội thoại (âm lượng $35\%$). Khi chuyển sang điều khiển trực thăng thì ngắt cả 2 âm và chuyển sang nhạc bay `bgm_day5_flight.wav`.

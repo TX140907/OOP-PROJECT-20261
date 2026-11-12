@@ -121,9 +121,10 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public final java.util.Map<String, java.awt.image.BufferedImage> komoriExpressionImages = new java.util.HashMap<>();
     public int screen = TITLE;
     public int dialogIndex = 0;
-    private static final int TYPEWRITER_CHARS_PER_SECOND = 42;
-    private int typedDialogIndex = -1;
-    private long typedDialogStartedAt;
+    public static final int TYPEWRITER_CHARS_PER_SECOND = 42;
+    public int typedDialogIndex = -1;
+    public long typedDialogStartedAt;
+    public int lastBeepCharCount = -1;
     public int day = 0;
     public PlayerVehicle player = new PlayerBike();
     public int hp = 100;
@@ -267,6 +268,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         if (typedDialogIndex != dialogIndex) {
             typedDialogIndex = dialogIndex;
             typedDialogStartedAt = System.currentTimeMillis();
+            lastBeepCharCount = 0;
         }
         long elapsed = Math.max(0, System.currentTimeMillis() - typedDialogStartedAt);
         int count = Math.min(fullText.length(), (int) (elapsed * TYPEWRITER_CHARS_PER_SECOND / 1000));
@@ -281,11 +283,13 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         if (typedDialogIndex != dialogIndex) {
             typedDialogIndex = dialogIndex;
             typedDialogStartedAt = System.currentTimeMillis();
+            lastBeepCharCount = 0;
         }
         long revealDuration = (fullText.length() * 1000L + TYPEWRITER_CHARS_PER_SECOND - 1)
                 / TYPEWRITER_CHARS_PER_SECOND;
         if (System.currentTimeMillis() - typedDialogStartedAt >= revealDuration) return false;
         typedDialogStartedAt = System.currentTimeMillis() - revealDuration;
+        lastBeepCharCount = fullText.length();
         repaint();
         return true;
     }
@@ -298,6 +302,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
                 / TYPEWRITER_CHARS_PER_SECOND;
         if (System.currentTimeMillis() - marioIntroDialogueStartedAt >= revealDuration) return false;
         marioIntroDialogueStartedAt = System.currentTimeMillis() - revealDuration;
+        lastBeepCharCount = fullText.length();
         repaint();
         return true;
     }
@@ -317,5 +322,6 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public void resetDialogTyping() {
         typedDialogIndex = -1;
         typedDialogStartedAt = 0;
+        lastBeepCharCount = -1;
     }
 }

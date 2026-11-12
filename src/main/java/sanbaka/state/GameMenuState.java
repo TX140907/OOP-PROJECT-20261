@@ -250,6 +250,7 @@ public abstract class GameMenuState extends GameState {
         screen = PAUSE;
         menuSel = 0;
         menuKeyboardActive = false;
+        sanbaka.assets.SoundManager.pauseBgm();
     }
 
     public void resumeFromPause() {
@@ -279,6 +280,7 @@ public abstract class GameMenuState extends GameState {
             if (callStartedAt > 0) callStartedAt += d;
         }
         screen = pausedScreen;
+        sanbaka.assets.SoundManager.resumeBgm();
         requestFocusInWindow();
     }
 

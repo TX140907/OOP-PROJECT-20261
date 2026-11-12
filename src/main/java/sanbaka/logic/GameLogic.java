@@ -12,6 +12,9 @@ import sanbaka.state.GameState;
 public class GameLogic extends GameStory {
     public void beginDay() {
         resetDialogTyping();
+        sanbaka.assets.SoundManager.stopWindSound();
+        sanbaka.assets.SoundManager.stopStreetSound();
+        sanbaka.assets.SoundManager.stopHelicopterSound();
         screen = ROAD;
         stageStarted = System.currentTimeMillis();
         lastSpawn = stageStarted;
@@ -92,6 +95,8 @@ public class GameLogic extends GameStory {
         lastFrameAt = now;
         screen = ROAD;
         roadPausedForTraffic = false;
+        sanbaka.assets.SoundManager.stopStreetSound();
+        sanbaka.assets.SoundManager.stopHelicopterSound();
         fadeInStart = now;
         if (day == 4) startFlight(now);   // 2/3 đường còn lại của ngày 5: lên trực thăng
     }
@@ -119,6 +124,40 @@ public class GameLogic extends GameStory {
             }
             prevScreen = screen;
         }
+        sanbaka.assets.SoundManager.updateBgm(this);
+
+        // Phát tiếng beep gõ chữ (Undertale style) khi đang hiện lời thoại
+        if ((screen == DIALOG || screen == ROOM) && isDialogTyping()) {
+            if (dialogIndex >= 0 && dialogIndex < lines.size()) {
+                Line currentLine = lines.get(dialogIndex);
+                long elapsedTyping = Math.max(0, now - typedDialogStartedAt);
+                int count = Math.min(currentLine.text.length(), (int) (elapsedTyping * TYPEWRITER_CHARS_PER_SECOND / 1000));
+                if (count > lastBeepCharCount) {
+                    for (int i = Math.max(0, lastBeepCharCount); i < count; i++) {
+                        char ch = currentLine.text.charAt(i);
+                        if (!Character.isWhitespace(ch) && (i % 2 == 0)) {
+                            sanbaka.assets.SoundManager.playDialogueBeep();
+                            break;
+                        }
+                    }
+                    lastBeepCharCount = count;
+                }
+            }
+        } else if (screen == MARIO && marioIntroMode && marioIntroDialogueMode) {
+            String fullText = "Trò gì đây... Hình như là Mario!";
+            long elapsedTyping = Math.max(0, now - marioIntroDialogueStartedAt);
+            int count = Math.min(fullText.length(), (int) (elapsedTyping * TYPEWRITER_CHARS_PER_SECOND / 1000));
+            if (count > lastBeepCharCount) {
+                for (int i = Math.max(0, lastBeepCharCount); i < count; i++) {
+                    char ch = fullText.charAt(i);
+                    if (!Character.isWhitespace(ch) && (i % 2 == 0)) {
+                        sanbaka.assets.SoundManager.playDialogueBeep();
+                        break;
+                    }
+                }
+                lastBeepCharCount = count;
+            }
+        }
         if (screen == AIR && now - airSceneStarted >= 3500) {
             screen = DIALOG;
         }
@@ -138,6 +177,7 @@ public class GameLogic extends GameStory {
                     beCause = "Bạn đã kiệt sức vì trời nắng nóng.";
                 }
                 retryAtTrafficCheckpoint = day == 4 && flightMode;
+                sanbaka.assets.SoundManager.stopWindSound();
                 screen = ENDING_BE;
             }
             else if (day == 4 && !flightMode && !trafficSceneShown && elapsed >= ROAD_DURATION_MS / 3) {
@@ -151,6 +191,7 @@ public class GameLogic extends GameStory {
                     mysteryBoxSecured = true;
                     saveProgress();
                 }
+                sanbaka.assets.SoundManager.stopWindSound();
                 startFade(FADE_END, now);
             }
         }
@@ -250,6 +291,7 @@ public class GameLogic extends GameStory {
                 windActiveUntil = windWarningUntil + 3000;
                 windFreezeChecked = false;
                 nextWindAt = windActiveUntil + 2500 + rng.nextInt(1400);
+                sanbaka.assets.SoundManager.playWindSound();
             }
             if (windDir != 0 && now >= windWarningUntil && now < windActiveUntil && !windFreezeChecked) {
                 windFreezeChecked = true;
@@ -1624,6 +1666,21 @@ public class GameLogic extends GameStory {
         }
         if (key == KeyEvent.VK_ESCAPE) {
             handleEscape();
+            return;
+        }
+        if (key == KeyEvent.VK_M) {
+            sanbaka.assets.SoundManager.toggleMute();
+            repaint();
+            return;
+        }
+        if (key == KeyEvent.VK_EQUALS || key == KeyEvent.VK_ADD || key == KeyEvent.VK_PLUS) {
+            sanbaka.assets.SoundManager.changeVolume(0.05f);
+            repaint();
+            return;
+        }
+        if (key == KeyEvent.VK_MINUS || key == KeyEvent.VK_SUBTRACT) {
+            sanbaka.assets.SoundManager.changeVolume(-0.05f);
+            repaint();
             return;
         }
         if (screen == ROAD) {
