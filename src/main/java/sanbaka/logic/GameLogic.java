@@ -507,7 +507,10 @@ public class GameLogic extends GameStory {
                 if (jamDay && !jamStopSoundPlayed && o.y + o.h / 2 >= 0) {
                     jamStopSoundPlayed = true;
                     sanbaka.assets.SoundManager.stopBgm();
-                    sanbaka.assets.SoundManager.playSfx("stop_sound.wav", 0.90f);
+                    sanbaka.assets.SoundManager.playSfx(
+                        sanbaka.assets.SoundManager.hasAudio("bike_brake_skid.wav") ? "bike_brake_skid.wav" : "stop_sound.wav",
+                        0.90f
+                    );
                 }
             } else if (o instanceof Shark shark) {
                 if (shark.phase == Shark.PHASE_FIN_APPROACH) {

@@ -272,21 +272,25 @@ Nếu thời gian có hạn, nhóm có thể chia làm **3 mức độ ưu tiên
 ## 6. TIẾN ĐỘ TÍCH HỢP & TỐI ƯU ÂM THANH MỚI NHẤT
 
 1. **Nhạc nền & Môi trường Ngày 2:**
-   - Khi chơi (`ROAD`): Nhạc `bgm_day2.wav` phát song song cùng tiếng mưa to `amb_rain_heavy.wav` (âm lượng $45\%$).
-   - Kết thúc màn (`FADE_END` / `CARD`): Ngắt ngay lập tức `bgm_day2.wav` và chuyển sang nhạc hội thoại.
+   - Khi chơi (`ROAD`): Nhạc `bgm/bgm_day2_flood.wav` phát song song cùng tiếng mưa to `ambience/amb_rain_heavy.wav` (âm lượng $45\%$).
+   - Kết thúc màn (`FADE_END` / `CARD`): Ngắt ngay lập tức `bgm_day2_flood.wav` và chuyển sang nhạc hội thoại `bgm/bgm_room_dialog.wav`.
    - Hội thoại sau thi (`NGÀY 2 · SAU KHI THI`): Tiếng mưa chuyển sang mưa rơi tí tách nhẹ nhàng ngoài hiên C1 (âm lượng $22\%$).
 2. **Nhạc nền & Tiếng gió mùa Ngày 3:**
-   - `bgm_day3.wav`: Tối ưu nén từ $13.28\text{ MB} \to 2.41\text{ MB}$ ($-82\%$, chuẩn `16kHz 8-bit Stereo`), phát lặp ở Màn 3.
-   - `winter_wind.wav`: Trích xuất $3.8\text{ giây}$ đầu tương ứng thời lượng mỗi đợt gió lạnh, fade-out mượt mà, nén từ $2.58\text{ MB} \to 121.6\text{ KB}$ ($-95\%$), lưu tại `assets/sound/ambience/amb_winter_wind.wav`. Âm lượng gió được cân chỉnh ở mức $30\%$ (nhỏ hơn nhạc nền, tạo không khí rét buốt chân thực).
+   - `bgm/bgm_day3_cold.wav`: Tối ưu nén từ $13.28\text{ MB} \to 2.41\text{ MB}$ ($-82\%$, chuẩn `16kHz 8-bit Stereo`), phát lặp ở Màn 3.
+   - `ambience/amb_wind_blizzard.wav`: Trích xuất $3.8\text{ giây}$ đầu tương ứng thời lượng mỗi đợt gió lạnh, fade-out mượt mà, nén từ $2.58\text{ MB} \to 121.6\text{ KB}$ ($-95\%$), lưu tại `assets/sounds/ambience/amb_wind_blizzard.wav`. Âm lượng gió được cân chỉnh ở mức $30\%$ (nhỏ hơn nhạc nền, tạo không khí rét buốt chân thực).
 3. **Nhạc nền Màn 1 & Màn 5 đợt 1:**
-   - `bgm_day1+5.wav`: Tối ưu nén từ $12.86\text{ MB} \to 2.33\text{ MB}$ ($-81.9\%$, chuẩn `16kHz 8-bit Stereo`, thời lượng $72.9\text{s}$ loop).
+   - `bgm/bgm_day1_sunny.wav` & `bgm/bgm_day5_jam.wav`: Tối ưu nén từ $12.86\text{ MB} \to 2.33\text{ MB}$ ($-81.9\%$, chuẩn `16kHz 8-bit Stereo`, thời lượng $72.9\text{s}$ loop).
    - Tích hợp phát tự động cho:
-     - **Màn 1 (`day == 0`):** Đoạn đường đi thi ngày đầu tiên.
-     - **Màn 5 đợt 1 (`day == 4`, đường bộ):** Đoạn đường đông và kẹt xe trước khi chuyển sang trực thăng.
-4. **Âm thanh đường phố & Trực thăng Màn 5:**
-   - `stop_sound.wav`: Nén từ $140\text{ KB} \to 25\text{ KB}$ ($-81.8\%$, $0.80\text{s}$), phát ngay khi xe đến đoạn tắc đường Ngày 5 chặng 1 (âm lượng $90\%$ gần bằng BGM) đồng thời dừng nhạc nền trước khi vào hội thoại.
-   - `street.wav`: Nén từ $2.78\text{ MB} \to 505\text{ KB}$ ($-82\%$, thời lượng $15.8\text{s}$ loop), phát khi xe dừng kẹt xe và vào hội thoại gọi điện cho Komori (âm lượng $30\%$).
-   - `helicopter.wav`: Nén từ $1.14\text{ MB} \to 206\text{ KB}$ ($-82\%$, thời lượng $6.5\text{s}$ loop), bắt đầu phát từ câu *"Một lúc sau, tiếng cánh quạt trực thăng vang lên từ phía trên"* qua phân cảnh chuyển tiếp `AIR` và kéo dài xuyên suốt cuộc trò chuyện với Komori trên loa cho đến hết hội thoại (âm lượng $35\%$). Khi chuyển sang điều khiển trực thăng thì ngắt cả 2 âm và chuyển sang nhạc bay `bgm_day5_flight.wav`.
+     - **Màn 1 (`day == 0`):** `bgm/bgm_day1_sunny.wav` cho đoạn đường đi thi ngày đầu tiên.
+     - **Màn 5 đợt 1 (`day == 4`, đường bộ):** `bgm/bgm_day5_jam.wav` cho đoạn đường đông và kẹt xe trước khi chuyển sang trực thăng.
+4. **Âm thanh đường phố, phanh xe & Trực thăng Màn 5:**
+   - `player/bike_brake_skid.wav`: Nén từ $140\text{ KB} \to 25\text{ KB}$ ($-81.8\%$, $0.80\text{s}$), phát ngay khi xe đến đoạn tắc đường Ngày 5 chặng 1 (âm lượng $90\%$ gần bằng BGM) đồng thời dừng nhạc nền trước khi vào hội thoại.
+   - `ambience/amb_street_traffic.wav`: Nén từ $2.78\text{ MB} \to 505\text{ KB}$ ($-82\%$, thời lượng $15.8\text{s}$ loop), phát khi xe dừng kẹt xe và vào hội thoại gọi điện cho Komori (âm lượng $30\%$).
+   - `player/heli_rotor_loop.wav`: Nén từ $1.14\text{ MB} \to 206\text{ KB}$ ($-82\%$, thời lượng $6.5\text{s}$ loop), bắt đầu phát từ câu *"Một lúc sau, tiếng cánh quạt trực thăng vang lên từ phía trên"* qua phân cảnh chuyển tiếp `AIR` và kéo dài xuyên suốt cuộc trò chuyện với Komori trên loa cho đến hết hội thoại (âm lượng $35\%$). Khi chuyển sang điều khiển trực thăng thì ngắt cả 2 âm và chuyển sang nhạc bay `bgm/bgm_day5_flight.wav`.
 5. **Nhạc nền & Tiếng lửa cháy Ngày 4:**
-   - `bgm_day4.wav`: Tối ưu nén từ $1.15\text{ MB} \to 207\text{ KB}$ ($-81.9\%$, chuẩn `16kHz 8-bit Stereo`, thời lượng $6.49\text{s}$ loop), phát tại Màn 4 (`day == 3`, nắng nóng gay gắt).
-   - `fire.wav`: Nén từ $2.74\text{ MB} \to 498\text{ KB}$ ($-81.9\%$, thời lượng $15.56\text{s}$ loop), lưu tại `assets/sound/ambience/amb_fire.wav`, phát song song cùng `bgm_day4.wav` ở mức âm lượng nhỏ ($18\%$) tượng trưng cho không khí nắng nóng rực lửa.
+   - `bgm/bgm_day4_hot.wav`: Tối ưu nén từ $1.15\text{ MB} \to 207\text{ KB}$ ($-81.9\%$, chuẩn `16kHz 8-bit Stereo`, thời lượng $6.49\text{s}$ loop), phát tại Màn 4 (`day == 3`, nắng nóng gay gắt).
+   - `ambience/amb_summer_heat.wav`: Nén từ $2.74\text{ MB} \to 498\text{ KB}$ ($-81.9\%$, thời lượng $15.56\text{s}$ loop), lưu tại `assets/sounds/ambience/amb_summer_heat.wav`, phát song song cùng `bgm_day4_hot.wav` ở mức âm lượng nhỏ ($18\%$) tượng trưng cho không khí nắng nóng rực lửa.
+6. **Âm thanh UI & Hội thoại chung:**
+   - `bgm/bgm_main_menu.wav`: Nhạc nền màn hình Menu chính, Chọn cảnh, Hướng dẫn.
+   - `bgm/bgm_room_dialog.wav`: Nhạc nền mặc định cho Phòng trọ (`ROOM`) và các đoạn hội thoại (`DIALOG`).
+   - `ui/ui_typewriter_blip.wav`: Tiếng bíp gõ chữ retro Undertale style ($5.8\text{ KB}$) phát trong hội thoại.

@@ -74,12 +74,12 @@ public final class SoundManager {
         String clean = relativeName.replace('\\', '/').trim();
 
         String[] baseDirs = {
-            "assets/sound",
             "assets/sounds",
-            "OOP-PROJECT-20261/assets/sound",
-            "OOP-PROJECT-20261/assets/sounds"
+            "assets/sound",
+            "OOP-PROJECT-20261/assets/sounds",
+            "OOP-PROJECT-20261/assets/sound"
         };
-        String[] subDirs = {"", "bgm/", "sfx/", "ui/", "player/", "hazards/", "items/", "boss/", "ambience/", "mario/"};
+        String[] subDirs = {"", "bgm/", "ambience/", "ui/", "player/", "hazards/", "items/", "boss/", "mario/", "sfx/"};
 
         for (String base : baseDirs) {
             for (String sub : subDirs) {
@@ -101,8 +101,9 @@ public final class SoundManager {
         if (findAudioFile(relativeName) != null) return true;
         String clean = relativeName.replace('\\', '/').trim();
         String[] resPaths = {
-            "/assets/sound/bgm/" + clean,
             "/assets/sounds/bgm/" + clean,
+            "/assets/sounds/" + clean,
+            "/assets/sound/bgm/" + clean,
             "/assets/sound/" + clean,
             "/sound/bgm/" + clean
         };
@@ -386,7 +387,7 @@ public final class SoundManager {
     }
 
     /**
-     * Phát âm thanh đường phố kẹt xe (Màn 5: street.wav) lặp liên tục, âm lượng vừa phải.
+     * Phát âm thanh đường phố kẹt xe (Màn 5: amb_street_traffic.wav) lặp liên tục, âm lượng vừa phải.
      */
     public static void playStreetSound() {
         if (muted) return;
@@ -399,8 +400,9 @@ public final class SoundManager {
             try {
                 synchronized (LOCK) {
                     if (streetClip == null || !streetClip.isOpen()) {
-                        File f = findAudioFile("street.wav");
+                        File f = findAudioFile("amb_street_traffic.wav");
                         if (f == null || !f.exists()) f = findAudioFile("amb_street.wav");
+                        if (f == null || !f.exists()) f = findAudioFile("street.wav");
                         if (f != null && f.exists()) {
                             try (AudioInputStream ais = AudioSystem.getAudioInputStream(f)) {
                                 streetClip = AudioSystem.getClip();
@@ -438,7 +440,7 @@ public final class SoundManager {
     }
 
     /**
-     * Phát âm thanh trực thăng cứu viện (Màn 5: helicopter.wav) lặp liên tục đến hết hội thoại, âm lượng vừa phải.
+     * Phát âm thanh trực thăng cứu viện (Màn 5: heli_rotor_loop.wav) lặp liên tục đến hết hội thoại, âm lượng vừa phải.
      */
     public static void playHelicopterSound() {
         if (muted) return;
@@ -451,8 +453,9 @@ public final class SoundManager {
             try {
                 synchronized (LOCK) {
                     if (helicopterClip == null || !helicopterClip.isOpen()) {
-                        File f = findAudioFile("helicopter.wav");
+                        File f = findAudioFile("heli_rotor_loop.wav");
                         if (f == null || !f.exists()) f = findAudioFile("amb_helicopter.wav");
+                        if (f == null || !f.exists()) f = findAudioFile("helicopter.wav");
                         if (f != null && f.exists()) {
                             try (AudioInputStream ais = AudioSystem.getAudioInputStream(f)) {
                                 helicopterClip = AudioSystem.getClip();
@@ -490,7 +493,7 @@ public final class SoundManager {
     }
 
     /**
-     * Phát tiếng gió mùa Đông Bắc cho Ngày 3 (lấy các giây đầu của winter_wind, âm lượng nhẹ nhàng hơn nhạc).
+     * Phát tiếng gió mùa Đông Bắc cho Ngày 3 (amb_wind_blizzard.wav, âm lượng nhẹ nhàng hơn nhạc).
      */
     public static void playWindSound() {
         if (muted) return;
@@ -498,7 +501,8 @@ public final class SoundManager {
             try {
                 synchronized (LOCK) {
                     if (windClip == null || !windClip.isOpen()) {
-                        File f = findAudioFile("amb_winter_wind.wav");
+                        File f = findAudioFile("amb_wind_blizzard.wav");
+                        if (f == null || !f.exists()) f = findAudioFile("amb_winter_wind.wav");
                         if (f == null || !f.exists()) f = findAudioFile("winter_wind.wav");
                         if (f != null && f.exists()) {
                             try (AudioInputStream ais = AudioSystem.getAudioInputStream(f)) {
@@ -563,7 +567,7 @@ public final class SoundManager {
     // Bản đồ gán nhạc BGM riêng cho từng đoạn hội thoại theo từ khóa (section title hoặc nội dung)
     private static final Map<String, String> DIALOGUE_BGM_MAP = new ConcurrentHashMap<>();
     // Nhạc nền mặc định cho mọi đoạn hội thoại (tạm thời áp dụng toàn bộ file này):
-    private static volatile String defaultDialogueBgm = "bgm_dialouge.wav";
+    private static volatile String defaultDialogueBgm = "bgm_room_dialog.wav";
 
     /**
      * Gán nhạc nền riêng cho một phân đoạn hội thoại cụ thể.
@@ -619,9 +623,9 @@ public final class SoundManager {
 
         // 3. Fallback về BGM mặc định cho hội thoại
         if (hasAudio(defaultDialogueBgm)) return defaultDialogueBgm;
+        if (hasAudio("bgm_room_dialog.wav")) return "bgm_room_dialog.wav";
         if (hasAudio("bgm_dialogue.wav")) return "bgm_dialogue.wav";
         if (hasAudio("bgm_dialouge.wav")) return "bgm_dialouge.wav";
-        if (hasAudio("bgm_room_dialog.wav")) return "bgm_room_dialog.wav";
 
         return null;
     }
@@ -741,7 +745,8 @@ public final class SoundManager {
             try {
                 if (!beepPoolInitialized) {
                     beepPoolInitialized = true;
-                    File f = findAudioFile("dialogue_beep.wav");
+                    File f = findAudioFile("ui_typewriter_blip.wav");
+                    if (f == null || !f.exists()) f = findAudioFile("dialogue_beep.wav");
                     if (f != null && f.exists()) {
                         dialogueBeepPool = new Clip[BEEP_POOL_SIZE];
                         for (int i = 0; i < BEEP_POOL_SIZE; i++) {
@@ -831,26 +836,26 @@ public final class SoundManager {
                 } else if (state.flightMode) {
                     return "bgm_day5_flight.wav";
                 } else {
-                    // Vừa nhìn thấy dòng người tắc: ngắt nhạc nền để nghe stop_sound
+                    // Vừa nhìn thấy dòng người tắc: ngắt nhạc nền để nghe phanh xe
                     if (state.jamStopSoundPlayed) return null;
                     // Màn 5 đợt 1 (trên đường / tắc đường trước khi lên trực thăng)
+                    if (hasAudio("bgm_day5_jam.wav")) return "bgm_day5_jam.wav";
                     if (hasAudio("bgm_day1+5.wav")) return "bgm_day1+5.wav";
-                    if (hasAudio("bgm_day1_5.wav")) return "bgm_day1_5.wav";
-                    return "bgm_day5_jam.wav";
+                    return "bgm_day1_5.wav";
                 }
             } else if (state.day == 1) { // Ngày 2: Mưa lớn, đường ngập lụt
-                if (hasAudio("bgm_day2.wav")) return "bgm_day2.wav";
-                return "bgm_day2_flood.wav";
+                if (hasAudio("bgm_day2_flood.wav")) return "bgm_day2_flood.wav";
+                return "bgm_day2.wav";
             } else if (state.day == 0) { // Ngày 1: Trời đẹp (Màn 1)
+                if (hasAudio("bgm_day1_sunny.wav")) return "bgm_day1_sunny.wav";
                 if (hasAudio("bgm_day1+5.wav")) return "bgm_day1+5.wav";
-                if (hasAudio("bgm_day1_5.wav")) return "bgm_day1_5.wav";
-                return "bgm_day1_sunny.wav";
+                return "bgm_day1_5.wav";
             } else if (state.day == 2) { // Ngày 3: Trời rét
-                if (hasAudio("bgm_day3.wav")) return "bgm_day3.wav";
-                return hasAudio("bgm_day3_cold.wav") ? "bgm_day3_cold.wav" : "bgm_day1_sunny.wav";
+                if (hasAudio("bgm_day3_cold.wav")) return "bgm_day3_cold.wav";
+                return hasAudio("bgm_day3.wav") ? "bgm_day3.wav" : "bgm_day1_sunny.wav";
             } else if (state.day == 3) { // Ngày 4: Nắng nóng gay gắt
-                if (hasAudio("bgm_day4.wav")) return "bgm_day4.wav";
-                return hasAudio("bgm_day4_hot.wav") ? "bgm_day4_hot.wav" : "bgm_day1_sunny.wav";
+                if (hasAudio("bgm_day4_hot.wav")) return "bgm_day4_hot.wav";
+                return hasAudio("bgm_day4.wav") ? "bgm_day4.wav" : "bgm_day1_sunny.wav";
             }
             return "bgm_day1_sunny.wav";
         }
@@ -998,9 +1003,11 @@ public final class SoundManager {
             setAmbienceVolumeFactor(0.45f);
             playAmbience("amb_rain_heavy.wav");
         } else if (state.screen == GameState.ROAD && state.day == 3) {
-            // 1b. Màn 4 khi đang chơi trên đường (ROAD): Tiếng lửa cháy nhỏ tượng trưng cho trời nắng nóng
+            // 1b. Màn 4 khi đang chơi trên đường (ROAD): Tiếng lửa cháy/oi bức nhỏ tượng trưng cho trời nắng nóng
             setAmbienceVolumeFactor(0.18f);
-            playAmbience(hasAudio("amb_fire.wav") ? "amb_fire.wav" : "fire.wav");
+            String heatAmb = hasAudio("amb_summer_heat.wav") ? "amb_summer_heat.wav"
+                : (hasAudio("amb_fire.wav") ? "amb_fire.wav" : "fire.wav");
+            playAmbience(heatAmb);
         } else {
             // 2. Phân cảnh ngay sau khi thi Ngày 2 (chuyển cảnh CARD hoặc hội thoại DIALOG/ROOM):
             // Tiếng mưa rơi nhẹ nhẹ bên ngoài hiên/hành lang C1
@@ -1017,11 +1024,11 @@ public final class SoundManager {
             }
         }
 
-        // 3. Phân cảnh kẹt xe Màn 5: Phát tiếng đường phố street.wav
+        // 3. Phân cảnh kẹt xe Màn 5: Phát tiếng đường phố amb_street_traffic.wav
         if (isTrafficJamSection(state)) {
             playStreetSound();
             if (isHelicopterSection(state)) {
-                // Khi đến câu trực thăng: thêm tiếng trực thăng helicopter.wav đến hết hội thoại
+                // Khi đến câu trực thăng: thêm tiếng trực thăng heli_rotor_loop.wav đến hết hội thoại
                 playHelicopterSound();
             } else {
                 stopHelicopterSound();
