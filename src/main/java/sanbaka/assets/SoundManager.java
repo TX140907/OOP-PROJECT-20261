@@ -64,6 +64,38 @@ public final class SoundManager {
 
     private static final Map<String, Clip> SFX_CACHE = new ConcurrentHashMap<>();
 
+    // Kênh lặp âm thanh phương tiện & vật lý mặt đường (Player Audio Layer)
+    private static final class LoopChannel {
+        final String fileName;
+        volatile float volumeFactor;
+        volatile boolean desired = false;
+        volatile boolean paused = false;
+        volatile boolean loading = false;
+        Clip clip = null;
+
+        LoopChannel(String fileName, float volumeFactor) {
+            this.fileName = fileName;
+            this.volumeFactor = volumeFactor;
+        }
+    }
+
+    private static final LoopChannel CH_BIKE_ENGINE = new LoopChannel("bike_engine_loop.wav", 0.22f);
+    private static final LoopChannel CH_BIKE_THROTTLE = new LoopChannel("bike_throttle_rev.wav", 0.32f);
+    private static final LoopChannel CH_BOAT_MOTOR = new LoopChannel("boat_motor_loop.wav", 0.28f);
+    private static final LoopChannel CH_BOAT_CURB_MUD = new LoopChannel("boat_curb_mud_drag.wav", 0.42f);
+    private static final LoopChannel CH_CURB_SPARKS = new LoopChannel("curb_scrape_sparks.wav", 0.40f);
+    private static final LoopChannel CH_CURB_FIRE_BURN = new LoopChannel("curb_fire_burn_loop.wav", 0.45f);
+    private static final LoopChannel[] PLAYER_LOOPS = {
+        CH_BIKE_ENGINE, CH_BIKE_THROTTLE, CH_BOAT_MOTOR,
+        CH_BOAT_CURB_MUD, CH_CURB_SPARKS, CH_CURB_FIRE_BURN
+    };
+
+    private static volatile boolean prevCurbOnFire = false;
+    private static volatile boolean prevInBikeRoad = false;
+    private static volatile boolean prevBoatTurningLeft = false;
+    private static volatile boolean prevBoatTurningRight = false;
+    private static volatile long lastBoatSplashAt = 0L;
+
     private SoundManager() {}
 
     /**
@@ -204,6 +236,7 @@ public final class SoundManager {
         stopWindSound();
         stopStreetSound();
         stopHelicopterSound();
+        stopPlayerLoops();
     }
 
     /**
@@ -232,6 +265,12 @@ public final class SoundManager {
             if (helicopterClip != null && helicopterClip.isRunning()) {
                 helicopterClip.stop();
                 isHelicopterPaused = true;
+            }
+            for (LoopChannel ch : PLAYER_LOOPS) {
+                if (ch.clip != null && ch.clip.isRunning()) {
+                    ch.clip.stop();
+                    ch.paused = true;
+                }
             }
         }
     }
@@ -266,6 +305,13 @@ public final class SoundManager {
                 helicopterClip.start();
                 helicopterClip.loop(Clip.LOOP_CONTINUOUSLY);
                 isHelicopterPaused = false;
+            }
+            for (LoopChannel ch : PLAYER_LOOPS) {
+                if (ch.paused && ch.clip != null && ch.desired && !muted) {
+                    applyClipVolume(ch.clip, volume * ch.volumeFactor);
+                    ch.clip.loop(Clip.LOOP_CONTINUOUSLY);
+                    ch.paused = false;
+                }
             }
         }
     }
@@ -328,6 +374,16 @@ public final class SoundManager {
                     resumeBgm();
                 }
             }
+            for (LoopChannel ch : PLAYER_LOOPS) {
+                if (ch.clip != null) {
+                    if (muted && ch.clip.isRunning()) {
+                        ch.clip.stop();
+                    } else if (!muted && ch.desired && !ch.paused && !ch.clip.isRunning()) {
+                        applyClipVolume(ch.clip, volume * ch.volumeFactor);
+                        ch.clip.loop(Clip.LOOP_CONTINUOUSLY);
+                    }
+                }
+            }
         }
     }
 
@@ -384,6 +440,11 @@ public final class SoundManager {
         applyClipVolume(windClip, volume * windVolumeFactor);
         applyClipVolume(streetClip, volume * streetVolumeFactor);
         applyClipVolume(helicopterClip, volume * helicopterVolumeFactor);
+        for (LoopChannel ch : PLAYER_LOOPS) {
+            if (ch.clip != null && ch.clip.isOpen()) {
+                applyClipVolume(ch.clip, volume * ch.volumeFactor);
+            }
+        }
     }
 
     /**
@@ -898,6 +959,9 @@ public final class SoundManager {
 
         // Cập nhật lớp âm thanh môi trường song song (tiếng mưa Ngày 2)
         updateAmbience(state);
+
+        // Cập nhật âm thanh phương tiện & vật lý mặt đường / lề đường
+        updatePlayerSounds(state);
     }
 
     /**
@@ -1003,8 +1067,8 @@ public final class SoundManager {
             setAmbienceVolumeFactor(0.45f);
             playAmbience("amb_rain_heavy.wav");
         } else if (state.screen == GameState.ROAD && state.day == 3) {
-            // 1b. Màn 4 khi đang chơi trên đường (ROAD): Tiếng lửa cháy/oi bức nhỏ tượng trưng cho trời nắng nóng
-            setAmbienceVolumeFactor(0.18f);
+            // 1b. Màn 4 khi đang chơi trên đường (ROAD): Tiếng lửa cháy/oi bức rất nhỏ tượng trưng cho trời nắng nóng
+            setAmbienceVolumeFactor(0.07f);
             String heatAmb = hasAudio("amb_summer_heat.wav") ? "amb_summer_heat.wav"
                 : (hasAudio("amb_fire.wav") ? "amb_fire.wav" : "fire.wav");
             playAmbience(heatAmb);
@@ -1036,6 +1100,162 @@ public final class SoundManager {
         } else {
             stopStreetSound();
             stopHelicopterSound();
+        }
+    }
+
+    private static void setLoopChannel(LoopChannel ch, boolean shouldPlay, float volumeFactor) {
+        ch.volumeFactor = volumeFactor;
+        if (!shouldPlay) {
+            boolean wasDesired = ch.desired;
+            ch.desired = false;
+            ch.paused = false;
+            if (wasDesired || (ch.clip != null && ch.clip.isRunning())) {
+                synchronized (LOCK) {
+                    if (ch.clip != null && ch.clip.isOpen()) {
+                        try {
+                            ch.clip.stop();
+                        } catch (Exception ignored) {}
+                    }
+                }
+            }
+            return;
+        }
+
+        ch.desired = true;
+        if (muted || ch.paused) return;
+
+        synchronized (LOCK) {
+            if (ch.clip != null && ch.clip.isOpen()) {
+                applyClipVolume(ch.clip, volume * ch.volumeFactor);
+                if (!ch.clip.isRunning()) {
+                    ch.clip.setFramePosition(0);
+                    ch.clip.loop(Clip.LOOP_CONTINUOUSLY);
+                }
+                return;
+            }
+            if (ch.loading) return;
+            ch.loading = true;
+        }
+
+        EXECUTOR.execute(() -> {
+            try {
+                File f = findAudioFile(ch.fileName);
+                if (f != null && f.exists()) {
+                    Clip newClip;
+                    try (AudioInputStream ais = AudioSystem.getAudioInputStream(f)) {
+                        newClip = AudioSystem.getClip();
+                        newClip.open(ais);
+                    }
+                    synchronized (LOCK) {
+                        if (ch.clip != null) {
+                            try {
+                                ch.clip.stop();
+                                ch.clip.close();
+                            } catch (Exception ignored) {}
+                        }
+                        ch.clip = newClip;
+                        if (ch.desired && !muted && !ch.paused) {
+                            applyClipVolume(newClip, volume * ch.volumeFactor);
+                            newClip.setFramePosition(0);
+                            newClip.loop(Clip.LOOP_CONTINUOUSLY);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[SoundManager] Không thể phát Player loop " + ch.fileName + ": " + e.getMessage());
+            } finally {
+                ch.loading = false;
+            }
+        });
+    }
+
+    /**
+     * Dừng toàn bộ âm thanh vòng lặp của phương tiện và lề đường.
+     */
+    public static void stopPlayerLoops() {
+        synchronized (LOCK) {
+            for (LoopChannel ch : PLAYER_LOOPS) {
+                ch.desired = false;
+                ch.paused = false;
+                if (ch.clip != null && ch.clip.isOpen()) {
+                    try {
+                        ch.clip.stop();
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+        prevCurbOnFire = false;
+        prevInBikeRoad = false;
+        prevBoatTurningLeft = false;
+        prevBoatTurningRight = false;
+    }
+
+    /**
+     * Đồng bộ âm thanh động cơ, vít ga, xuồng máy và hiệu ứng cọ lề/cháy xe theo trạng thái người chơi.
+     */
+    public static void updatePlayerSounds(GameState state) {
+        if (state == null) {
+            stopPlayerLoops();
+            return;
+        }
+        if (state.screen == GameMenuState.PAUSE) {
+            return;
+        }
+        if (state.screen != GameState.ROAD || state.flightMode) {
+            stopPlayerLoops();
+            return;
+        }
+
+        boolean isBoat = (state.day == 1);
+        boolean inJamStop = (state.day == 4 && state.jamStopSoundPlayed);
+        boolean huggingCurb = !inJamStop && state.player != null
+                && (state.player.x <= GameState.PLAYER_MIN_X + GameState.CURB_ZONE_MARGIN
+                    || state.player.x >= GameState.PLAYER_MAX_X - GameState.CURB_ZONE_MARGIN);
+
+        if (isBoat) {
+            setLoopChannel(CH_BIKE_ENGINE, false, 0.22f);
+            setLoopChannel(CH_BIKE_THROTTLE, false, 0.32f);
+            setLoopChannel(CH_CURB_SPARKS, false, 0.40f);
+            setLoopChannel(CH_CURB_FIRE_BURN, false, 0.45f);
+
+            setLoopChannel(CH_BOAT_MOTOR, true, 0.28f);
+            setLoopChannel(CH_BOAT_CURB_MUD, huggingCurb, 0.42f);
+
+            long now = System.currentTimeMillis();
+            boolean turnStarted = (!prevBoatTurningLeft && state.left) || (!prevBoatTurningRight && state.right);
+            if (turnStarted && now - lastBoatSplashAt >= 280L) {
+                lastBoatSplashAt = now;
+                playSfx("boat_turn_splash.wav", 0.45f);
+            }
+            prevBoatTurningLeft = state.left;
+            prevBoatTurningRight = state.right;
+            prevCurbOnFire = false;
+            prevInBikeRoad = false;
+        } else {
+            setLoopChannel(CH_BOAT_MOTOR, false, 0.28f);
+            setLoopChannel(CH_BOAT_CURB_MUD, false, 0.42f);
+            prevBoatTurningLeft = false;
+            prevBoatTurningRight = false;
+
+            boolean engineRunning = !inJamStop;
+            boolean revving = engineRunning && state.up && !state.down;
+            boolean scrapingCurb = engineRunning && huggingCurb && !state.curbOnFire;
+            boolean burningCurb = engineRunning && state.curbOnFire;
+
+            setLoopChannel(CH_BIKE_ENGINE, engineRunning, 0.22f);
+            setLoopChannel(CH_BIKE_THROTTLE, revving, 0.32f);
+            setLoopChannel(CH_CURB_SPARKS, scrapingCurb, 0.40f);
+            setLoopChannel(CH_CURB_FIRE_BURN, burningCurb, 0.45f);
+
+            if (prevInBikeRoad && engineRunning) {
+                if (!prevCurbOnFire && state.curbOnFire) {
+                    playSfx("curb_fire_ignite.wav", 0.65f);
+                } else if (prevCurbOnFire && !state.curbOnFire) {
+                    playSfx("curb_fire_extinguish.wav", 0.55f);
+                }
+            }
+            prevCurbOnFire = state.curbOnFire;
+            prevInBikeRoad = engineRunning;
         }
     }
 }
