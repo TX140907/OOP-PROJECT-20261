@@ -15,6 +15,7 @@ public class GameLogic extends GameStory {
         sanbaka.assets.SoundManager.stopWindSound();
         sanbaka.assets.SoundManager.stopStreetSound();
         sanbaka.assets.SoundManager.stopHelicopterSound();
+        sanbaka.assets.SoundManager.stopPlayerLoops();
         screen = ROAD;
         stageStarted = System.currentTimeMillis();
         lastSpawn = stageStarted;
