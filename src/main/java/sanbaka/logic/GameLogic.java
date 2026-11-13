@@ -548,7 +548,13 @@ public class GameLogic extends GameStory {
                 double rel = scroll * (1 - o.fwd);
                 o.y += rel * dt;
                 if (o instanceof NinjaLead ninja) {
+                    int prevPhase = ninja.cutPhase;
                     ninja.updateMovement(dt, laneX(0), laneX(1), laneX(2));
+                    if (prevPhase == 0 && ninja.cutPhase == 1) {
+                        sanbaka.assets.SoundManager.playSfx("ninja_lead_blinker.wav", 0.65f);
+                    } else if (prevPhase == 1 && ninja.cutPhase == 2) {
+                        sanbaka.assets.SoundManager.playSfx("ninja_lead_cut_in.wav", 0.65f);
+                    }
                 } else if (o.wobbleAmp > 0) {
                     double ph = o.wobblePhase + t * o.wobbleFreq * 2 * Math.PI;
                     o.x = o.baseX + o.wobbleAmp * Math.sin(ph);
@@ -588,6 +594,19 @@ public class GameLogic extends GameStory {
                 continue;
             }
             if (!o.jam) {
+                if (!o.horned && !o.snack && o.y > -20 && o.y < player.y + 40) {
+                    if (o instanceof HeavyTruck
+                            && Math.abs(o.x - player.x) < (o.w / 2 + 52)
+                            && Math.abs(o.y - player.y) < (o.h / 2 + 120)) {
+                        o.horned = true;
+                        sanbaka.assets.SoundManager.playSfxDebounced("horn_heavy_truck.wav", 0.55f, 1200L);
+                    } else if (o instanceof RoadCar
+                            && Math.abs(o.x - player.x) < (o.w / 2 + 44)
+                            && Math.abs(o.y - player.y) < (o.h / 2 + 95)) {
+                        o.horned = true;
+                        sanbaka.assets.SoundManager.playSfxDebounced("horn_car_beep.wav", 0.50f, 900L);
+                    }
+                }
                 double hw = (o.kind == 19) ? 36.0 : (o.snack ? 22 : ((o.kind == 11 || o.kind == 14) ? o.w / 2 : o.w / 2 + 9));
                 double hh = (o.kind == 19) ? 36.0 : (o.snack ? 28 : ((o.kind == 11 || o.kind == 14) ? o.h / 2 : o.h / 2 + 6));
                 if (Math.abs(o.x - player.x) < hw && Math.abs(o.y - player.y) < hh) {
@@ -644,15 +663,23 @@ public class GameLogic extends GameStory {
                                 applyCollisionHit(8, pushDir, 8, 10, 105, 0.55, 850, 550, now, "pothole");
                             } else if (o.kind == 9) {
                                 // Xe tải hạng nặng: 30 HP, đẩy lùi mạnh + làm chậm ngắn 1500ms (tốc độ còn 35%)
-                                applyCollisionHit(30, pushDir, 18, 26, 230, 0.35, 1500, 800, now, "collision");
+                                if (applyCollisionHit(30, pushDir, 18, 26, 230, 0.35, 1500, 800, now, "collision")) {
+                                    sanbaka.assets.SoundManager.playSfx("crash_heavy_truck.wav", 0.75f);
+                                }
                                 o.y -= 14;
                             } else if (o.kind == 6 || o.kind == 12) {
                                 // Xe máy NPC / Ninja Lead: 20 HP, đẩy lùi + làm chậm ngắn 1200ms
-                                applyCollisionHit(20, pushDir, 14, 18, 165, 0.42, 1200, 750, now, "collision");
+                                if (applyCollisionHit(20, pushDir, 14, 18, 165, 0.42, 1200, 750, now, "collision")) {
+                                    sanbaka.assets.SoundManager.playSfx("crash_motorcycle.wav", 0.75f);
+                                }
                                 o.y -= 12;
                             } else {
                                 // Ô tô, xe buýt, thuyền, rào chắn: 24 HP, đẩy lùi + làm chậm ngắn 1350ms (tốc độ còn 38%)
-                                applyCollisionHit(24, pushDir, 15, 22, 195, 0.38, 1350, 780, now, "collision");
+                                if (applyCollisionHit(24, pushDir, 15, 22, 195, 0.38, 1350, 780, now, "collision")) {
+                                    if (o.kind != 8 && o.kind != 10) {
+                                        sanbaka.assets.SoundManager.playSfx("crash_car_normal.wav", 0.75f);
+                                    }
+                                }
                                 if (o.kind != 10) o.y -= 14;
                             }
                         }
@@ -663,19 +690,19 @@ public class GameLogic extends GameStory {
         }
     }
 
-    private void applyCollisionHit(int dmg, double pushDirX, double pushX, double pushY,
+    private boolean applyCollisionHit(int dmg, double pushDirX, double pushX, double pushY,
             double kbVy, double slowFactor, long slowDurationMs, long invulnMs, long now) {
-        applyCollisionHit(dmg, pushDirX, pushX, pushY, kbVy, slowFactor, slowDurationMs, invulnMs, now, "collision");
+        return applyCollisionHit(dmg, pushDirX, pushX, pushY, kbVy, slowFactor, slowDurationMs, invulnMs, now, "collision");
     }
 
-    private void applyCollisionHit(int dmg, double pushDirX, double pushX, double pushY,
+    private boolean applyCollisionHit(int dmg, double pushDirX, double pushX, double pushY,
             double kbVy, double slowFactor, long slowDurationMs, long invulnMs, long now, String subcategory) {
         if (shieldActive) {
             shieldActive = false;
             player.invulnerable = now + 650;
             lastHitAt = now;
             floatingTextManager.spawn(player.x + 28, player.y - 12, "shield_block", true);
-            return;
+            return false;
         }
         hp -= dmg;
         player.invulnerable = now + invulnMs;
@@ -689,6 +716,7 @@ public class GameLogic extends GameStory {
         if (subcategory != null && !subcategory.isEmpty()) {
             floatingTextManager.spawn(player.x + 28, player.y - 12, subcategory, false);
         }
+        return true;
     }
 
     private void lockSharkWarningTarget(Shark shark, double scroll, long now) {

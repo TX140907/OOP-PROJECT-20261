@@ -63,6 +63,7 @@ public final class SoundManager {
     private static volatile boolean isHelicopterPaused = false;
 
     private static final Map<String, Clip> SFX_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, Long> SFX_LAST_PLAYED = new ConcurrentHashMap<>();
 
     // Kênh lặp âm thanh phương tiện & vật lý mặt đường (Player Audio Layer)
     private static final class LoopChannel {
@@ -764,6 +765,18 @@ public final class SoundManager {
      */
     public static void playSfx(String sfxName) {
         playSfx(sfxName, 1.0f);
+    }
+
+    /**
+     * Phát SFX kèm thời gian chờ tối thiểu (cooldownMs) để tránh chồng tiếng dồn dập.
+     */
+    public static void playSfxDebounced(String sfxName, float volumeFactor, long cooldownMs) {
+        if (muted || sfxName == null || sfxName.isBlank()) return;
+        long now = System.currentTimeMillis();
+        Long last = SFX_LAST_PLAYED.get(sfxName);
+        if (last != null && now - last < cooldownMs) return;
+        SFX_LAST_PLAYED.put(sfxName, now);
+        playSfx(sfxName, volumeFactor);
     }
 
     /**

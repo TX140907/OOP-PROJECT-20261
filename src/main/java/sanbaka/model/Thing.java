@@ -14,6 +14,7 @@ public abstract class Thing {
     public boolean snack;
     public boolean jam;
     public boolean hit;
+    public boolean horned;
 
     public static Thing create(int kind) {
         return switch (kind) {
