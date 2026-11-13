@@ -9,6 +9,7 @@ target/
 *.log
 *.tmp
 *OLD*
+!assets/sounds/bgm/bgm_day3_cold.wav
 .sanbaka_svbk_progress.properties
 
 # Tools
