@@ -284,5 +284,9 @@ Nếu thời gian có hạn, nhóm có thể chia làm **3 mức độ ưu tiên
      - **Màn 1 (`day == 0`):** Đoạn đường đi thi ngày đầu tiên.
      - **Màn 5 đợt 1 (`day == 4`, đường bộ):** Đoạn đường đông và kẹt xe trước khi chuyển sang trực thăng.
 4. **Âm thanh đường phố & Trực thăng Màn 5:**
+   - `stop_sound.wav`: Nén từ $140\text{ KB} \to 25\text{ KB}$ ($-81.8\%$, $0.80\text{s}$), phát ngay khi xe đến đoạn tắc đường Ngày 5 chặng 1 (âm lượng $90\%$ gần bằng BGM) đồng thời dừng nhạc nền trước khi vào hội thoại.
    - `street.wav`: Nén từ $2.78\text{ MB} \to 505\text{ KB}$ ($-82\%$, thời lượng $15.8\text{s}$ loop), phát khi xe dừng kẹt xe và vào hội thoại gọi điện cho Komori (âm lượng $30\%$).
    - `helicopter.wav`: Nén từ $1.14\text{ MB} \to 206\text{ KB}$ ($-82\%$, thời lượng $6.5\text{s}$ loop), bắt đầu phát từ câu *"Một lúc sau, tiếng cánh quạt trực thăng vang lên từ phía trên"* qua phân cảnh chuyển tiếp `AIR` và kéo dài xuyên suốt cuộc trò chuyện với Komori trên loa cho đến hết hội thoại (âm lượng $35\%$). Khi chuyển sang điều khiển trực thăng thì ngắt cả 2 âm và chuyển sang nhạc bay `bgm_day5_flight.wav`.
+5. **Nhạc nền & Tiếng lửa cháy Ngày 4:**
+   - `bgm_day4.wav`: Tối ưu nén từ $1.15\text{ MB} \to 207\text{ KB}$ ($-81.9\%$, chuẩn `16kHz 8-bit Stereo`, thời lượng $6.49\text{s}$ loop), phát tại Màn 4 (`day == 3`, nắng nóng gay gắt).
+   - `fire.wav`: Nén từ $2.74\text{ MB} \to 498\text{ KB}$ ($-81.9\%$, thời lượng $15.56\text{s}$ loop), lưu tại `assets/sound/ambience/amb_fire.wav`, phát song song cùng `bgm_day4.wav` ở mức âm lượng nhỏ ($18\%$) tượng trưng cho không khí nắng nóng rực lửa.

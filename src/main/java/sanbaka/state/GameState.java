@@ -163,6 +163,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public long lastBolt = 0;
     public long lastHitAt = 0;
     public boolean jamBuilt = false;
+    public boolean jamStopSoundPlayed = false;
     public int retryDialogIndex = 0;
     public int flightRetryDialogIndex = 0;
     public boolean retryAtTrafficCheckpoint = false;
@@ -180,9 +181,6 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public int teaSpawnCount = 0;
     public long lastTeaSpawn = 0;
     public long warmUntil = 0;
-    // ---- Màn 1 (Trời đẹp: sinh viên băng qua đường) ----
-    public long lastStudentSpawn = 0;
-    public int studentSpawnCount = 0;
     // ---- Màn 4 (Nắng nóng: chó chạy rông & mệt mỏi khi Energy thấp, khiên bảo vệ 1 lần va chạm) ----
     public long lastDogSpawn = 0;
     public boolean shieldActive = false;

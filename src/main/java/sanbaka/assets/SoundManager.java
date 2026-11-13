@@ -339,8 +339,11 @@ public final class SoundManager {
     }
 
     public static void setAmbienceVolumeFactor(float factor) {
-        ambienceVolumeFactor = Math.max(0.0f, Math.min(1.0f, factor));
-        applyVolume();
+        float clamped = Math.max(0.0f, Math.min(1.0f, factor));
+        if (Math.abs(ambienceVolumeFactor - clamped) > 0.001f) {
+            ambienceVolumeFactor = clamped;
+            applyVolume();
+        }
     }
 
     public static float getAmbienceVolumeFactor() {
@@ -695,7 +698,15 @@ public final class SoundManager {
      * Phát hiệu ứng âm thanh ngắn (SFX) một lần.
      */
     public static void playSfx(String sfxName) {
+        playSfx(sfxName, 1.0f);
+    }
+
+    /**
+     * Phát hiệu ứng âm thanh ngắn (SFX) một lần với hệ số âm lượng riêng (0.0f - 1.0f).
+     */
+    public static void playSfx(String sfxName, float volumeFactor) {
         if (muted || sfxName == null || sfxName.isBlank()) return;
+        float clampedFactor = Math.max(0.0f, Math.min(1.0f, volumeFactor));
         EXECUTOR.execute(() -> {
             try {
                 Clip clip = SFX_CACHE.computeIfAbsent(sfxName, name -> {
@@ -712,6 +723,8 @@ public final class SoundManager {
                     }
                 });
                 if (clip != null) {
+                    applyClipVolume(clip, volume * clampedFactor);
+                    clip.stop();
                     clip.setFramePosition(0);
                     clip.start();
                 }
@@ -818,6 +831,8 @@ public final class SoundManager {
                 } else if (state.flightMode) {
                     return "bgm_day5_flight.wav";
                 } else {
+                    // Vừa nhìn thấy dòng người tắc: ngắt nhạc nền để nghe stop_sound
+                    if (state.jamStopSoundPlayed) return null;
                     // Màn 5 đợt 1 (trên đường / tắc đường trước khi lên trực thăng)
                     if (hasAudio("bgm_day1+5.wav")) return "bgm_day1+5.wav";
                     if (hasAudio("bgm_day1_5.wav")) return "bgm_day1_5.wav";
@@ -834,6 +849,7 @@ public final class SoundManager {
                 if (hasAudio("bgm_day3.wav")) return "bgm_day3.wav";
                 return hasAudio("bgm_day3_cold.wav") ? "bgm_day3_cold.wav" : "bgm_day1_sunny.wav";
             } else if (state.day == 3) { // Ngày 4: Nắng nóng gay gắt
+                if (hasAudio("bgm_day4.wav")) return "bgm_day4.wav";
                 return hasAudio("bgm_day4_hot.wav") ? "bgm_day4_hot.wav" : "bgm_day1_sunny.wav";
             }
             return "bgm_day1_sunny.wav";
@@ -842,6 +858,11 @@ public final class SoundManager {
         // 9. Hội thoại (DIALOG)
         if (screen == GameState.DIALOG) {
             return getDialogueBgm(state);
+        }
+
+        // Khi xe vừa đến đoạn tắc đường (FADE_JAM) ngày 5 chặng 1: dừng hẳn nhạc nền để phát stop_sound
+        if (screen == GameState.FADE && state.fadeKind == GameMenuState.FADE_JAM) {
+            return null;
         }
 
         // Khi vừa kết thúc chạy xe (FADE_END) hoặc hiện bảng thông báo (CARD) sau khi thi,
@@ -968,11 +989,18 @@ public final class SoundManager {
             stopHelicopterSound();
             return;
         }
+        if (state.screen == GameMenuState.PAUSE) {
+            return; // Giữ nguyên trạng thái đang tạm dừng của âm thanh môi trường
+        }
 
         // 1. Màn 2 khi đang chơi trên đường (ROAD): Mưa to song song với nhạc nền
         if (state.screen == GameState.ROAD && state.day == 1) {
             setAmbienceVolumeFactor(0.45f);
             playAmbience("amb_rain_heavy.wav");
+        } else if (state.screen == GameState.ROAD && state.day == 3) {
+            // 1b. Màn 4 khi đang chơi trên đường (ROAD): Tiếng lửa cháy nhỏ tượng trưng cho trời nắng nóng
+            setAmbienceVolumeFactor(0.18f);
+            playAmbience(hasAudio("amb_fire.wav") ? "amb_fire.wav" : "fire.wav");
         } else {
             // 2. Phân cảnh ngay sau khi thi Ngày 2 (chuyển cảnh CARD hoặc hội thoại DIALOG/ROOM):
             // Tiếng mưa rơi nhẹ nhẹ bên ngoài hiên/hành lang C1

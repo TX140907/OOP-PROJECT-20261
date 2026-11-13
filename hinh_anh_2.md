@@ -32,28 +32,7 @@ Trước khi bắt đầu, dưới đây là danh sách các hạng mục mà b�
 
 ## 3. PHẦN I: CÁC MỤC TỪ `hinh_anh_1.md` CHƯA HOÀN THIỆN HẾT
 
-### 3.1. SINH VIÊN BĂNG QUA ĐƯỜNG (`Student` — Đang thiếu 4/4 ảnh)
-- **Đường dẫn đặt file:** `assets/objects/Student/`
-- **Kích thước chuẩn (1x):** `32 × 38 px` | **Kích thước xuất file khuyên dùng (2x HD):** `64 × 76 px`
-- **Góc nhìn & Hướng chuẩn:**
-  - Góc nhìn từ trên cao chếch xuống (**Top-Down / 3/4 Overhead**).
-  - **Mặt, ngực và mũi bàn chân BẮT BUỘC hướng sang BÊN PHẢI (`+X`, hướng 3 giờ)**.
-  - *(Lưu ý: Khi sinh viên đi từ phải sang trái đường, code game sẽ tự động lật gương ngang `Flip Horizontal`, nên bạn chỉ cần vẽ 1 chiều hướng sang phải).*
-- **Mô tả ngoại hình chi tiết:**
-  - Sinh viên Bách Khoa mặc **áo sơ mi trắng** (hoặc áo đồng phục trắng có cổ), **quần dài màu xanh đen tối (`#343C4E`)**, tóc đen gọn gàng.
-  - Trên lưng đeo **balo sinh viên** (màu đỏ, xanh dương hoặc cam nổi bật ở phía bên trái lưng khi nhân vật nhìn sang phải).
-- **Danh sách 4 file cần đặt vào `assets/objects/Student/`:**
-
-| STT | Đường dẫn & Tên file chính xác | Trạng thái | Mô tả chi tiết từng chi tiết trên ảnh |
-| :--- | :--- | :--- | :--- |
-| 1 | `assets/objects/Student/Student.png` *(hoặc `Student_idle.png`)* | **Đứng chờ trên vỉa hè** | Sinh viên đứng thẳng tự nhiên trên vỉa hè, hai chân khép gần nhau, hai tay buông nhẹ bên hông, đầu và mắt nhìn sang bên phải chờ thời cơ qua đường. |
-| 2 | `assets/objects/Student/Student_walk1.png` | **Bước đi - Nhịp 1** | Tư thế đang bước đi sang phải: Chân trái bước vươn lên phía trước (về bên phải), chân phải duỗi ra sau; tay phải đánh nhẹ về phía trước, tay trái đánh ra sau. |
-| 3 | `assets/objects/Student/Student_walk2.png` | **Bước đi - Nhịp 2** | Đổi chân so với Nhịp 1: Chân phải bước lên phía trước (về bên phải), chân trái đưa ra sau; tay trái đánh ra trước, tay phải đưa ra sau. *(Game sẽ lặp `walk1` ↔ `walk2` liên tục tạo hoạt ảnh bước đi)*. |
-| 4 | `assets/objects/Student/Student_yield.png` | **Giơ tay xin đường / Nhường xe** | Khi thấy xe lao tới quá gần: Sinh viên đứng khựng lại, **một cánh tay giơ cao lên ngang đầu về phía trước** (vừa ra hiệu xin đường vừa giật mình dừng bước nhường xe). |
-
----
-
-### 3.2. CẢNH QUAN & MÔI TRƯỜNG VEN ĐƯỜNG (`Environment` — Đang trống)
+### 3.1. CẢNH QUAN & MÔI TRƯỜNG VEN ĐƯỜNG (`Environment` — Đang trống)
 - **Đường dẫn đặt tất cả các file mục này:** `assets/objects/Environment/`
 
 #### A. Cây xanh hai bên vỉa hè (4 mẫu cây)
@@ -296,8 +275,7 @@ Khi phi đội máy bay ném bom rải thảm chéo từ trên cao xuống, bom 
 
 | STT | Nhóm / Màn chơi | Đường dẫn đặt file chính xác (`assets/objects/...`) | Kích thước 1x | Kích thước xuất 2x HD | Số lượng file |
 | :---: | :--- | :--- | :---: | :---: | :---: |
-| **1** | **Sinh viên qua đường** *(Màn 1–4)* | `assets/objects/Student/Student.png`<br>`assets/objects/Student/Student_walk1.png`<br>`assets/objects/Student/Student_walk2.png`<br>`assets/objects/Student/Student_yield.png` | `32 × 38` | `64 × 76` | **4 files** |
-| **2** | **Cây xanh ven đường** *(Màn 1–4)* | `assets/objects/Environment/Tree_green_dark.png`<br>`assets/objects/Environment/Tree_green_light.png`<br>`assets/objects/Environment/Tree_blossom.png`<br>`assets/objects/Environment/Tree_snow.png` | `72 × 72` | `144 × 144` | **4 files** |
+| **1** | **Cây xanh ven đường** *(Màn 1–4)* | `assets/objects/Environment/Tree_green_dark.png`<br>`assets/objects/Environment/Tree_green_light.png`<br>`assets/objects/Environment/Tree_blossom.png`<br>`assets/objects/Environment/Tree_snow.png` | `72 × 72` | `144 × 144` | **4 files** |
 | **3** | **Cột đèn đường** *(Màn 1–4)* | `assets/objects/Environment/StreetLamp_day.png`<br>`assets/objects/Environment/StreetLamp_night.png` | `96 × 48` | `192 × 96` | **2 files** |
 | **4** | **Nhà dân ven đường** *(Màn 1–4)* | `assets/objects/Environment/RoadsideHouse.png` | `116 × 88` | `232 × 176` | **1 file** |
 | **5** | **Mặt đường lặp dọc** *(Tùy chọn)* | `assets/objects/Environment/Road_tile.png` | `550 × 256` | `1100 × 512` | **1 file** |

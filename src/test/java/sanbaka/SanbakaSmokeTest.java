@@ -35,7 +35,7 @@ public class SanbakaSmokeTest {
         testItemSpawnCounts();
         testMap3MotorcycleDensityAndVelocity();
         testGpuHardwareAccelerationFlags();
-        testStudentCrossingMechanics();
+        testFlightRetryAndOpeningVideo();
         testMarioMinigame();
         testMysteryBoxEasterEggAndCurb1_5s();
 
@@ -1134,94 +1134,8 @@ public class SanbakaSmokeTest {
         System.out.println("  ✓ testGpuHardwareAccelerationFlags passed (Direct3D & VRAM acceleration enabled)");
     }
 
-    private static void testStudentCrossingMechanics() {
-        Thing t = Thing.create(18);
-        if (!(t instanceof Student)) {
-            throw new AssertionError("Thing.create(18) should produce an instance of Student, got: " + t.getClass());
-        }
-        Student s = (Student) t;
-        if (s.w != 32.0 || s.h != 38.0) {
-            throw new AssertionError("Student dimensions should be 32x38, got: " + s.w + "x" + s.h);
-        }
-
-        List<Thing> things = new ArrayList<>();
-        RoadCar car = (RoadCar) Thing.create(0);
-        car.x = car.baseX = 350.0;
-        car.y = 200.0;
-        car.w = 50.0;
-        car.h = 86.0;
-        car.wobbleAmp = 0;
-        things.add(car);
-
-        s.x = 280.0;
-        s.y = 200.0;
-        s.dir = 1;
-        s.phase = Student.PHASE_CROSSING;
-
-        s.updateStudent(0.016, 260.0, System.currentTimeMillis(), 220, 520, things, 0, 0, 0, 0);
-        if (!s.isYielding) {
-            throw new AssertionError("Student must yield when approaching a car in path X with vertical overlap!");
-        }
-        if (s.x + s.w / 2.0 > car.x - car.w / 2.0) {
-            throw new AssertionError("Student must not penetrate into the car body!");
-        }
-
-        RoadMotorcycle moto = (RoadMotorcycle) Thing.create(6);
-        moto.baseX = 450.0;
-        moto.x = 450.0;
-        moto.y = 200.0;
-        moto.w = 26.0;
-        moto.h = 60.0;
-        moto.wobbleAmp = 25.0;
-        things.clear();
-        things.add(moto);
-
-        s.x = 360.0;
-        s.y = 200.0;
-        s.dir = 1;
-        s.updateStudent(0.016, 260.0, System.currentTimeMillis(), 220, 520, things, 0, 0, 0, 0);
-        if (!s.isYielding) {
-            throw new AssertionError("Student must yield before entering the swept width of a wobbling motorcycle!");
-        }
-        double motoDangerMinX = moto.baseX - moto.w / 2.0 - moto.wobbleAmp - 18.0;
-        if (s.x + s.w / 2.0 > motoDangerMinX) {
-            throw new AssertionError("Student must remain strictly outside the wobbling danger zone!");
-        }
-
+    private static void testFlightRetryAndOpeningVideo() {
         sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
-        logic.day = 0;
-        logic.beginDay();
-        int initialHp = logic.hp;
-        Student crossingStudent = (Student) Thing.create(18);
-        crossingStudent.x = logic.player.x;
-        crossingStudent.y = logic.player.y;
-        crossingStudent.phase = Student.PHASE_CROSSING;
-        logic.things.add(crossingStudent);
-
-        int activeTextBefore = logic.floatingTextManager.getActiveCount();
-        logic.updateRoad(System.currentTimeMillis() + 100);
-
-        if (logic.hp >= initialHp) {
-            throw new AssertionError("Player must receive collision damage when hitting a student, initialHp: " + initialHp + ", current: " + logic.hp);
-        }
-        if (logic.floatingTextManager.getActiveCount() > activeTextBefore) {
-            throw new AssertionError("No floating text should be spawned for student collision, got count: " + logic.floatingTextManager.getActiveCount());
-        }
-        if (!logic.things.contains(crossingStudent)) {
-            throw new AssertionError("Student must continue crossing the street after collision with player!");
-        }
-
-        logic.day = 1;
-        if (logic.trySpawnStudent(System.currentTimeMillis())) {
-            throw new AssertionError("Student must not spawn in Day 1 (flooded day)!");
-        }
-        logic.day = 0;
-        logic.things.clear();
-        boolean spawned = logic.trySpawnStudent(System.currentTimeMillis());
-        if (!spawned) {
-            throw new AssertionError("trySpawnStudent should succeed on empty Day 0 road!");
-        }
-
         // Kiểm tra chết ở Màn 5 Lượt 2 (flightMode) -> bấm Enter ở ENDING_BE phải chơi lại ngay Lượt 2
         logic.day = 4;
         logic.dialogIndex = 88;
@@ -1256,7 +1170,7 @@ public class SanbakaSmokeTest {
             }
         }
 
-        System.out.println("  ✓ testStudentCrossingMechanics passed (Yields to cars/wobble, no clipping, continues after player collision, no text)");
+        System.out.println("  ✓ testFlightRetryAndOpeningVideo passed");
     }
 
     private static void testMarioMinigame() {

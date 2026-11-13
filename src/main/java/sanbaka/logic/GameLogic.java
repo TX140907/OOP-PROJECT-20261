@@ -35,6 +35,7 @@ public class GameLogic extends GameStory {
         energy = 100;
         groundScroll = 0;
         jamBuilt = false;
+        jamStopSoundPlayed = false;
         lastBolt = stageStarted - 800; // Xuất hiện tia sét sớm ngay đầu màn 4
         lastHitAt = 0;
         player.invulnerable = 0;
@@ -47,8 +48,6 @@ public class GameLogic extends GameStory {
         frozenUntil = 0;
         windFreezeChecked = false;
         lastDogSpawn = stageStarted + 1400;
-        lastStudentSpawn = stageStarted + 2200;
-        studentSpawnCount = 0;
         stageProgressMs = 0.0;
         elapsed = 0;
         currentProgressFactor = 1.0;
@@ -88,7 +87,6 @@ public class GameLogic extends GameStory {
         if (frozenUntil > 0) frozenUntil += pausedDelta;
         if (iceSlipUntil > 0) iceSlipUntil += pausedDelta;
         if (lastDogSpawn > 0) lastDogSpawn += pausedDelta;
-        if (lastStudentSpawn > 0) lastStudentSpawn += pausedDelta;
         if (warmUntil > 0) warmUntil += pausedDelta;
         if (lastShieldSpawn > 0) lastShieldSpawn += pausedDelta;
         if (lastTeaSpawn > 0) lastTeaSpawn += pausedDelta;
@@ -479,14 +477,6 @@ public class GameLogic extends GameStory {
             lastDogSpawn = now + rng.nextInt(640);
             trySpawnStrayDog(now);
         }
-        if (canSpawn && day == 0 && studentSpawnCount < 4 && now - lastStudentSpawn > 8000 + rng.nextInt(1500)) {
-            if (trySpawnStudent(now)) {
-                lastStudentSpawn = now;
-                studentSpawnCount++;
-            } else {
-                lastStudentSpawn = now - 1000;
-            }
-        }
         // Xuất hiện lại ở Màn 2/Màn 4 sau mỗi lượt chưa lấy được; chỉ ngừng
         // sau khi người chơi đã nhặt và hoàn thành an toàn Ngày 4.
         if (canSpawn && !mysteryBoxSecured && !mysteryBoxSpawnedThisStage && t >= 7.5 && dur - t > 7.0) {
@@ -514,6 +504,11 @@ public class GameLogic extends GameStory {
             if (o.jam) {
                 o.y = o.y0 + jamShift;
                 if (o.y > -120) minY = Math.max(minY, o.y + o.h / 2 + 34);
+                if (jamDay && !jamStopSoundPlayed && o.y + o.h / 2 >= 0) {
+                    jamStopSoundPlayed = true;
+                    sanbaka.assets.SoundManager.stopBgm();
+                    sanbaka.assets.SoundManager.playSfx("stop_sound.wav", 0.90f);
+                }
             } else if (o instanceof Shark shark) {
                 if (shark.phase == Shark.PHASE_FIN_APPROACH) {
                     for (int j = 0; j < things.size(); j++) {
@@ -532,14 +527,12 @@ public class GameLogic extends GameStory {
                 shark.updateShark(dt, now);
             } else if (o instanceof StrayDog dog) {
                 dog.updateDog(dt, scroll, now, ROAD_X, ROAD_W, things, player.x, player.y, player.w, player.h);
-            } else if (o instanceof Student student) {
-                student.updateStudent(dt, scroll, now, ROAD_X, ROAD_W, things, player.x, player.y, player.w, player.h);
             } else {
                 // Giữ khoảng cách an toàn để không có 2 vật thể đè hình ảnh lên nhau trên cùng làn
                 for (int j = 0; j < things.size(); j++) {
                     if (i == j) continue;
                     Thing other = things.get(j);
-                    if (other.jam || other instanceof Shark || other instanceof StrayDog || other instanceof Student || other.snack || o.snack) continue;
+                    if (other.jam || other instanceof Shark || other instanceof StrayDog || other.snack || o.snack) continue;
                     // other nằm phía trên màn hình (nhỏ hơn y) nhưng trôi xuống nhanh hơn (other.fwd < o.fwd)
                     if (other.y < o.y && (o.y - other.y) < (o.h + other.h) / 2 + 24
                             && Math.abs(o.x - other.x) < (o.w + other.w) / 2 + 8) {
@@ -588,20 +581,6 @@ public class GameLogic extends GameStory {
                     }
                 }
                 if (dog.done || dog.y - dog.h / 2 > H + 30) iterator.remove();
-                continue;
-            }
-            if (o instanceof Student student) {
-                if (student.phase == Student.PHASE_CROSSING && !student.isHitInvulnerable(now)
-                        && Math.abs(student.x - player.x) < student.w / 2 + 10
-                        && Math.abs(student.y - player.y) < student.h / 2 + 12) {
-                    student.onPlayerHit(now);
-                    if (player.invulnerable <= now) {
-                        applyCollisionHit(8, student.dir, 10, 14, 130, 0.50, 800, 750, now, null);
-                    }
-                }
-                if (student.done || student.y - student.h / 2 > H + 40 || student.y + student.h / 2 < -120) {
-                    iterator.remove();
-                }
                 continue;
             }
             if (!o.jam) {
@@ -760,7 +739,7 @@ public class GameLogic extends GameStory {
         }
         double tReach = (t instanceof NinjaLead) ? 156 : t.wobbleAmp;
         for (Thing o : things) {
-            if (o instanceof Shark || o instanceof StrayDog || o instanceof Student) {
+            if (o instanceof Shark || o instanceof StrayDog) {
                 if (Math.abs(o.x - t.x) < (o.w + t.w) / 2 + 18 && Math.abs(o.y - t.y) < 220) {
                     return false;
                 }
@@ -829,53 +808,6 @@ public class GameLogic extends GameStory {
                 dog.phaseStartedAt = now;
                 things.add(dog);
                 floatingTextManager.spawnDebounced(player.x + 28, player.y - 12, "dog_bark", false, 2500);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public boolean trySpawnStudent(long now) {
-        if (day != 0) return false;
-        int activeStudents = 0;
-        for (Thing o : things) {
-            if (o instanceof Student) activeStudents++;
-        }
-        if (activeStudents >= 1) return false; // Chỉ tối đa 1 sinh viên qua đường cùng thời điểm ở Màn 1
-
-        double[] rowBases = { 150, 195, 240, 285, 330 };
-        for (int attempt = 0; attempt < 6; attempt++) {
-            int side = rng.nextBoolean() ? -1 : 1; // -1: vỉa hè trái sang phải, 1: vỉa hè phải sang trái
-            double startX = side < 0 ? (ROAD_X + 16) : (ROAD_X + ROAD_W - 16);
-            double baseRow = rowBases[rng.nextInt(rowBases.length)];
-            double startY = baseRow + (rng.nextDouble() - 0.5) * 18.0;
-
-            boolean clear = true;
-            for (Thing o : things) {
-                if (o instanceof Student && Math.abs(o.y - startY) < 70) {
-                    clear = false;
-                    break;
-                }
-                if (Math.abs(o.y - startY) < o.h / 2 + 25 && Math.abs(o.x - startX) < 70) {
-                    clear = false;
-                    break;
-                }
-            }
-            if (Math.abs(player.y - startY) < 35 && Math.abs(player.x - startX) < 60) {
-                clear = false;
-            }
-
-            if (clear) {
-                Student student = (Student) Thing.create(18);
-                student.kind = 18;
-                student.w = VEH_W[18];
-                student.h = VEH_H[18];
-                student.dir = -side;
-                student.x = student.baseX = startX;
-                student.y = startY;
-                student.phase = Student.PHASE_SIDEWALK_WAIT;
-                student.phaseStartedAt = now;
-                things.add(student);
                 return true;
             }
         }

@@ -270,7 +270,6 @@ public abstract class GameMenuState extends GameState {
         if (frozenUntil > 0) frozenUntil += d;
         if (iceSlipUntil > 0) iceSlipUntil += d;
         if (lastDogSpawn > 0) lastDogSpawn += d;
-        if (lastStudentSpawn > 0) lastStudentSpawn += d;
         lastFrameAt = now;
         } else if (pausedScreen == MARIO) {
             if (marioGame != null) marioGame.resumeFromPause(now);
