@@ -724,7 +724,11 @@ public class GameVisuals extends GameLogic {
         if (heliArt == null) heliArt = ArtAssets.load("PlayerHelicopter", "PlayerHelicopter.png");
         if (heliArt == null) heliArt = ArtAssets.load("Helicopter", "Helicopter.png");
         if (heliArt != null) {
-            g.drawImage(heliArt, -140, -56, 204, 104, null);
+            int dw = 214, dh = 104;
+            int dx = -146, dy = -60;
+            g.drawImage(heliArt, dx, dy, dw, dh, null);
+            if (showThang) drawAvatar(g, "Thắng", -19, -14, 9);
+            drawAvatar(g, "Komori", 29, -10, 14);
             g.setTransform(old);
             g.setStroke(oldStroke);
             return;

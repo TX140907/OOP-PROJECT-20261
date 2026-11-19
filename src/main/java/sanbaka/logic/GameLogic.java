@@ -1293,7 +1293,7 @@ public class GameLogic extends GameStory {
         long cd = (long) (BossConfig.missileCooldownSec * 1000);
         if (now - lastMissileFiredAt < cd) return;
         lastMissileFiredAt = now;
-        missiles.add(new PlayerMissile(heliX + 28, heliY + 22, BossConfig.missileSpeed));
+        missiles.add(new PlayerMissile(heliX + 40, heliY + 35, BossConfig.missileSpeed));
     }
 
     public void detonateBomb(double bx, double by, long now) {

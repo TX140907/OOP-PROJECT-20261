@@ -1047,14 +1047,6 @@ public class GameScreenRenderer extends GameMenuRenderer {
         double ease = 1 - Math.pow(1 - Math.min(1.0, t * 1.5), 3);
         double hx = W / 2.0 + Math.sin(now / 400.0) * 6;
         double hy = -90 + 390 * ease;
-        Stroke oldStroke = g.getStroke();
-        g.setColor(new Color(90, 70, 60));
-        g.setStroke(new BasicStroke(3f));
-        double top = hy + 52;
-        g.draw(new Line2D.Double(hx - 8, top, hx - 8, top + 130));
-        g.draw(new Line2D.Double(hx + 8, top, hx + 8, top + 130));
-        for (int i = 1; i <= 6; i++) g.draw(new Line2D.Double(hx - 8, top + i * 20, hx + 8, top + i * 20));
-        g.setStroke(oldStroke);
         drawHelicopter(g, hx, hy, 0.05, now / 1000.0, 1.25, false);
         panel(g, 250, 36, 460, 88, new Color(255, 255, 255, 228));
         g.setColor(INK);

@@ -633,8 +633,8 @@ public class SanbakaSmokeTest {
             throw new AssertionError("Expected 1 missile fired, got: " + logic.missiles.size());
         }
         PlayerMissile m1 = logic.missiles.get(0);
-        if (Math.abs(m1.x - (logic.heliX + 28)) > 1.0 || Math.abs(m1.y - (logic.heliY + 22)) > 1.0) {
-            throw new AssertionError("Missile must originate from landing gear/skids: (" + (logic.heliX + 28) + ", " + (logic.heliY + 22) + ")");
+        if (Math.abs(m1.x - (logic.heliX + 40)) > 1.0 || Math.abs(m1.y - (logic.heliY + 35)) > 1.0) {
+            throw new AssertionError("Missile must originate from landing gear/skids: (" + (logic.heliX + 40) + ", " + (logic.heliY + 35) + ")");
         }
 
         // Bắn ngay lập tức (nửa thời gian hồi chiêu) -> bị chặn bởi hồi chiêu
