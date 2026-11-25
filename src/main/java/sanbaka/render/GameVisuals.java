@@ -347,7 +347,8 @@ public class GameVisuals extends GameLogic {
         int kind = who.startsWith("Sanbaka") ? 0
                 : who.startsWith("Thắng") ? 1
                 : who.startsWith("Komori") ? 2
-                : (who.startsWith("Chủ trọ") || who.startsWith("Người chủ trì")) ? 3 : 4;
+                : (who.startsWith("Chủ trọ") || who.startsWith("Người chủ trì")) ? 3
+                : (who.startsWith("Giám Thị") || who.startsWith("Giám thị")) ? 5 : 4;
         int cacheKey = (kind << 16) | (r & 0xFFFF);
         BufferedImage cached = AVATAR_CIRCLE_CACHE.get(cacheKey);
         int pad = 4;
@@ -366,7 +367,7 @@ public class GameVisuals extends GameLogic {
     private void renderAvatarCircle(Graphics2D g, int kind, int cx, int cy, int r) {
         Color[] bgs = {
             new Color(255, 214, 226), new Color(200, 226, 246), new Color(255, 226, 190),
-            new Color(214, 236, 216), new Color(226, 230, 238)
+            new Color(214, 236, 216), new Color(226, 230, 238), new Color(238, 212, 218)
         };
         Shape oldClip = g.getClip();
         AffineTransform oldT = g.getTransform();
@@ -376,7 +377,8 @@ public class GameVisuals extends GameLogic {
         g.fill(circle);
         g.clip(circle);
         String avatarName = kind == 0 ? "Sanbaka" : kind == 1 ? "Thắng"
-                : kind == 2 ? "Komori" : kind == 3 ? "Chủ trọ" : "Other";
+                : kind == 2 ? "Komori" : kind == 3 ? "Chủ trọ"
+                : kind == 5 ? sanbaka.model.BossEnemy.BOSS_NAME : "Other";
         BufferedImage avatarImage = loadAvatarImage(avatarName);
         if (avatarImage != null) {
             g.drawImage(avatarImage, cx - r, cy - r, 2 * r, 2 * r, null);
@@ -387,6 +389,19 @@ public class GameVisuals extends GameLogic {
             g.draw(circle);
             g.setStroke(oldStroke);
             return;
+        }
+        if (kind == 5) {
+            BufferedImage bossSprite = ArtAssets.load("Boss", "Boss_idle1.png");
+            if (bossSprite != null) {
+                g.drawImage(bossSprite, cx - r, cy - r, cx + r, cy + r, 240, 225, 600, 585, null);
+                g.setTransform(oldT);
+                g.setClip(oldClip);
+                g.setColor(Color.WHITE);
+                g.setStroke(new BasicStroke(Math.max(1.5f, r / 14f)));
+                g.draw(circle);
+                g.setStroke(oldStroke);
+                return;
+            }
         }
         g.translate(cx, cy + r * 0.16);
         double s = r / 32.0;
@@ -720,8 +735,7 @@ public class GameVisuals extends GameLogic {
         g.rotate(tilt);
         g.scale(sc, sc);
 
-        BufferedImage heliArt = !showThang ? ArtAssets.load("PlayerHelicopter", "PlayerHelicopter_rescue.png") : null;
-        if (heliArt == null) heliArt = ArtAssets.load("PlayerHelicopter", "PlayerHelicopter.png");
+        BufferedImage heliArt = ArtAssets.load("PlayerHelicopter", "PlayerHelicopter.png");
         if (heliArt == null) heliArt = ArtAssets.load("Helicopter", "Helicopter.png");
         if (heliArt != null) {
             int dw = 214, dh = 104;

@@ -7,10 +7,10 @@ Tài liệu này mô tả chi tiết tạo hình, hệ thống **6 trạng thái
 ## 1. THÔNG SỐ KỸ THUẬT & ĐƯỜNG DẪN ĐẶT FILE
 
 - **Thư mục đặt ảnh:** `assets/objects/Boss/`
-- **Kích thước hiển thị chuẩn trong game (1x):** **`130 × 176 px`** *(Tỷ lệ khung dọc `14 : 19`, phóng to ~1.85x so với bản cũ để tạo uy lực của Trùm Cuối)*.
+- **Kích thước hiển thị chuẩn trong game (1x):** **`70 × 95 px`** *(Tỷ lệ khung dọc `14 : 19`)*.
 - **Kích thước xuất file khuyên dùng cho Artist:**
-  - **Chuẩn 2x HD:** **`260 × 352 px`**
-  - **Chuẩn 3x Siêu nét:** **`390 × 528 px`** (Ảnh hiện tại bạn đã nạp vào `840 × 1140 px` hiển thị cực kỳ sắc nét trên màn hình).
+  - **Chuẩn 2x HD:** **`140 × 190 px`**
+  - **Chuẩn 3x Siêu nét:** **`210 × 285 px`**
 - **Định dạng:** `.PNG` có **nền trong suốt hoàn toàn (Transparent Background - 32-bit RGBA)**.
 - **Góc nhìn & Hướng bắt buộc:**
   - Góc nhìn ngang (**2D Side-View / 3/4 Front-Left Profile**).
@@ -25,7 +25,7 @@ Tài liệu này mô tả chi tiết tạo hình, hệ thống **6 trạng thái
 - **Đặc điểm nhận diện cố định (Giữ nguyên xuyên suốt mọi trạng thái):**
   1. **Trang phục:** Mặc bộ **âu phục / áo vest măng tô đen lịch lãm (`#222630`)**, sơ mi trắng cổ cồn, thắt **cà vạt đỏ thẫm (`#D72630`)**.
   2. **Áo choàng:** Khoác **áo choàng dài màu đỏ máu (`#821C1C`)** trên vai, tà áo bay phấp phới ra phía sau lưng (bên phải).
-  3. **Khuôn mặt & Đầu:** Tóc đen vuốt ngược gọn gàng đầy uy quyền, đeo **kính gọng vàng kim loại (`#FFD732`)**, đôi mắt phía sau kính **phát sáng rực lửa đỏ (`#FF2323`)**.
+  3. **Khuôn mặt & Đầu:** đeo **kính gọng vàng kim loại (`#FFD732`)**, đôi mắt phía sau kính **phát sáng rực lửa đỏ (`#FF2323`)**.
   4. **Năng lượng:** Bay lơ lửng giữa bầu trời, bàn tay điều khiển **quả cầu năng lượng lửa đỏ cam** hoặc tia chớp ma thuật, xung quanh người có vầng hào quang năng lượng mỏng.
 
 ---

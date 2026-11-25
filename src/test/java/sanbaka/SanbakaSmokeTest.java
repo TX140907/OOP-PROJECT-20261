@@ -528,17 +528,43 @@ public class SanbakaSmokeTest {
             throw new AssertionError("Player must NOT be able to fire missile while boss is charging HP!");
         }
 
-        // Sau khi nạp máu xong -> vào Đòn 1
+        // Sau khi nạp máu xong -> chuyển sang hội thoại của Giám Thị Trần Hải Tùng (chưa đánh nhau ngay)
         now += sanbaka.state.BossConfig.introChargeMs + 50;
         boss.update(0.05, now, 170, 300, logic);
-        if (boss.state != BossEnemy.STATE_ATTACK1) {
-            throw new AssertionError("Boss state should transition to STATE_ATTACK1, got: " + boss.state);
+        if (boss.state != BossEnemy.STATE_INTRO_DIALOGUE) {
+            throw new AssertionError("Boss state should transition to STATE_INTRO_DIALOGUE after charging, got: " + boss.state);
         }
-        if (!boss.canPlayerFire(now)) {
-            throw new AssertionError("Player MUST be able to fire missile during active combat!");
+        if (boss.canPlayerFire(now)) {
+            throw new AssertionError("Player must NOT be able to fire missile while boss intro dialogue is active!");
         }
         if (boss.currentHp != sanbaka.state.BossConfig.maxHp) {
             throw new AssertionError("Boss HP should be fully charged to " + sanbaka.state.BossConfig.maxHp + ", got: " + boss.currentHp);
+        }
+
+        // Chưa ấn Enter thì boss vẫn đợi ở hội thoại, không tự vào đánh
+        boss.update(0.05, now + 5000, 170, 300, logic);
+        if (boss.state != BossEnemy.STATE_INTRO_DIALOGUE) {
+            throw new AssertionError("Boss must remain in STATE_INTRO_DIALOGUE until Enter completes the dialogue!");
+        }
+
+        // Mô phỏng ấn Enter: lần 1 hiện hết chữ (nếu đang gõ), lần 2 hết hội thoại mới vào Đòn 1
+        logic.screen = sanbaka.state.GameState.ROAD;
+        logic.flightMode = true;
+        logic.boss = boss;
+        boss.dialogueStartedAt = System.currentTimeMillis();
+        logic.keyPressed(new java.awt.event.KeyEvent(logic, java.awt.event.KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, java.awt.event.KeyEvent.VK_ENTER, '\n'));
+        if (boss.state != BossEnemy.STATE_INTRO_DIALOGUE) {
+            throw new AssertionError("First Enter while typing should finish revealing the dialogue line before entering combat!");
+        }
+        logic.keyPressed(new java.awt.event.KeyEvent(logic, java.awt.event.KeyEvent.KEY_PRESSED,
+                System.currentTimeMillis(), 0, java.awt.event.KeyEvent.VK_ENTER, '\n'));
+        now = boss.stateStartedAt;
+        if (boss.state != BossEnemy.STATE_ATTACK1) {
+            throw new AssertionError("Boss state should transition to STATE_ATTACK1 after finishing intro dialogue, got: " + boss.state);
+        }
+        if (!boss.canPlayerFire(now)) {
+            throw new AssertionError("Player MUST be able to fire missile during active combat!");
         }
 
         // Bị bắn trúng 5 phát tên lửa (mỗi phát trừ 1 HP)

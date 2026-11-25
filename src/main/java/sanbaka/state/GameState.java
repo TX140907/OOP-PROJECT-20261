@@ -253,10 +253,33 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public abstract void beginDay();
     public abstract void resumeRoad();
 
+    public boolean isBossIntroDialogueActive() {
+        return flightMode && boss != null && boss.isIntroDialogueActive();
+    }
+
+    public boolean revealBossIntroDialogueImmediatelyIfTyping() {
+        if (!isBossIntroDialogueActive()) return false;
+        String fullText = sanbaka.model.BossEnemy.INTRO_DIALOGUE_TEXT;
+        if (boss.dialogueStartedAt == 0) boss.dialogueStartedAt = System.currentTimeMillis();
+        long revealDuration = (fullText.length() * 1000L + TYPEWRITER_CHARS_PER_SECOND - 1)
+                / TYPEWRITER_CHARS_PER_SECOND;
+        if (System.currentTimeMillis() - boss.dialogueStartedAt >= revealDuration) return false;
+        boss.dialogueStartedAt = System.currentTimeMillis() - revealDuration;
+        boss.dialogueBeepCharCount = fullText.length();
+        repaint();
+        return true;
+    }
+
     public String visibleDialogText(String fullText) {
         if (marioIntroDialogueMode && "Trò gì đây... Hình như là Mario!".equals(fullText)) {
             if (marioIntroDialogueStartedAt == 0) marioIntroDialogueStartedAt = System.currentTimeMillis();
             long elapsed = Math.max(0, System.currentTimeMillis() - marioIntroDialogueStartedAt);
+            int count = Math.min(fullText.length(), (int) (elapsed * TYPEWRITER_CHARS_PER_SECOND / 1000));
+            return fullText.substring(0, count);
+        }
+        if (isBossIntroDialogueActive() && sanbaka.model.BossEnemy.INTRO_DIALOGUE_TEXT.equals(fullText)) {
+            if (boss.dialogueStartedAt == 0) boss.dialogueStartedAt = System.currentTimeMillis();
+            long elapsed = Math.max(0, System.currentTimeMillis() - boss.dialogueStartedAt);
             int count = Math.min(fullText.length(), (int) (elapsed * TYPEWRITER_CHARS_PER_SECOND / 1000));
             return fullText.substring(0, count);
         }

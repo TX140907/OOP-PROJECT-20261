@@ -29,7 +29,10 @@ public class GameScreenRenderer extends GameMenuRenderer {
             }
             else if (marioStoryMode) drawMarioStoryOverlay(g);
         }
-        else drawRoad(g);
+        else {
+            drawRoad(g);
+            if (isBossIntroDialogueActive()) drawBossIntroDialogueOverlay(g);
+        }
     }
     void drawFade(Graphics2D g) {
         if (fadeKind == FADE_ROOM) {
@@ -326,6 +329,7 @@ public class GameScreenRenderer extends GameMenuRenderer {
         else if (screen == TITLE) drawTitle(g);
         else if (screen == ROAD) {
             drawRoad(g);
+            if (isBossIntroDialogueActive()) drawBossIntroDialogueOverlay(g);
             drawPauseButton(g);
         }
         else if (screen == INTRO) { drawIntro(g); drawBackButton(g); }
@@ -681,6 +685,10 @@ public class GameScreenRenderer extends GameMenuRenderer {
 
     private void drawMarioIntroDialogueOverlay(Graphics2D g) {
         drawDialogueBox(g, new Line("Thắng", "Trò gì đây... Hình như là Mario!"));
+    }
+
+    private void drawBossIntroDialogueOverlay(Graphics2D g) {
+        drawDialogueBox(g, new Line(BossEnemy.BOSS_NAME, BossEnemy.INTRO_DIALOGUE_TEXT));
     }
     void drawMarioStoryOverlay(Graphics2D g) {
         if (dialogIndex < 0 || dialogIndex >= lines.size()) return;

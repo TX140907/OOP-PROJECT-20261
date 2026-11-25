@@ -18,6 +18,10 @@ import sanbaka.state.GameState;
  * Quản lý vòng đời nạp máu, 3 đòn tấn công luân phiên tuần hoàn, hiệu ứng vụt biến mất/trở lại và vệt mờ motion blur.
  */
 public class BossEnemy {
+    public static final String BOSS_NAME = "Giám Thị Trần Hải Tùng";
+    public static final String BOSS_UPPER_NAME = "GIÁM THỊ TRẦN HẢI TÙNG";
+    public static final String INTRO_DIALOGUE_TEXT = "Chuẩn bị hình phạt cho người muộn thi đi, phải tù ngay";
+
     public static final int STATE_INACTIVE = 0;
     public static final int STATE_WARNING = 1;
     public static final int STATE_ENTERING = 2;
@@ -28,6 +32,7 @@ public class BossEnemy {
     public static final int STATE_TRANSITION_RETURN = 7;
     public static final int STATE_ATTACK3 = 8;
     public static final int STATE_DEFEATED = 9;
+    public static final int STATE_INTRO_DIALOGUE = 10;
 
     public int state = STATE_INACTIVE;
     public double x = 1100.0;
@@ -42,6 +47,8 @@ public class BossEnemy {
     public double chargeProgress = 0.0;
 
     public long stateStartedAt = 0;
+    public long dialogueStartedAt = 0;
+    public int dialogueBeepCharCount = 0;
     public long lastDashPickTime = 0;
     public long lastAimShootTime = 0;
     public long laserAimStart = 0;
@@ -91,6 +98,8 @@ public class BossEnemy {
         this.h = BossConfig.bossHeight > 0 ? BossConfig.bossHeight : 176.0;
         this.state = STATE_WARNING;
         this.stateStartedAt = now;
+        this.dialogueStartedAt = 0;
+        this.dialogueBeepCharCount = 0;
         this.x = 1060.0;
         this.y = 280.0;
         this.targetY = 280.0;
@@ -102,7 +111,22 @@ public class BossEnemy {
 
     public boolean canPlayerFire(long now) {
         return combatActive && state != STATE_INACTIVE && state != STATE_WARNING
-                && state != STATE_ENTERING && state != STATE_CHARGING && state != STATE_DEFEATED;
+                && state != STATE_ENTERING && state != STATE_CHARGING
+                && state != STATE_INTRO_DIALOGUE && state != STATE_DEFEATED;
+    }
+
+    public boolean isIntroDialogueActive() {
+        return state == STATE_INTRO_DIALOGUE;
+    }
+
+    public void finishIntroDialogue(long now) {
+        if (state != STATE_INTRO_DIALOGUE) return;
+        combatActive = true;
+        state = STATE_ATTACK1;
+        stateStartedAt = now;
+        lastDashPickTime = now;
+        lastPlaneSpawn = now;
+        lastAimShootTime = now;
     }
 
     public double getHitboxHalfWidth() {
@@ -187,13 +211,16 @@ public class BossEnemy {
                 currentHp = (int) Math.round(chargeProgress * maxHp);
                 if (chargeProgress >= 1.0) {
                     currentHp = maxHp;
-                    combatActive = true;
-                    state = STATE_ATTACK1;
+                    combatActive = false;
+                    state = STATE_INTRO_DIALOGUE;
                     stateStartedAt = now;
-                    lastDashPickTime = now;
-                    lastPlaneSpawn = now;
-                    lastAimShootTime = now;
+                    dialogueStartedAt = now;
+                    dialogueBeepCharCount = 0;
                 }
+                break;
+            }
+            case STATE_INTRO_DIALOGUE: {
+                // Đợi người chơi nhấn Enter kết thúc lời thoại mới vào đánh Boss
                 break;
             }
             case STATE_ATTACK1: {
@@ -498,7 +525,7 @@ public class BossEnemy {
 
         // Biển cảnh báo Boss xuất hiện
         int cx = 480, cy = 180;
-        String title = "CẢNH BÁO: TRÙM CUỐI ĐANG TIẾP CẬN!";
+        String title = "CẢNH BÁO: " + BOSS_UPPER_NAME + " ĐANG TIẾP CẬN!";
         String sub = "HÃY CHUẨN BỊ CHIẾN ĐẤU!";
         g.setFont(new Font("Dialog", Font.BOLD, 18));
         int tw = g.getFontMetrics().stringWidth(title);
@@ -512,9 +539,9 @@ public class BossEnemy {
     }
 
     private void drawTopHealthBar(Graphics2D g, long now) {
-        int barW = 420;
+        int barW = 318;
         int barH = 14;
-        int bx = 480 - barW / 2;
+        int bx = 469 - barW / 2;
         int by = 34;
 
         // Khung nền
@@ -525,11 +552,11 @@ public class BossEnemy {
         g.drawRoundRect(bx - 12, by - 22, barW + 24, barH + 34, 12, 12);
 
         // Nhãn tên Boss
-        g.setFont(new Font("Dialog", Font.BOLD, 12));
+        g.setFont(new Font("Dialog", Font.BOLD, 11));
         g.setColor(new Color(255, 220, 120));
         String label = (state == STATE_CHARGING)
-                ? "TRÙM CUỐI: GIÁM THỊ TỐI CAO [ĐANG NẠP MÁU...]"
-                : "TRÙM CUỐI: GIÁM THỊ TỐI CAO";
+                ? BOSS_UPPER_NAME + " [NẠP MÁU...]"
+                : BOSS_UPPER_NAME;
         g.drawString(label, bx, by - 7);
 
         // Số HP

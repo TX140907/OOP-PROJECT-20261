@@ -270,6 +270,21 @@ public abstract class GameMenuState extends GameState {
         if (frozenUntil > 0) frozenUntil += d;
         if (iceSlipUntil > 0) iceSlipUntil += d;
         if (lastDogSpawn > 0) lastDogSpawn += d;
+        if (flightStartedAt > 0) flightStartedAt += d;
+        if (lastMissileFiredAt > 0) lastMissileFiredAt += d;
+        if (boss != null) {
+            if (boss.stateStartedAt > 0) boss.stateStartedAt += d;
+            if (boss.dialogueStartedAt > 0) boss.dialogueStartedAt += d;
+            if (boss.lastDashPickTime > 0) boss.lastDashPickTime += d;
+            if (boss.lastAimShootTime > 0) boss.lastAimShootTime += d;
+            if (boss.laserAimStart > 0) boss.laserAimStart += d;
+            if (boss.lastPlaneSpawn > 0) boss.lastPlaneSpawn += d;
+            if (boss.lastBirdSpawn > 0) boss.lastBirdSpawn += d;
+            if (boss.lastBombSpawn > 0) boss.lastBombSpawn += d;
+            if (boss.lastSquadronSpawn > 0) boss.lastSquadronSpawn += d;
+            if (boss.lastSprayShoot > 0) boss.lastSprayShoot += d;
+            if (boss.lastHitAt > 0) boss.lastHitAt += d;
+        }
         lastFrameAt = now;
         } else if (pausedScreen == MARIO) {
             if (marioGame != null) marioGame.resumeFromPause(now);

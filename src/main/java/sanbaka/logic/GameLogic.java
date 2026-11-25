@@ -129,33 +129,13 @@ public class GameLogic extends GameStory {
         if ((screen == DIALOG || screen == ROOM) && isDialogTyping()) {
             if (dialogIndex >= 0 && dialogIndex < lines.size()) {
                 Line currentLine = lines.get(dialogIndex);
-                long elapsedTyping = Math.max(0, now - typedDialogStartedAt);
-                int count = Math.min(currentLine.text.length(), (int) (elapsedTyping * TYPEWRITER_CHARS_PER_SECOND / 1000));
-                if (count > lastBeepCharCount) {
-                    for (int i = Math.max(0, lastBeepCharCount); i < count; i++) {
-                        char ch = currentLine.text.charAt(i);
-                        if (!Character.isWhitespace(ch) && (i % 2 == 0)) {
-                            sanbaka.assets.SoundManager.playDialogueBeep();
-                            break;
-                        }
-                    }
-                    lastBeepCharCount = count;
-                }
+                lastBeepCharCount = updateDialogueBeep(now, typedDialogStartedAt, currentLine.text, lastBeepCharCount);
             }
         } else if (screen == MARIO && marioIntroMode && marioIntroDialogueMode) {
-            String fullText = "Trò gì đây... Hình như là Mario!";
-            long elapsedTyping = Math.max(0, now - marioIntroDialogueStartedAt);
-            int count = Math.min(fullText.length(), (int) (elapsedTyping * TYPEWRITER_CHARS_PER_SECOND / 1000));
-            if (count > lastBeepCharCount) {
-                for (int i = Math.max(0, lastBeepCharCount); i < count; i++) {
-                    char ch = fullText.charAt(i);
-                    if (!Character.isWhitespace(ch) && (i % 2 == 0)) {
-                        sanbaka.assets.SoundManager.playDialogueBeep();
-                        break;
-                    }
-                }
-                lastBeepCharCount = count;
-            }
+            lastBeepCharCount = updateDialogueBeep(now, marioIntroDialogueStartedAt, "Trò gì đây... Hình như là Mario!", lastBeepCharCount);
+        } else if (screen == ROAD && isBossIntroDialogueActive()) {
+            if (boss.dialogueStartedAt == 0) boss.dialogueStartedAt = now;
+            boss.dialogueBeepCharCount = updateDialogueBeep(now, boss.dialogueStartedAt, BossEnemy.INTRO_DIALOGUE_TEXT, boss.dialogueBeepCharCount);
         }
         if (screen == AIR && now - airSceneStarted >= 3500) {
             screen = DIALOG;
@@ -1324,9 +1304,32 @@ public class GameLogic extends GameStory {
         }
     }
 
+    private int updateDialogueBeep(long now, long startedAt, String fullText, int prevCount) {
+        long elapsedTyping = Math.max(0, now - startedAt);
+        int count = Math.min(fullText.length(), (int) (elapsedTyping * TYPEWRITER_CHARS_PER_SECOND / 1000));
+        if (count > prevCount) {
+            for (int i = Math.max(0, prevCount); i < count; i++) {
+                char ch = fullText.charAt(i);
+                if (!Character.isWhitespace(ch) && (i % 2 == 0)) {
+                    sanbaka.assets.SoundManager.playDialogueBeep();
+                    break;
+                }
+            }
+            return count;
+        }
+        return prevCount;
+    }
+
     public void updateFlight(long now) {
         double dt = Math.min((now - lastFrameAt) / 1000.0, 0.05);
         lastFrameAt = now;
+        if (isBossIntroDialogueActive()) {
+            left = right = up = down = keyE = false;
+            heliTilt += (0 - heliTilt) * Math.min(1.0, dt * 8);
+            skyScroll += 180 * dt;
+            boss.update(dt, now, heliX, heliY, this);
+            return;
+        }
         boolean isHitSlowed = (now < hitSlowUntil);
         currentProgressFactor = isHitSlowed ? hitSlowFactor : 1.0;
 
@@ -1648,6 +1651,17 @@ public class GameLogic extends GameStory {
             return;
         }
         if (screen == ROAD) {
+            if (isBossIntroDialogueActive()) {
+                if (key == KeyEvent.VK_ENTER || key == KeyEvent.VK_SPACE) {
+                    if (revealBossIntroDialogueImmediatelyIfTyping()) {
+                        repaint();
+                        return;
+                    }
+                    boss.finishIntroDialogue(System.currentTimeMillis());
+                    repaint();
+                }
+                return;
+            }
             if (key == KeyEvent.VK_LEFT || key == KeyEvent.VK_A) left = true;
             if (key == KeyEvent.VK_RIGHT || key == KeyEvent.VK_D) right = true;
             if (key == KeyEvent.VK_UP || key == KeyEvent.VK_W) up = true;
