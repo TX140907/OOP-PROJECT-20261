@@ -16,6 +16,11 @@ public class PlayerBike extends PlayerVehicle {
         new Color(235, 235, 235, 30)
     };
 
+    public PlayerBike() {
+        this.w = 24;
+        this.h = 54;
+    }
+
     @Override
     public void draw(Graphics2D g, GameVisuals scene) {
         int px = (int) Math.round(x), py = (int) Math.round(y);
@@ -29,9 +34,9 @@ public class PlayerBike extends PlayerVehicle {
         // khói xả
         for (int i = 0; i < 3; i++) {
             g.setColor(EXHAUST_COLORS[i]);
-            int s = 8 + i * 5;
-            int wob = (int) (Math.sin(now / 130.0 + i * 1.7) * 3);
-            g.fillOval(px - s / 2 + wob, py + 48 + i * 9, s, s);
+            int s = 7 + i * 4;
+            int wob = (int) (Math.sin(now / 130.0 + i * 1.7) * 2.5);
+            g.fillOval(px - s / 2 + wob, py + 39 + i * 8, s, s);
         }
         BufferedImage art = null;
         if (invulnerable > now) {
@@ -51,7 +56,7 @@ public class PlayerBike extends PlayerVehicle {
             }
         }
         if (art != null) {
-            g.drawImage(art, px - 30, py - 50, 60, 100, null);
+            g.drawImage(art, px - 24, py - 40, 48, 80, null);
             g.setTransform(oldTransform);
             g.setComposite(oldComposite);
             g.setStroke(oldStroke);
@@ -79,7 +84,7 @@ public class PlayerBike extends PlayerVehicle {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         int px = 36, py = 48;
         g.translate(px, py);
-        g.scale(0.6, 0.6);
+        g.scale(0.48, 0.48);
         g.translate(-px, -py);
 
         Color tire = new Color(32, 34, 42);

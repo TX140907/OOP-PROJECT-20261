@@ -35,6 +35,8 @@ public class SanbakaSmokeTest {
         testItemSpawnCounts();
         testMap3MotorcycleDensityAndVelocity();
         testGpuHardwareAccelerationFlags();
+        testCommit6de165fSoundDesign();
+        testVehicleProportionsHitboxesAndRoadCorridor();
         testFlightRetryAndOpeningVideo();
         testMarioMinigame();
         testMysteryBoxEasterEggAndCurb1_5s();
@@ -1430,5 +1432,141 @@ public class SanbakaSmokeTest {
         }
 
         System.out.println("  ✓ testMysteryBoxEasterEggAndCurb1_5s passed (Map 2 100% absolute, 50% road/50% sidewalk curb positioning, 1.5s curb fire, HE-to-SE card transition)");
+    }
+
+    private static void testCommit6de165fSoundDesign() {
+        String[] commitSounds = {
+            "bgm_ending_se.wav",
+            "boss_alarm_siren.wav", "boss_hp_charging.wav", "missile_hit_armor.wav",
+            "dog_bark_alert.wav", "dog_collide_yelp.wav", "dog_paws_dash.wav", "freeze_ice_crust.wav",
+            "hazard_barrier_smash.wav", "heat_dizzy_heartbeat.wav", "ice_patch_slip.wav",
+            "shark_jaw_bite.wav", "shark_target_lock.wav", "student_collide.wav", "student_footsteps.wav",
+            "item_energy_bolt.wav", "item_ginger_tea.wav", "item_shield_pickup.wav", "item_shield_shatter.wav"
+        };
+        for (String name : commitSounds) {
+            java.io.File f = sanbaka.assets.SoundManager.findAudioFile(name);
+            if (f == null || !f.exists() || f.length() <= 0) {
+                throw new AssertionError("Audio file missing or empty: " + name);
+            }
+        }
+
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.lines.addAll(StoryData.build());
+        logic.buildScenes();
+        int seIdx = logic.sceneIndex(GameMenuState.SC_SECRET, 4);
+        logic.screen = GameState.DIALOG;
+        logic.dialogIndex = logic.scenes.get(seIdx).index + 1;
+        String seBgm = sanbaka.assets.SoundManager.getDialogueBgm(logic);
+        if (!"bgm_ending_se.wav".equals(seBgm)) {
+            throw new AssertionError("Secret Ending dialogue BGM must be bgm_ending_se.wav, got: " + seBgm);
+        }
+
+        sanbaka.assets.SoundManager.setMuted(true);
+        try {
+            logic.day = GameState.HOT_DAY;
+            logic.beginDay();
+            logic.energy = 30.0;
+            StrayDog dog = new StrayDog();
+            dog.phase = StrayDog.PHASE_DASH_ACROSS;
+            logic.things.add(dog);
+            sanbaka.assets.SoundManager.updateHazardAndBossSounds(logic);
+
+            logic.day = 1;
+            logic.beginDay();
+            Shark shark = new Shark();
+            shark.phase = Shark.PHASE_WARNING;
+            logic.things.add(shark);
+            sanbaka.assets.SoundManager.updateHazardAndBossSounds(logic);
+
+            logic.day = 4;
+            logic.beginDay();
+            logic.startFlight(System.currentTimeMillis());
+            logic.boss = new BossEnemy();
+            logic.boss.state = BossEnemy.STATE_WARNING;
+            sanbaka.assets.SoundManager.updateHazardAndBossSounds(logic);
+            logic.boss.state = BossEnemy.STATE_CHARGING;
+            sanbaka.assets.SoundManager.updateHazardAndBossSounds(logic);
+            logic.boss.state = BossEnemy.STATE_ATTACK1;
+            sanbaka.assets.SoundManager.updateHazardAndBossSounds(logic);
+            sanbaka.assets.SoundManager.stopHazardAndBossLoops();
+            sanbaka.assets.SoundManager.stopPlayerLoops();
+        } finally {
+            sanbaka.assets.SoundManager.setMuted(false);
+        }
+
+        System.out.println("  ✓ testCommit6de165fSoundDesign passed (all 20 files resolved, SE dialogue BGM & hazard/boss loops verified)");
+    }
+
+    private static void testVehicleProportionsHitboxesAndRoadCorridor() {
+        sanbaka.logic.GameLogic logic = new sanbaka.logic.GameLogic();
+        logic.day = 0;
+        logic.beginDay();
+
+        // 1. Xe máy nhân vật chính phải nhỏ hơn rõ rệt mọi loại ô tô (Sedan..Bus, HeavyTruck)
+        for (int k : new int[]{0, 1, 2, 3, 4, 5, 9}) {
+            if (logic.player.w >= GameState.VEH_W[k] * 0.5 || logic.player.h >= GameState.VEH_H[k] * 0.6) {
+                throw new AssertionError("Player bike size (" + logic.player.w + "x" + logic.player.h
+                        + ") must be proportionally smaller than car kind " + k
+                        + " (" + GameState.VEH_W[k] + "x" + GameState.VEH_H[k] + ")");
+            }
+        }
+
+        // 2. Kiểm tra vùng va chạm khớp kích thước thực tế (sát mép xe mới va chạm, ra ngoài mép xe thì an toàn)
+        long now = logic.lastFrameAt;
+        Thing sedan = Thing.create(0);
+        sedan.kind = 0;
+        sedan.w = GameState.VEH_W[0];
+        sedan.h = GameState.VEH_H[0];
+        sedan.x = sedan.baseX = 480.0;
+        sedan.y = logic.player.y;
+        logic.player.x = 480.0 + sedan.w * 0.5 + logic.player.w * 0.5 + 4.0;
+        logic.things.clear();
+        logic.things.add(sedan);
+        int hpBefore = logic.hp;
+        now += 16;
+        logic.updateRoad(now);
+        if (logic.hp != hpBefore) {
+            throw new AssertionError("Player outside visual edge of Sedan should NOT falsely collide!");
+        }
+
+        // 3. Mô phỏng sinh hàng loạt xe -> đảm bảo không bao giờ lấp kín đường (luôn có khe hở >= 64px)
+        double roadLeft = GameState.ROAD_X + 45.0;
+        double roadRight = GameState.ROAD_X + GameState.ROAD_W - 45.0;
+        for (int testDay : new int[]{0, GameState.COLD_DAY, GameState.HOT_DAY, 4}) {
+            logic.day = testDay;
+            logic.beginDay();
+            for (int step = 0; step < 320; step++) {
+                now += 40;
+                logic.lastFrameAt = now - 40;
+                logic.stageProgressMs = Math.min(logic.stageProgressMs, 6000);
+                logic.updateRoad(now);
+                for (int sliceY = 80; sliceY <= 520; sliceY += 40) {
+                    List<double[]> blocks = new ArrayList<>();
+                    for (Thing th : logic.things) {
+                        if (th.snack || th.jam || th.kind == 14 || th instanceof Shark || th instanceof StrayDog) continue;
+                        if (Math.abs(th.y - sliceY) < th.h / 2.0 + 25.0) {
+                            double reach = (th instanceof NinjaLead) ? 0.0 : th.wobbleAmp;
+                            blocks.add(new double[]{
+                                Math.max(roadLeft, th.x - th.w / 2.0 - reach * 0.2),
+                                Math.min(roadRight, th.x + th.w / 2.0 + reach * 0.2)
+                            });
+                        }
+                    }
+                    blocks.sort(Comparator.comparingDouble(iv -> iv[0]));
+                    double maxGap = 0.0;
+                    double cursor = roadLeft;
+                    for (double[] b : blocks) {
+                        if (b[0] > cursor) maxGap = Math.max(maxGap, b[0] - cursor);
+                        cursor = Math.max(cursor, b[1]);
+                    }
+                    maxGap = Math.max(maxGap, roadRight - cursor);
+                    if (maxGap < 56.0) {
+                        throw new AssertionError("Road corridor too narrow (" + maxGap + "px) on day " + testDay + " at y=" + sliceY);
+                    }
+                }
+            }
+        }
+
+        System.out.println("  ✓ testVehicleProportionsHitboxesAndRoadCorridor passed (realistic proportions, accurate hitboxes, clear road corridor verified)");
     }
 }

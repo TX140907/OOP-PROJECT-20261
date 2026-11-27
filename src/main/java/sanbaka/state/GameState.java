@@ -243,8 +243,8 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
         new Color(148, 205, 240), new Color(94, 119, 151), new Color(186, 202, 218), new Color(255, 194, 117), new Color(175, 202, 226)
     };
 
-    public static final double[] VEH_W = {50, 48, 50, 54, 58, 60, 26, 30, 40, 136, 68, 76, 28, 68, 88, 48, 34, 36, 32, 36};
-    public static final double[] VEH_H = {86, 76, 86, 100, 132, 168, 60, 40, 84, 172, 36, 48, 62, 68, 54, 30, 34, 36, 38, 36};
+    public static final double[] VEH_W = {66, 62, 66, 72, 76, 80, 26, 30, 40, 136, 68, 76, 28, 68, 88, 48, 34, 36, 32, 36};
+    public static final double[] VEH_H = {114, 98, 114, 133, 173, 224, 60, 40, 84, 172, 36, 48, 62, 68, 54, 30, 34, 36, 38, 36};
     public static final Color[] CAR_COLORS = {
         new Color(219, 93, 96), new Color(81, 146, 185), new Color(240, 242, 246), new Color(176, 184, 196),
         new Color(240, 200, 90), new Color(94, 170, 128), new Color(150, 110, 180), new Color(58, 62, 76)

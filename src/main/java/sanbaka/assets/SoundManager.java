@@ -13,6 +13,10 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.BooleanControl;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.FloatControl;
+import sanbaka.model.BossEnemy;
+import sanbaka.model.Shark;
+import sanbaka.model.StrayDog;
+import sanbaka.model.Thing;
 import sanbaka.state.GameMenuState;
 import sanbaka.state.GameState;
 
@@ -62,6 +66,12 @@ public final class SoundManager {
     private static volatile Clip helicopterClip = null;
     private static volatile boolean isHelicopterPaused = false;
 
+    // Hiệu ứng tiếng Boss nạp máu Màn 5 (2.6s rising synth + Keng!)
+    private static volatile float bossChargeVolumeFactor = 0.65f;
+    private static volatile Clip bossChargeClip = null;
+    private static volatile boolean isBossChargePaused = false;
+    private static volatile boolean prevBossCharging = false;
+
     private static final Map<String, Clip> SFX_CACHE = new ConcurrentHashMap<>();
     private static final Map<String, Long> SFX_LAST_PLAYED = new ConcurrentHashMap<>();
 
@@ -86,9 +96,22 @@ public final class SoundManager {
     private static final LoopChannel CH_BOAT_CURB_MUD = new LoopChannel("boat_curb_mud_drag.wav", 0.42f);
     private static final LoopChannel CH_CURB_SPARKS = new LoopChannel("curb_scrape_sparks.wav", 0.40f);
     private static final LoopChannel CH_CURB_FIRE_BURN = new LoopChannel("curb_fire_burn_loop.wav", 0.45f);
+    private static final LoopChannel CH_BOSS_ALARM = new LoopChannel("boss_alarm_siren.wav", 0.55f);
+    private static final LoopChannel CH_SHARK_TARGET_LOCK = new LoopChannel("shark_target_lock.wav", 0.55f);
+    private static final LoopChannel CH_DOG_PAWS_DASH = new LoopChannel("dog_paws_dash.wav", 0.45f);
+    private static final LoopChannel CH_HEAT_DIZZY_HEARTBEAT = new LoopChannel("heat_dizzy_heartbeat.wav", 0.55f);
+
     private static final LoopChannel[] PLAYER_LOOPS = {
         CH_BIKE_ENGINE, CH_BIKE_THROTTLE, CH_BOAT_MOTOR,
         CH_BOAT_CURB_MUD, CH_CURB_SPARKS, CH_CURB_FIRE_BURN
+    };
+    private static final LoopChannel[] HAZARD_BOSS_LOOPS = {
+        CH_BOSS_ALARM, CH_SHARK_TARGET_LOCK, CH_DOG_PAWS_DASH, CH_HEAT_DIZZY_HEARTBEAT
+    };
+    private static final LoopChannel[] ALL_LOOPS = {
+        CH_BIKE_ENGINE, CH_BIKE_THROTTLE, CH_BOAT_MOTOR,
+        CH_BOAT_CURB_MUD, CH_CURB_SPARKS, CH_CURB_FIRE_BURN,
+        CH_BOSS_ALARM, CH_SHARK_TARGET_LOCK, CH_DOG_PAWS_DASH, CH_HEAT_DIZZY_HEARTBEAT
     };
 
     private static volatile boolean prevCurbOnFire = false;
@@ -267,7 +290,11 @@ public final class SoundManager {
                 helicopterClip.stop();
                 isHelicopterPaused = true;
             }
-            for (LoopChannel ch : PLAYER_LOOPS) {
+            if (bossChargeClip != null && bossChargeClip.isRunning()) {
+                bossChargeClip.stop();
+                isBossChargePaused = true;
+            }
+            for (LoopChannel ch : ALL_LOOPS) {
                 if (ch.clip != null && ch.clip.isRunning()) {
                     ch.clip.stop();
                     ch.paused = true;
@@ -307,7 +334,11 @@ public final class SoundManager {
                 helicopterClip.loop(Clip.LOOP_CONTINUOUSLY);
                 isHelicopterPaused = false;
             }
-            for (LoopChannel ch : PLAYER_LOOPS) {
+            if (isBossChargePaused && bossChargeClip != null && !muted) {
+                bossChargeClip.start();
+                isBossChargePaused = false;
+            }
+            for (LoopChannel ch : ALL_LOOPS) {
                 if (ch.paused && ch.clip != null && ch.desired && !muted) {
                     applyClipVolume(ch.clip, volume * ch.volumeFactor);
                     ch.clip.loop(Clip.LOOP_CONTINUOUSLY);
@@ -375,7 +406,14 @@ public final class SoundManager {
                     resumeBgm();
                 }
             }
-            for (LoopChannel ch : PLAYER_LOOPS) {
+            if (bossChargeClip != null) {
+                if (muted && bossChargeClip.isRunning()) {
+                    bossChargeClip.stop();
+                } else if (!muted && isBossChargePaused) {
+                    resumeBgm();
+                }
+            }
+            for (LoopChannel ch : ALL_LOOPS) {
                 if (ch.clip != null) {
                     if (muted && ch.clip.isRunning()) {
                         ch.clip.stop();
@@ -441,7 +479,8 @@ public final class SoundManager {
         applyClipVolume(windClip, volume * windVolumeFactor);
         applyClipVolume(streetClip, volume * streetVolumeFactor);
         applyClipVolume(helicopterClip, volume * helicopterVolumeFactor);
-        for (LoopChannel ch : PLAYER_LOOPS) {
+        applyClipVolume(bossChargeClip, volume * bossChargeVolumeFactor);
+        for (LoopChannel ch : ALL_LOOPS) {
             if (ch.clip != null && ch.clip.isOpen()) {
                 applyClipVolume(ch.clip, volume * ch.volumeFactor);
             }
@@ -587,6 +626,48 @@ public final class SoundManager {
     }
 
     /**
+     * Phát âm thanh Boss nạp máu Màn 5 (boss_hp_charging.wav).
+     */
+    public static void playBossChargeSound() {
+        if (muted) return;
+        EXECUTOR.execute(() -> {
+            try {
+                synchronized (LOCK) {
+                    if (bossChargeClip == null || !bossChargeClip.isOpen()) {
+                        File f = findAudioFile("boss_hp_charging.wav");
+                        if (f != null && f.exists()) {
+                            bossChargeClip = openAudioClip(f, true);
+                        }
+                    }
+                    if (bossChargeClip != null && bossChargeClip.isOpen()) {
+                        isBossChargePaused = false;
+                        applyClipVolume(bossChargeClip, volume * bossChargeVolumeFactor);
+                        bossChargeClip.stop();
+                        bossChargeClip.setFramePosition(0);
+                        bossChargeClip.start();
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("[SoundManager] Không thể phát tiếng Boss nạp máu: " + e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Dừng âm thanh Boss nạp máu.
+     */
+    public static void stopBossChargeSound() {
+        synchronized (LOCK) {
+            isBossChargePaused = false;
+            if (bossChargeClip != null && bossChargeClip.isOpen()) {
+                try {
+                    bossChargeClip.stop();
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    /**
      * Dừng tiếng gió mùa Đông Bắc.
      */
     public static void stopWindSound() {
@@ -630,6 +711,10 @@ public final class SoundManager {
     private static final Map<String, String> DIALOGUE_BGM_MAP = new ConcurrentHashMap<>();
     // Nhạc nền mặc định cho mọi đoạn hội thoại (tạm thời áp dụng toàn bộ file này):
     private static volatile String defaultDialogueBgm = "bgm_room_dialog.wav";
+
+    static {
+        DIALOGUE_BGM_MAP.put("SECRET ENDING", "bgm_ending_se.wav");
+    }
 
     /**
      * Gán nhạc nền riêng cho một phân đoạn hội thoại cụ thể.
@@ -779,6 +864,114 @@ public final class SoundManager {
         playSfx(sfxName, volumeFactor);
     }
 
+    private static Clip openAudioClip(File file, boolean trimLeadingSilence) throws Exception {
+        try (AudioInputStream ais = AudioSystem.getAudioInputStream(file)) {
+            AudioFormat fmt = ais.getFormat();
+            if (trimLeadingSilence
+                    && fmt.getEncoding() == AudioFormat.Encoding.PCM_SIGNED
+                    && fmt.getSampleSizeInBits() == 16
+                    && !fmt.isBigEndian()
+                    && fmt.getFrameSize() >= 2) {
+                byte[] pcm = ais.readAllBytes();
+                int fs = fmt.getFrameSize();
+                int totalFrames = pcm.length / fs;
+                int channels = fmt.getChannels();
+                int firstSoundFrame = -1;
+                for (int i = 0; i < totalFrames; i++) {
+                    int base = i * fs;
+                    for (int ch = 0; ch < channels; ch++) {
+                        int off = base + ch * 2;
+                        int sample = (short) ((pcm[off] & 0xFF) | (pcm[off + 1] << 8));
+                        if (Math.abs(sample) > 250) {
+                            firstSoundFrame = i;
+                            break;
+                        }
+                    }
+                    if (firstSoundFrame >= 0) break;
+                }
+                int minTrimFrames = (int) (fmt.getFrameRate() * 0.08);
+                int startFrame = 0;
+                if (firstSoundFrame > minTrimFrames) {
+                    int leadMargin = (int) (fmt.getFrameRate() * 0.01);
+                    startFrame = Math.max(0, firstSoundFrame - leadMargin);
+                }
+                int startByte = startFrame * fs;
+                Clip c = AudioSystem.getClip();
+                c.open(fmt, pcm, startByte, pcm.length - startByte);
+                return c;
+            }
+            Clip c = AudioSystem.getClip();
+            c.open(ais);
+            return c;
+        }
+    }
+
+    private static Clip getOrLoadSfxClip(String sfxName) {
+        return SFX_CACHE.computeIfAbsent(sfxName, name -> {
+            File file = findAudioFile(name);
+            if (file == null || !file.exists()) return null;
+            try {
+                return openAudioClip(file, true);
+            } catch (Exception e) {
+                return null;
+            }
+        });
+    }
+
+    private static void preloadLoopChannel(LoopChannel ch) {
+        synchronized (LOCK) {
+            if ((ch.clip != null && ch.clip.isOpen()) || ch.loading) return;
+            ch.loading = true;
+        }
+        EXECUTOR.execute(() -> {
+            try {
+                File f = findAudioFile(ch.fileName);
+                if (f != null && f.exists()) {
+                    Clip newClip = openAudioClip(f, true);
+                    synchronized (LOCK) {
+                        if (ch.clip != null) {
+                            try {
+                                ch.clip.stop();
+                                ch.clip.close();
+                            } catch (Exception ignored) {}
+                        }
+                        ch.clip = newClip;
+                        if (ch.desired && !muted && !ch.paused) {
+                            applyClipVolume(newClip, volume * ch.volumeFactor);
+                            newClip.setFramePosition(0);
+                            newClip.loop(Clip.LOOP_CONTINUOUSLY);
+                        }
+                    }
+                }
+            } catch (Exception ignored) {
+            } finally {
+                ch.loading = false;
+            }
+        });
+    }
+
+    /**
+     * Nạp sẵn vào RAM các âm thanh cảnh báo & hazard quan trọng của màn chơi để phát tức thì không bị trễ.
+     */
+    public static void preloadStageAudio(int day) {
+        if (day == 1) {
+            preloadLoopChannel(CH_BOAT_MOTOR);
+            preloadLoopChannel(CH_SHARK_TARGET_LOCK);
+            EXECUTOR.execute(() -> getOrLoadSfxClip("shark_jaw_bite.wav"));
+        } else if (day == GameState.COLD_DAY) {
+            EXECUTOR.execute(() -> {
+                getOrLoadSfxClip("freeze_ice_crust.wav");
+                getOrLoadSfxClip("ice_patch_slip.wav");
+            });
+        } else if (day == GameState.HOT_DAY) {
+            preloadLoopChannel(CH_DOG_PAWS_DASH);
+            preloadLoopChannel(CH_HEAT_DIZZY_HEARTBEAT);
+            EXECUTOR.execute(() -> getOrLoadSfxClip("dog_bark_alert.wav"));
+        } else if (day == 4) {
+            preloadLoopChannel(CH_BOSS_ALARM);
+        }
+    }
+
     /**
      * Phát hiệu ứng âm thanh ngắn (SFX) một lần với hệ số âm lượng riêng (0.0f - 1.0f).
      */
@@ -787,19 +980,7 @@ public final class SoundManager {
         float clampedFactor = Math.max(0.0f, Math.min(1.0f, volumeFactor));
         EXECUTOR.execute(() -> {
             try {
-                Clip clip = SFX_CACHE.computeIfAbsent(sfxName, name -> {
-                    File file = findAudioFile(name);
-                    if (file == null || !file.exists()) return null;
-                    try {
-                        AudioInputStream ais = AudioSystem.getAudioInputStream(file);
-                        Clip c = AudioSystem.getClip();
-                        c.open(ais);
-                        ais.close();
-                        return c;
-                    } catch (Exception e) {
-                        return null;
-                    }
-                });
+                Clip clip = getOrLoadSfxClip(sfxName);
                 if (clip != null) {
                     applyClipVolume(clip, volume * clampedFactor);
                     clip.stop();
@@ -975,6 +1156,9 @@ public final class SoundManager {
 
         // Cập nhật âm thanh phương tiện & vật lý mặt đường / lề đường
         updatePlayerSounds(state);
+
+        // Cập nhật âm thanh cảnh báo Boss & chướng ngại vật / trạng thái nguy hiểm
+        updateHazardAndBossSounds(state);
     }
 
     /**
@@ -1154,11 +1338,7 @@ public final class SoundManager {
             try {
                 File f = findAudioFile(ch.fileName);
                 if (f != null && f.exists()) {
-                    Clip newClip;
-                    try (AudioInputStream ais = AudioSystem.getAudioInputStream(f)) {
-                        newClip = AudioSystem.getClip();
-                        newClip.open(ais);
-                    }
+                    Clip newClip = openAudioClip(f, true);
                     synchronized (LOCK) {
                         if (ch.clip != null) {
                             try {
@@ -1180,6 +1360,88 @@ public final class SoundManager {
                 ch.loading = false;
             }
         });
+    }
+
+    /**
+     * Dừng toàn bộ âm thanh vòng lặp và trạng thái của Boss / chướng ngại vật.
+     */
+    public static void stopHazardAndBossLoops() {
+        synchronized (LOCK) {
+            for (LoopChannel ch : HAZARD_BOSS_LOOPS) {
+                ch.desired = false;
+                ch.paused = false;
+                if (ch.clip != null && ch.clip.isOpen()) {
+                    try {
+                        ch.clip.stop();
+                    } catch (Exception ignored) {}
+                }
+            }
+        }
+        stopBossChargeSound();
+        prevBossCharging = false;
+    }
+
+    /**
+     * Đồng bộ âm thanh trạng thái Boss (cảnh báo, nạp máu) và các chướng ngại vật/hiệu ứng có thời lượng kéo dài.
+     */
+    public static void updateHazardAndBossSounds(GameState state) {
+        if (state == null) {
+            stopHazardAndBossLoops();
+            return;
+        }
+        if (state.screen == GameMenuState.PAUSE) {
+            return;
+        }
+        if (state.screen != GameState.ROAD) {
+            stopHazardAndBossLoops();
+            return;
+        }
+
+        if (state.flightMode) {
+            setLoopChannel(CH_SHARK_TARGET_LOCK, false, 0.55f);
+            setLoopChannel(CH_DOG_PAWS_DASH, false, 0.45f);
+            setLoopChannel(CH_HEAT_DIZZY_HEARTBEAT, false, 0.55f);
+
+            boolean bossWarning = state.boss != null && state.boss.state == BossEnemy.STATE_WARNING;
+            boolean bossCharging = state.boss != null && state.boss.state == BossEnemy.STATE_CHARGING;
+            setLoopChannel(CH_BOSS_ALARM, bossWarning, 0.55f);
+
+            if (!prevBossCharging && bossCharging) {
+                playBossChargeSound();
+            }
+            if (state.boss == null || state.boss.state == BossEnemy.STATE_INACTIVE || state.boss.state == BossEnemy.STATE_DEFEATED) {
+                stopBossChargeSound();
+            }
+            prevBossCharging = bossCharging;
+            return;
+        }
+
+        setLoopChannel(CH_BOSS_ALARM, false, 0.55f);
+        stopBossChargeSound();
+        prevBossCharging = false;
+
+        boolean sharkWarning = false;
+        boolean dogDashing = false;
+        if (state.things != null) {
+            for (int i = 0; i < state.things.size(); i++) {
+                Thing t = state.things.get(i);
+                if (state.day == 1 && t instanceof Shark shark) {
+                    if (!shark.done && shark.phase == Shark.PHASE_WARNING) {
+                        sharkWarning = true;
+                    }
+                } else if (state.day == GameState.HOT_DAY && t instanceof StrayDog dog) {
+                    if (!dog.done && dog.phase == StrayDog.PHASE_DASH_ACROSS) {
+                        dogDashing = true;
+                    }
+                }
+                if (sharkWarning || dogDashing) break;
+            }
+        }
+        boolean heatDizzy = state.day == GameState.HOT_DAY && state.energy < 50.0;
+
+        setLoopChannel(CH_SHARK_TARGET_LOCK, sharkWarning, 0.55f);
+        setLoopChannel(CH_DOG_PAWS_DASH, dogDashing, 0.45f);
+        setLoopChannel(CH_HEAT_DIZZY_HEARTBEAT, heatDizzy, 0.55f);
     }
 
     /**

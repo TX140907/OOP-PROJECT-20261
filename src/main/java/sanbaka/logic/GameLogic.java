@@ -16,6 +16,8 @@ public class GameLogic extends GameStory {
         sanbaka.assets.SoundManager.stopStreetSound();
         sanbaka.assets.SoundManager.stopHelicopterSound();
         sanbaka.assets.SoundManager.stopPlayerLoops();
+        sanbaka.assets.SoundManager.stopHazardAndBossLoops();
+        sanbaka.assets.SoundManager.preloadStageAudio(day);
         screen = ROAD;
         stageStarted = System.currentTimeMillis();
         lastSpawn = stageStarted;
@@ -280,6 +282,7 @@ public class GameLogic extends GameStory {
                     if (rng.nextInt(100) < 45) {
                         frozenUntil = now + 2700;
                         floatingTextManager.spawn(player.x + 28, player.y - 12, "freeze", false);
+                        sanbaka.assets.SoundManager.playSfx("freeze_ice_crust.wav", 0.70f);
                     }
                 } else {
                     floatingTextManager.spawn(player.x + 28, player.y - 12, "ginger_tea", true);
@@ -426,8 +429,10 @@ public class GameLogic extends GameStory {
 
         boolean canSpawn = jamDay ? t < jamT0 - 3.0 : dur - t > 5.5;
         long spawnInterval = day == 1
-                ? (long) ((820 - day * 35) * 100.0 / 162.0)
-                : (long) ((820 - day * 35) * 100.0 / 148.0);
+                ? (long) ((820 - day * 35) * 100.0 / 202.0)
+                : day == COLD_DAY
+                ? (long) ((820 - day * 35) * 100.0 * 167.0 / (148.0 * 216.0))
+                : (long) ((820 - day * 35) * 100.0 / 178.0);
         if (day == HOT_DAY) spawnInterval = (long) (spawnInterval / 1.25);
         if (canSpawn && now - lastSpawn > spawnInterval) {
             lastSpawn = now;
@@ -508,7 +513,11 @@ public class GameLogic extends GameStory {
                 } else if (shark.readyToLockWarning(now)) {
                     lockSharkWarningTarget(shark, scroll, now);
                 }
+                int prevSharkPhase = shark.phase;
                 shark.updateShark(dt, now);
+                if (prevSharkPhase != Shark.PHASE_CHOMP && shark.phase == Shark.PHASE_CHOMP) {
+                    sanbaka.assets.SoundManager.playSfxDebounced("shark_jaw_bite.wav", 0.72f, 200L);
+                }
             } else if (o instanceof StrayDog dog) {
                 dog.updateDog(dt, scroll, now, ROAD_X, ROAD_W, things, player.x, player.y, player.w, player.h);
             } else {
@@ -563,11 +572,13 @@ public class GameLogic extends GameStory {
             }
             if (o instanceof StrayDog dog) {
                 if (dog.phase == StrayDog.PHASE_DASH_ACROSS && !dog.hit
-                        && Math.abs(dog.x - player.x) < dog.w / 2 + 12
-                        && Math.abs(dog.y - player.y) < dog.h / 2 + 12) {
+                        && Math.abs(dog.x - player.x) < dog.w * 0.46 + player.w * 0.48
+                        && Math.abs(dog.y - player.y) < dog.h * 0.45 + player.h * 0.36) {
                     dog.hit = true;
                     if (player.invulnerable <= now) {
-                        applyCollisionHit(20, dog.dir, 14, 18, 165, 0.42, 1200, 750, now, "dog_bark");
+                        if (applyCollisionHit(20, dog.dir, 14, 18, 165, 0.42, 1200, 750, now, "dog_bark")) {
+                            sanbaka.assets.SoundManager.playSfx("dog_collide_yelp.wav", 0.70f);
+                        }
                     }
                 }
                 if (dog.done || dog.y - dog.h / 2 > H + 30) iterator.remove();
@@ -587,8 +598,24 @@ public class GameLogic extends GameStory {
                         sanbaka.assets.SoundManager.playSfxDebounced("horn_car_beep.wav", 0.50f, 900L);
                     }
                 }
-                double hw = (o.kind == 19) ? 36.0 : (o.snack ? 22 : ((o.kind == 11 || o.kind == 14) ? o.w / 2 : o.w / 2 + 9));
-                double hh = (o.kind == 19) ? 36.0 : (o.snack ? 28 : ((o.kind == 11 || o.kind == 14) ? o.h / 2 : o.h / 2 + 6));
+                double pHalfW = player.w * 0.48;
+                double pHalfH = player.h * 0.42;
+                double hw;
+                double hh;
+                if (o.kind == 19) {
+                    hw = 36.0;
+                    hh = 36.0;
+                } else if (o.snack) {
+                    hw = o.w * 0.5 + Math.max(8.0, pHalfW * 0.8);
+                    hh = o.h * 0.5 + Math.max(10.0, pHalfH * 0.65);
+                } else if (o.kind == 11 || o.kind == 14) {
+                    hw = o.w * 0.46 + 4.0;
+                    hh = o.h * 0.44 + 6.0;
+                } else {
+                    double oWidthFactor = (o.kind <= 5) ? 0.45 : (o.kind == 6 || o.kind == 12) ? 0.44 : 0.46;
+                    hw = o.w * oWidthFactor + pHalfW;
+                    hh = o.h * 0.46 + pHalfH;
+                }
                 if (Math.abs(o.x - player.x) < hw && Math.abs(o.y - player.y) < hh) {
                     if (o.snack) {
                         if (o.kind == 16) {
@@ -598,6 +625,7 @@ public class GameLogic extends GameStory {
                             hp = Math.min(flightMode ? FLIGHT_START_HP : 100, hp + 15);
                             score += 60;
                             floatingTextManager.spawn(player.x + 28, player.y - 12, "ginger_tea", true);
+                            sanbaka.assets.SoundManager.playSfx("item_ginger_tea.wav", 0.70f);
                             iterator.remove();
                             continue;
                         } else if (o.kind == 17) {
@@ -605,6 +633,7 @@ public class GameLogic extends GameStory {
                             shieldActive = true;
                             score += 60;
                             floatingTextManager.spawn(player.x + 28, player.y - 12, "shield_pickup", true);
+                            sanbaka.assets.SoundManager.playSfx("item_shield_pickup.wav", 0.70f);
                             iterator.remove();
                             continue;
                         } else if (o.kind == 19) {
@@ -619,6 +648,7 @@ public class GameLogic extends GameStory {
                             hp = Math.min(flightMode ? FLIGHT_START_HP : 100, hp + BOLT_HP);
                             score += 50;
                             floatingTextManager.spawn(player.x + 28, player.y - 12, "energy_bolt", true);
+                            sanbaka.assets.SoundManager.playSfx("item_energy_bolt.wav", 0.65f);
                             iterator.remove();
                             continue;
                         }
@@ -634,6 +664,7 @@ public class GameLogic extends GameStory {
                                 playerVx = (rng.nextBoolean() ? 1 : -1) * PLAYER_SPEED * 0.90;
                             }
                             floatingTextManager.spawnDebounced(player.x + 28, player.y - 12, "ice_slip", false, 800);
+                            sanbaka.assets.SoundManager.playSfxDebounced("ice_patch_slip.wav", 0.65f, 400L);
                             continue;
                         }
                         if (player.invulnerable <= now) {
@@ -656,7 +687,9 @@ public class GameLogic extends GameStory {
                             } else {
                                 // Ô tô, xe buýt, thuyền, rào chắn: 24 HP, đẩy lùi + làm chậm ngắn 1350ms (tốc độ còn 38%)
                                 if (applyCollisionHit(24, pushDir, 15, 22, 195, 0.38, 1350, 780, now, "collision")) {
-                                    if (o.kind != 8 && o.kind != 10) {
+                                    if (o.kind == 10) {
+                                        sanbaka.assets.SoundManager.playSfx("hazard_barrier_smash.wav", 0.75f);
+                                    } else if (o.kind != 8) {
                                         sanbaka.assets.SoundManager.playSfx("crash_car_normal.wav", 0.75f);
                                     }
                                 }
@@ -682,6 +715,7 @@ public class GameLogic extends GameStory {
             player.invulnerable = now + 650;
             lastHitAt = now;
             floatingTextManager.spawn(player.x + 28, player.y - 12, "shield_block", true);
+            sanbaka.assets.SoundManager.playSfx("item_shield_shatter.wav", 0.75f);
             return false;
         }
         hp -= dmg;
@@ -777,6 +811,50 @@ public class GameLogic extends GameStory {
             }
         }
         if (!t.snack && blockedLanes == 0b111) return false;
+        if (!t.snack && t.kind != 14 && !hasPassableCorridor(t)) return false;
+        return true;
+    }
+
+    private boolean hasPassableCorridor(Thing candidate) {
+        double roadLeft = ROAD_X + 45.0;
+        double roadRight = ROAD_X + ROAD_W - 45.0;
+        double minCorridor = Math.max(58.0, player.w + 30.0);
+        double candReach = (candidate instanceof NinjaLead) ? 0.0 : candidate.wobbleAmp;
+        double candLeft = Math.max(roadLeft, candidate.baseX - candReach - candidate.w / 2.0);
+        double candRight = Math.min(roadRight, candidate.baseX + candReach + candidate.w / 2.0);
+        double speedFactor = Math.max(0.1, 1.0 - candidate.fwd);
+        double[] checkS = {
+            0.0,
+            Math.max(0.0, (220.0 - candidate.y) / speedFactor),
+            Math.max(0.0, (470.0 - candidate.y) / speedFactor)
+        };
+        for (double s : checkS) {
+            double candY = candidate.y + (1.0 - candidate.fwd) * s;
+            java.util.List<double[]> intervals = new java.util.ArrayList<>();
+            intervals.add(new double[]{candLeft, candRight});
+            for (Thing o : things) {
+                if (o.snack || o.kind == 14 || o instanceof Shark || o instanceof StrayDog) continue;
+                double oY = o.y + (1.0 - o.fwd) * s;
+                if (oY + o.h / 2.0 < -40 || oY - o.h / 2.0 > H + 40) continue;
+                if (Math.abs(oY - candY) < (o.h + candidate.h) / 2.0 + 44.0) {
+                    double oReach = (o instanceof NinjaLead) ? 0.0 : o.wobbleAmp;
+                    double b1 = Math.max(roadLeft, o.baseX - oReach - o.w / 2.0);
+                    double b2 = Math.min(roadRight, o.baseX + oReach + o.w / 2.0);
+                    if (b2 > b1) intervals.add(new double[]{b1, b2});
+                }
+            }
+            intervals.sort(Comparator.comparingDouble(iv -> iv[0]));
+            double maxGap = 0.0;
+            double cursor = roadLeft;
+            for (double[] iv : intervals) {
+                if (iv[0] > cursor) {
+                    maxGap = Math.max(maxGap, iv[0] - cursor);
+                }
+                cursor = Math.max(cursor, iv[1]);
+            }
+            maxGap = Math.max(maxGap, roadRight - cursor);
+            if (maxGap < minCorridor) return false;
+        }
         return true;
     }
 
@@ -820,6 +898,7 @@ public class GameLogic extends GameStory {
                 dog.phaseStartedAt = now;
                 things.add(dog);
                 floatingTextManager.spawnDebounced(player.x + 28, player.y - 12, "dog_bark", false, 2500);
+                sanbaka.assets.SoundManager.playSfxDebounced("dog_bark_alert.wav", 0.65f, 350L);
                 return true;
             }
         }
@@ -829,33 +908,37 @@ public class GameLogic extends GameStory {
     public boolean trySpawnVehicle() {
         int kind;
         if (day == 1) {
-            // Màn 2 (đường ngập): giữ tỉ lệ các xe/thuyền cũ, thêm cá mập (kind = 13) với tỉ lệ gần ngang xe
+            // Màn 2 (đường ngập): giữ nguyên mật độ ô tô và cá mập như ban đầu, tăng số thuyền gấp 2.25 lần (+50% rồi +50%)
             int activeSharks = 0;
             for (Thing o : things) {
                 if (o instanceof Shark) activeSharks++;
             }
-            int r = rng.nextInt(162);
-            if (r >= 100 && activeSharks < 2) {
+            int r = rng.nextInt(202);
+            if (r >= 140 && activeSharks < 2) {
                 kind = 13;
             } else {
-                int r2 = r < 100 ? r : rng.nextInt(100);
-                int baseKind = r2 < 28 ? 0 : r2 < 46 ? 1 : r2 < 58 ? 2 : r2 < 70 ? 3 : r2 < 80 ? 4 : r2 < 86 ? 5 : 0;
-                kind = rng.nextInt(100) < 32 ? 8 : baseKind;
+                int r2 = r < 140 ? r : rng.nextInt(140);
+                if (r2 < 72) {
+                    kind = 8;
+                } else {
+                    int c = (int) ((r2 - 72) * 100.0 / 68.0);
+                    kind = c < 28 ? 0 : c < 46 ? 1 : c < 58 ? 2 : c < 70 ? 3 : c < 80 ? 4 : c < 86 ? 5 : 0;
+                }
             }
         } else if (day == COLD_DAY) {
-            // Màn 3 (trời rét, đường trơn): xe máy có mật độ tăng gấp 1.5 lần
-            int r = rng.nextInt(167);
+            // Màn 3 (trời rét, đường trơn): giữ nguyên mật độ ô tô, tăng xe máy tương ứng
+            int r = rng.nextInt(216);
             kind = r < 28 ? 0 : r < 46 ? 1 : r < 58 ? 2 : r < 70 ? 3 : r < 80 ? 4 : r < 86 ? 5
-                    : r < 107 ? 6   // Xe máy thường (kind = 6): trọng số tăng 1.5 lần (14 -> 21)
-                    : r < 123 ? 9   // Xe tải (kind = 9)
-                    : r < 131 ? 10  // Rào chắn (kind = 10)
-                    : r < 149 ? 14  // Vũng băng (kind = 14)
-                    : 12;           // Ninja Lead (kind = 12): trọng số tăng 1.5 lần (12 -> 18)
+                    : r < 134 ? 6   // Xe máy thường (kind = 6): 48
+                    : r < 150 ? 9   // Xe tải (kind = 9): 16
+                    : r < 158 ? 10  // Rào chắn (kind = 10): 8
+                    : r < 176 ? 14  // Vũng băng (kind = 14): 18
+                    : 12;           // Ninja Lead (kind = 12): 40
         } else {
-            // Các màn đường bộ khác: giữ nguyên tỉ lệ 0..6 (tổng 100), thêm xe tải to (9), rào chắn (10), ổ gà (11), Ninja Lead (12)
-            int r = rng.nextInt(148);
-            kind = r < 28 ? 0 : r < 46 ? 1 : r < 58 ? 2 : r < 70 ? 3 : r < 80 ? 4 : r < 86 ? 5 : r < 100 ? 6
-                    : r < 118 ? 9 : r < 128 ? 10 : r < 138 ? 11 : 12;
+            // Các màn đường bộ khác: giữ nguyên trọng số ô tô/vật cản (124), tăng xe máy (6: 32, 12: 22 -> tổng 54)
+            int r = rng.nextInt(178);
+            kind = r < 28 ? 0 : r < 46 ? 1 : r < 58 ? 2 : r < 70 ? 3 : r < 80 ? 4 : r < 86 ? 5 : r < 118 ? 6
+                    : r < 136 ? 9 : r < 146 ? 10 : r < 156 ? 11 : 12;
         }
         for (int attempt = 0; attempt < 6; attempt++) {
             Thing t = Thing.create(kind);
@@ -926,12 +1009,18 @@ public class GameLogic extends GameStory {
                 int lane = rng.nextInt(3);
                 bx = laneX(lane);
                 amp = 0;
+            } else if (kind == 3 || kind == 4 || kind == 5) {
+                // Van / Truck / Bus cỡ lớn chạy gọn trong làn để không chiếm 2 làn chắn hết đường
+                int lane = rng.nextInt(3);
+                bx = laneX(lane) + (rng.nextDouble() - 0.5) * 14;
+                amp = 0;
             } else {
                 int pattern = rng.nextInt(100);
                 if (kind == 6 || pattern >= 72) bx = lo + rng.nextDouble() * (hi - lo);
-                else if (pattern < 30) bx = laneX(rng.nextInt(3));
-                else bx = dividerX(1 + rng.nextInt(2)) + (rng.nextDouble() - 0.5) * 16;
-                amp = rng.nextInt(100) < 35 ? 18 + rng.nextInt(22) : 0;
+                else if (pattern < 48) bx = laneX(rng.nextInt(3)) + (rng.nextDouble() - 0.5) * 14;
+                else bx = dividerX(1 + rng.nextInt(2)) + (rng.nextDouble() - 0.5) * 12;
+                amp = (kind == 6 && rng.nextInt(100) < 35) ? 16 + rng.nextInt(18)
+                        : (kind <= 2 && rng.nextInt(100) < 22) ? 10 + rng.nextInt(8) : 0;
                 bx = Math.max(lo + amp, Math.min(hi - amp, bx));
             }
             t.baseX = bx;
@@ -941,7 +1030,7 @@ public class GameLogic extends GameStory {
             t.wobblePhase = rng.nextDouble() * 6.28;
             if (clearToSpawn(t)) {
                 things.add(t);
-                if (day == COLD_DAY && t.kind != 6 && t.kind != 12 && rng.nextInt(100) < 36) {
+                if (day == COLD_DAY && t.kind != 6 && t.kind != 12 && rng.nextInt(100) < 70) {
                     trySpawnMotorcycle();
                 }
                 return true;
@@ -1257,6 +1346,7 @@ public class GameLogic extends GameStory {
     public void retryFlight() {
         long now = System.currentTimeMillis();
         resetDialogTyping();
+        sanbaka.assets.SoundManager.stopHazardAndBossLoops();
         dialogIndex = flightRetryDialogIndex;
         screen = ROAD;
         lastFrameAt = now;
@@ -1440,6 +1530,7 @@ public class GameLogic extends GameStory {
                 m.active = false;
                 boss.takeMissileHit(BossConfig.missileDamage, now);
                 floatingTextManager.spawn(boss.x - boss.w * 0.25, boss.y, "missile_hit", true);
+                sanbaka.assets.SoundManager.playSfxDebounced("missile_hit_armor.wav", 0.65f, 80L);
                 mit.remove();
                 continue;
             }
@@ -1449,6 +1540,7 @@ public class GameLogic extends GameStory {
                     m.active = false;
                     ep.takeHit(BossConfig.missileDamage, now);
                     floatingTextManager.spawn(ep.x, ep.y, "missile_hit", true);
+                    sanbaka.assets.SoundManager.playSfxDebounced("missile_hit_armor.wav", 0.65f, 80L);
                     hitPlane = true;
                     break;
                 }
