@@ -378,7 +378,7 @@ public class GameVisuals extends GameLogic {
         g.clip(circle);
         String avatarName = kind == 0 ? "Sanbaka" : kind == 1 ? "Thắng"
                 : kind == 2 ? "Komori" : kind == 3 ? "Chủ trọ"
-                : kind == 5 ? sanbaka.model.BossEnemy.BOSS_NAME : "Other";
+                : kind == 5 ? "THT" : "Other";
         BufferedImage avatarImage = loadAvatarImage(avatarName);
         if (avatarImage != null) {
             g.drawImage(avatarImage, cx - r, cy - r, 2 * r, 2 * r, null);
