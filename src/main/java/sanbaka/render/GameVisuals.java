@@ -822,9 +822,21 @@ public class GameVisuals extends GameLogic {
         if (day == 4) return -9999;
         double r = Math.max(0, (getStageDurationMs() - stageProgressMs) / 1000.0);
         if (r >= SCHOOL_APPROACH) return -9999;
+        return projectFinishY(r);
+    }
+
+    /** Project the gate position through its approach, before the gate is visible. */
+    public double finishSceneryY() {
+        if (day == 4) return -9999;
+        double r = Math.max(0, (getStageDurationMs() - stageProgressMs) / 1000.0);
+        return projectFinishY(r);
+    }
+
+    private double projectFinishY(double secondsRemaining) {
         double base = (3.6 + day * 0.32) * 60;
         if (day == HOT_DAY) base *= 1.25;
-        return FINISH_Y - base * (0.2 * r + 0.4 * r * r / SCHOOL_APPROACH);
+        return FINISH_Y - base * (0.2 * secondsRemaining
+                + 0.4 * secondsRemaining * secondsRemaining / SCHOOL_APPROACH);
     }
 
     public Color shade(Color c, double k) {

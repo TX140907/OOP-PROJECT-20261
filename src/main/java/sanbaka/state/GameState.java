@@ -145,6 +145,7 @@ public abstract class GameState extends JPanel implements ActionListener, KeyLis
     public boolean flightMode = false;
     public double heliX = 170, heliY = 300, heliTilt = 0;
     public double skyScroll = 0;
+    public double schoolRevealStartSkyScroll = -1;
     public long lastBird = 0;
     public final java.util.List<Bird> birds = new ArrayList<>();
     // ---- khung chat ----

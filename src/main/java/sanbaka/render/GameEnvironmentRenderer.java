@@ -331,32 +331,18 @@ public class GameEnvironmentRenderer extends GameVisuals {
     }
 
     void drawCampus(Graphics2D g, double fy) {
-        int rx0 = ROAD_X + 45, rx1 = ROAD_X + ROAD_W - 45;
-        g.setColor(new Color(132, 184, 120));
-        g.fill(new Rectangle2D.Double(0, 0, W, fy));
-        for (int i = 0; i < 7; i++) {
-            double ty = fy - 50 - i * 76;
-            if (ty < -40) break;
-            drawTree(g, 40 + (i % 2) * 86, ty, 30, i);
-            drawTree(g, W - 40 - (i % 2) * 86, ty, 30, i + 3);
-        }
-        g.setColor(new Color(226, 216, 194));
-        g.fill(new Rectangle2D.Double(ROAD_X, 0, ROAD_W, fy));
-        g.setColor(new Color(206, 196, 174));
-        for (double y = fy - 24; y > 0; y -= 36) g.fill(new Rectangle2D.Double(ROAD_X, y, ROAD_W, 2));
-        SchoolBuilding.draw(g, W / 2.0, fy - 38, 0.9, this);
-        for (int side = 0; side < 2; side++) {
-            double px = side == 0 ? ROAD_X + 2 : ROAD_X + ROAD_W - 26;
-            g.setColor(new Color(236, 230, 218));
-            g.fill(new RoundRectangle2D.Double(px, fy - 46, 24, 46, 4, 4));
-            g.setColor(new Color(200, 96, 84));
-            g.fill(new Ellipse2D.Double(px + 2, fy - 58, 20, 20));
-        }
-        int cell = 14, cols = (rx1 - rx0) / cell + 1;
+        double[] footBounds = SchoolBuilding.finishGateFootBounds(W);
+        int cell = 14;
+        double footWidth = footBounds[1] - footBounds[0];
+        int cols = Math.max(1, (int) Math.floor(footWidth / cell));
+        double checkerLeft = footBounds[0] + (footWidth - cols * cell) / 2.0;
+        double checkerHeight = 2.0 * cell;
+        double checkerY = fy - 10.0 - checkerHeight;
         for (int i = 0; i < cols; i++) {
             for (int j = 0; j < 2; j++) {
                 g.setColor((i + j) % 2 == 0 ? Color.WHITE : INK);
-                g.fill(new Rectangle2D.Double(rx0 + i * cell, fy + j * cell, cell, cell));
+                g.fill(new Rectangle2D.Double(checkerLeft + i * cell, checkerY + j * cell,
+                        cell, cell));
             }
         }
     }
@@ -552,7 +538,16 @@ public class GameEnvironmentRenderer extends GameVisuals {
         long now = System.currentTimeMillis();
         drawSkyScene(g, skyScroll);
         double rem = Math.max(0, (ROAD_DURATION_MS - stageProgressMs) / 1000.0);
-        if (rem < 8.0) SchoolBuilding.draw(g, W / 2.0 + rem / 8.0 * 700, 572, 0.62, this);
+        if (rem < 8.0) {
+            double schoolScale = 0.62 * 1.5;
+            double schoolWidth = 672 * schoolScale;
+            double schoolX = W + schoolWidth / 2.0 + 1;
+            if ((boss == null || boss.defeated) && schoolRevealStartSkyScroll >= 0) {
+                // Far-background city scenery moves at 30% of the sky scroll rate.
+                schoolX -= (skyScroll - schoolRevealStartSkyScroll) * 0.3;
+            }
+            SchoolBuilding.draw(g, schoolX, 572, schoolScale, this);
+        }
         Stroke oldStroke = g.getStroke();
         g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         for (int i = 0; i < 9; i++) {

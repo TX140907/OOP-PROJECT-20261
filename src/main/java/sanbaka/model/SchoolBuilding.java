@@ -9,13 +9,142 @@ import sanbaka.render.GameVisuals;
 /** Mặt tiền trường học, tách khỏi renderer của đường và khuôn viên (tích hợp bộ đệm sprite GPU). */
 public class SchoolBuilding {
     private static BufferedImage cachedFacade;
+    private static BufferedImage finishGateForeground;
+    private static BufferedImage finishGateShadow;
+    private static int finishShadowBottom;
+    private static volatile boolean finishLayersLoaded;
+    private static volatile boolean finishFootBoundsLoaded;
+    private static double finishFootLeftRatio = 0.28;
+    private static double finishFootRightRatio = 0.72;
+
+    /** Returns the gate-foot outer edges scaled to the requested viewport width. */
+    public static double[] finishGateFootBounds(double viewportWidth) {
+        if (!finishFootBoundsLoaded) {
+            synchronized (SchoolBuilding.class) {
+                if (!finishFootBoundsLoaded) {
+                    BufferedImage art = ArtAssets.load("SchoolBuilding", "SchoolBuilding.png");
+                    if (art != null) {
+                        int row = Math.min(art.getHeight() - 1, (int) Math.round(art.getHeight() * 0.576));
+                        int left = art.getWidth(), right = -1;
+                        for (int x = 0; x < art.getWidth(); x++) {
+                            int argb = art.getRGB(x, row);
+                            int alpha = (argb >>> 24) & 0xff;
+                            int red = (argb >>> 16) & 0xff;
+                            int green = (argb >>> 8) & 0xff;
+                            int blue = argb & 0xff;
+                            boolean shadowPixel = green > red * 1.35 && green > blue * 1.25
+                                    && green > 35 && red < 80 && blue < 120;
+                            if (alpha > 20 && !shadowPixel) {
+                                if (x < art.getWidth() / 2) left = Math.min(left, x);
+                                else right = Math.max(right, x);
+                            }
+                        }
+                        if (right >= 0 && left < art.getWidth()) {
+                            finishFootLeftRatio = left / (double) art.getWidth();
+                            finishFootRightRatio = (right + 1) / (double) art.getWidth();
+                        }
+                    }
+                    finishFootBoundsLoaded = true;
+                }
+            }
+        }
+        return new double[]{finishFootLeftRatio * viewportWidth, finishFootRightRatio * viewportWidth};
+    }
+
+    /** Draws only the gate's shadow so vehicles are rendered over it. */
+    public static void drawFinishShadow(Graphics2D g, double x, double finishLineY, double w,
+                                        GameVisuals scene) {
+        ensureFinishLayers();
+        if (finishGateShadow != null) drawFinishLayer(g, finishGateShadow, x, finishLineY, w);
+    }
+
+    /** Draws the gate above vehicles while leaving its shadow on the lower layer. */
+    public static void drawFinishGateForeground(Graphics2D g, double x, double finishLineY, double w,
+                                                GameVisuals scene) {
+        ensureFinishLayers();
+        if (finishGateForeground != null) {
+            drawFinishLayer(g, finishGateForeground, x, finishLineY, w);
+            return;
+        }
+        if (cachedFacade == null) cachedFacade = buildFacadeSprite();
+        if (finishShadowBottom <= 0) finishShadowBottom = cachedFacade.getHeight();
+        drawFinishLayer(g, cachedFacade, x, finishLineY, w);
+    }
+
+    private static void ensureFinishLayers() {
+        if (finishLayersLoaded) return;
+        synchronized (SchoolBuilding.class) {
+            if (finishLayersLoaded) return;
+            BufferedImage art = ArtAssets.load("SchoolBuilding", "SchoolBuilding.png");
+            if (art != null) {
+                int width = art.getWidth(), height = art.getHeight();
+                int[] sourcePixels = art.getRGB(0, 0, width, height, null, 0, width);
+                int[] foregroundPixels = new int[sourcePixels.length];
+                int[] shadowPixels = new int[sourcePixels.length];
+                int[] leftShadowPixelsByRow = new int[height];
+                int[] rightShadowPixelsByRow = new int[height];
+                int leftSideEnd = width * 3 / 10;
+                int rightSideStart = width * 7 / 10;
+                for (int i = 0; i < sourcePixels.length; i++) {
+                    int argb = sourcePixels[i];
+                    int alpha = (argb >>> 24) & 0xff;
+                    int red = (argb >>> 16) & 0xff;
+                    int green = (argb >>> 8) & 0xff;
+                    int blue = argb & 0xff;
+                    boolean shadowPixel = alpha > 0 && green > red * 1.35
+                            && green > blue * 1.25 && green > 35 && red < 80 && blue < 120;
+                    if (shadowPixel) {
+                        shadowPixels[i] = argb;
+                        int x = i % width;
+                        int y = i / width;
+                        if (x < leftSideEnd) leftShadowPixelsByRow[y]++;
+                        if (x >= rightSideStart) rightShadowPixelsByRow[y]++;
+                    } else {
+                        foregroundPixels[i] = argb;
+                    }
+                }
+                finishGateForeground = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+                finishGateShadow = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+                finishGateForeground.setRGB(0, 0, width, height, foregroundPixels, 0, width);
+                finishGateShadow.setRGB(0, 0, width, height, shadowPixels, 0, width);
+                // The beam's horizontal shadow spans both outer sides; ignore the deeper
+                // U-shaped arch shadow in the center when finding its lower edge.
+                int horizontalShadowMaxY = -1;
+                int minSidePixels = Math.max(1, width / 16);
+                for (int y = 0; y < height; y++) {
+                    if (leftShadowPixelsByRow[y] >= minSidePixels
+                            && rightShadowPixelsByRow[y] >= minSidePixels) {
+                        horizontalShadowMaxY = y;
+                    }
+                }
+                finishShadowBottom = horizontalShadowMaxY >= 0
+                        ? horizontalShadowMaxY + 1 : art.getHeight();
+            }
+            finishLayersLoaded = true;
+        }
+    }
+
+    private static void drawFinishLayer(Graphics2D g, BufferedImage layer, double x,
+                                        double finishLineY, double w) {
+        double scale = w / layer.getWidth();
+        double h = layer.getHeight() * scale;
+        // Align the horizontal beam-shadow edge with the finish line, not the deeper arch shadow.
+        double y = finishLineY - finishShadowBottom * scale;
+        g.drawImage(layer, (int) Math.round(x), (int) Math.round(y),
+                (int) Math.round(w), (int) Math.round(h), null);
+    }
 
     public static void draw(Graphics2D g, double cx, double baseY, double sc, GameVisuals scene) {
-        BufferedImage art = ArtAssets.load("SchoolBuilding", "SchoolBuilding.png");
+        BufferedImage art = scene.day == 4
+                ? ArtAssets.load("SchoolBuilding", "SchoolBuilding-day5.png") : null;
+        if (art == null) art = ArtAssets.load("SchoolBuilding", "SchoolBuilding.png");
         if (art != null) {
-            int w = (int) Math.round(672 * sc), h = (int) Math.round(294 * sc);
+            int w = (int) Math.round(672 * sc);
+            int h = scene.day == 4
+                    ? (int) Math.round(w * art.getHeight() / (double) art.getWidth())
+                    : (int) Math.round(294 * sc);
             g.drawImage(art, (int) Math.round(cx - 336 * sc),
-                    (int) Math.round(baseY - 294 * sc), w, h, null);
+                    (int) Math.round(baseY - h), w, h, null);
             return;
         }
         if (cachedFacade == null) {

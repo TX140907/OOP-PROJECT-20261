@@ -1327,6 +1327,7 @@ public class GameLogic extends GameStory {
         heliY = 300;
         heliTilt = 0;
         skyScroll = 0;
+        schoolRevealStartSkyScroll = -1;
         lastBird = now;
         player.invulnerable = 0;
         hp = FLIGHT_START_HP;
@@ -1665,6 +1666,11 @@ public class GameLogic extends GameStory {
             } else if (b.x < -80) {
                 it.remove();
             }
+        }
+
+        // Start the school reveal at the exact scenery position where the boss is defeated.
+        if (boss != null && boss.defeated && schoolRevealStartSkyScroll < 0) {
+            schoolRevealStartSkyScroll = skyScroll;
         }
     }
 

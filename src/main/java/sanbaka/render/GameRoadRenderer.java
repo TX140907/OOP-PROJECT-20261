@@ -31,6 +31,7 @@ public class GameRoadRenderer extends GameCharacterRenderer {
     private static final BasicStroke STROKE_DAMAGE = new BasicStroke(36f);
     private static final BasicStroke STROKE_HEAT_PULSE = new BasicStroke(28f);
     private static final BasicStroke STROKE_CRACK = new BasicStroke(1.2f);
+    private static final double PREFINISH_SCENERY_CLEARANCE = 80.0;
 
     private final Path2D.Double rainPath = new Path2D.Double();
     private final Path2D.Double heatWavePath = new Path2D.Double();
@@ -79,8 +80,14 @@ public class GameRoadRenderer extends GameCharacterRenderer {
             }
         }
         int n0 = (int) Math.floor((s - H) / 160.0) - 1, n1 = (int) Math.floor(s / 160.0) + 2;
+        double fy = finishY();
+        double sceneryFy = finishSceneryY();
+        boolean hasSceneryFinish = sceneryFy > -9000;
+        double prefinishSceneryStartY = sceneryFy + PREFINISH_SCENERY_CLEARANCE;
         for (int n = n0; n <= n1; n++) {
             double topY = s - (n + 1) * 160.0;
+            // Cull before drawing, including while the finish is still just above the viewport.
+            if (hasSceneryFinish && topY < prefinishSceneryStartY) continue;
             drawLot(g, 0, n, topY);
             drawLot(g, 1, n, topY);
         }
@@ -162,12 +169,22 @@ public class GameRoadRenderer extends GameCharacterRenderer {
         for (int n = n0; n <= n1; n++) {
             int h = hash(n, 11);
             double ty = s - (n + 1) * 160.0 + 30 + h % 90;
-            drawTree(g, ROAD_X - 4, ty, 28 + h % 8, h / 5);
-            drawTree(g, ROAD_X + ROAD_W + 4, ty + 60, 28 + (h / 3) % 8, h / 9);
+            double leftRadius = 28 + h % 8;
+            double rightRadius = 28 + (h / 3) % 8;
+            double rightY = ty + 60;
+            if (!hasSceneryFinish || ty - leftRadius >= prefinishSceneryStartY) {
+                drawTree(g, ROAD_X - 4, ty, leftRadius, h / 5);
+            }
+            if (!hasSceneryFinish || rightY - rightRadius >= prefinishSceneryStartY) {
+                drawTree(g, ROAD_X + ROAD_W + 4, rightY, rightRadius, h / 9);
+            }
         }
         // trường học + vạch đích
-        double fy = finishY();
-        if (fy > 0) drawCampus(g, fy);
+        if (fy > 0) {
+            drawFinishApproach(g, fy, s, roadTile, rx0, rx1, now);
+            SchoolBuilding.drawFinishShadow(g, 0, fy, W, this);
+            drawCampus(g, fy);
+        }
         // xe cộ, tia sét, người chơi
         for (Thing o : things) {
             if (o.kind == 11 || o.kind == 14 || (o instanceof Shark shark && shark.isGroundLayer())) o.draw(g, this);
@@ -254,6 +271,53 @@ public class GameRoadRenderer extends GameCharacterRenderer {
             }
             g.setStroke(STROKE_1F);
         }
+        // Keep the gate artwork above vehicles, scenery and weather effects.
+        if (fy > 0) SchoolBuilding.drawFinishGateForeground(g, 0, fy, W, this);
+    }
+
+    private void drawFinishApproach(Graphics2D g, double finishY, double scroll,
+                                    BufferedImage roadTile, int rx0, int rx1, long now) {
+        int approachHeight = (int) Math.ceil(finishY + 28);
+        if (approachHeight <= 0) return;
+
+        Graphics2D approach = (Graphics2D) g.create();
+        approach.clipRect(0, 0, W, approachHeight);
+
+        // Clear roadside lots in the finish area, then continue the road surface behind the gate.
+        approach.setColor(GRASS_COLORS[day]);
+        approach.fillRect(0, 0, W, approachHeight);
+        if (roadTile != null) {
+            int tileH = Math.max(64, roadTile.getHeight());
+            double tileY = (scroll % tileH) - tileH;
+            for (; tileY < approachHeight; tileY += tileH) {
+                approach.drawImage(roadTile, ROAD_X, (int) Math.round(tileY), ROAD_W, tileH, null);
+            }
+        } else {
+            approach.setColor(day == 2 ? new Color(220, 226, 232) : new Color(206, 193, 168));
+            approach.fillRect(ROAD_X, 0, 45, approachHeight);
+            approach.fillRect(rx1, 0, 45, approachHeight);
+            approach.setColor(ASPHALT_COLORS[day]);
+            approach.fillRect(rx0, 0, rx1 - rx0, approachHeight);
+            approach.setColor(new Color(240, 240, 235, 210));
+            approach.fillRect(rx0 + 6, 0, 3, approachHeight);
+            approach.fillRect(rx1 - 9, 0, 3, approachHeight);
+            for (double y = (scroll % 80) - 80; y < approachHeight; y += 80) {
+                approach.fillRect((int) dividerX(1) - 2, (int) y, 4, 40);
+                approach.fillRect((int) dividerX(2) - 2, (int) y, 4, 40);
+            }
+        }
+        if (day == 1) drawFlood(approach, rx0, rx1, scroll, now);
+
+        // Two matching, evenly spaced rows, set just outside the sidewalk edges.
+        int row = 0;
+        long firstTreeIndex = (long) Math.floor((scroll + 40) / 80.0);
+        double rowOffset = scroll + 40 - firstTreeIndex * 80.0;
+        for (double y = rowOffset; y + 40 < finishY; y += 80, row++) {
+            int variant = (int) Math.floorMod(firstTreeIndex - row, 14L);
+            drawTree(approach, ROAD_X - 4, y, 32, variant);
+            drawTree(approach, ROAD_X + ROAD_W + 4, y, 32, variant + 4);
+        }
+        approach.dispose();
     }
 
 }
